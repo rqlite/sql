@@ -467,7 +467,7 @@ func AssertNodeStringerPanic(tb testing.TB, node sqlparser.Node, msg string) {
 	var r interface{}
 	func() {
 		defer func() { r = recover() }()
-		node.String()
+		_ = node.String()
 	}()
 	if r == nil {
 		tb.Fatal("expected node stringer to panic")
