@@ -1,4 +1,4 @@
-package sql
+package sqlparser
 
 import (
 	"fmt"
@@ -50,6 +50,7 @@ const (
 	NE     // !=
 	EQ     // =
 	LE     // <=
+	LG     // <>
 	LT     // <
 	GT     // >
 	GE     // >=
@@ -173,11 +174,13 @@ const (
 	OF
 	OFFSET
 	ON
+	ONLY
 	OR
 	ORDER
 	OTHERS
 	OUTER
 	OVER
+	OVERRIDING
 	PARTITION
 	PLAN
 	PRAGMA
@@ -193,16 +196,16 @@ const (
 	REINDEX
 	RELEASE
 	RENAME
-	REPLACE
 	RESTRICT
+	RETURNING
 	ROLLBACK
 	ROW
 	ROWS
-	SAVEPOINT
 	SELECT
 	SELECT_COLUMN
 	SET
 	SPAN
+	SYSTEM
 	TABLE
 	TEMP
 	THEN
@@ -215,8 +218,10 @@ const (
 	UNION
 	UNIQUE
 	UPDATE
+	USER
 	USING
 	VACUUM
+	VALUE
 	VALUES
 	VARIABLE
 	VECTOR
@@ -257,6 +262,7 @@ var tokens = [...]string{
 	NE:     "!=",
 	EQ:     "=",
 	LE:     "<=",
+	LG:     "<>",
 	LT:     "<",
 	GT:     ">",
 	GE:     ">=",
@@ -378,11 +384,13 @@ var tokens = [...]string{
 	OF:                "OF",
 	OFFSET:            "OFFSET",
 	ON:                "ON",
+	ONLY:              "ONLY",
 	OR:                "OR",
 	ORDER:             "ORDER",
 	OTHERS:            "OTHERS",
 	OUTER:             "OUTER",
 	OVER:              "OVER",
+	OVERRIDING:        "OVERRIDING",
 	PARTITION:         "PARTITION",
 	PLAN:              "PLAN",
 	PRAGMA:            "PRAGMA",
@@ -398,16 +406,16 @@ var tokens = [...]string{
 	REINDEX:           "REINDEX",
 	RELEASE:           "RELEASE",
 	RENAME:            "RENAME",
-	REPLACE:           "REPLACE",
 	RESTRICT:          "RESTRICT",
+	RETURNING:         "RETURNING",
 	ROLLBACK:          "ROLLBACK",
 	ROW:               "ROW",
 	ROWS:              "ROWS",
-	SAVEPOINT:         "SAVEPOINT",
 	SELECT:            "SELECT",
 	SELECT_COLUMN:     "SELECT_COLUMN",
 	SET:               "SET",
 	SPAN:              "SPAN",
+	SYSTEM:            "SYSTEM",
 	TABLE:             "TABLE",
 	TEMP:              "TEMP",
 	THEN:              "THEN",
@@ -420,8 +428,10 @@ var tokens = [...]string{
 	UNION:             "UNION",
 	UNIQUE:            "UNIQUE",
 	UPDATE:            "UPDATE",
+	USER:              "USER",
 	USING:             "USING",
 	VACUUM:            "VACUUM",
+	VALUE:             "VALUE",
 	VALUES:            "VALUES",
 	VARIABLE:          "VARIABLE",
 	VECTOR:            "VECTOR",
@@ -459,7 +469,7 @@ func (tok Token) IsLiteral() bool {
 func (tok Token) IsBinaryOp() bool {
 	switch tok {
 	case PLUS, MINUS, STAR, SLASH, REM, CONCAT, NOT, BETWEEN,
-		LSHIFT, RSHIFT, BITAND, BITOR, LT, LE, GT, GE, EQ, NE,
+		LSHIFT, RSHIFT, BITAND, BITOR, LT, LG, LE, GT, GE, EQ, NE,
 		IS, IN, LIKE, GLOB, MATCH, REGEXP, AND, OR:
 		return true
 	default:
@@ -485,7 +495,7 @@ func (op Token) Precedence() int {
 		return 2
 	case NOT:
 		return 3
-	case IS, MATCH, LIKE, GLOB, REGEXP, BETWEEN, IN, ISNULL, NOTNULL, NE, EQ:
+	case IS, MATCH, LIKE, GLOB, REGEXP, BETWEEN, IN, ISNULL, NOTNULL, NE, LG, EQ:
 		return 4
 	case GT, LE, LT, GE:
 		return 5

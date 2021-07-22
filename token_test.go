@@ -1,13 +1,13 @@
-package sql_test
+package sqlparser_test
 
 import (
 	"testing"
 
-	"github.com/benbjohnson/sql"
+	"github.com/longbridgeapp/sqlparser"
 )
 
 func TestPos_String(t *testing.T) {
-	if got, want := (sql.Pos{}).String(), `-`; got != want {
+	if got, want := (sqlparser.Pos{}).String(), `-`; got != want {
 		t.Fatalf("String()=%q, want %q", got, want)
 	}
 }

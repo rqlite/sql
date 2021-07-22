@@ -1,7 +1,14 @@
-sql
-===
+# SQLParser
 
-This repository holds a pure Go SQL parser based on the [SQLite](https://sqlite.org/)
-SQL definition. It implements nearly all features of the language except `ATTACH`,
-`DETACH`, and some other minor features.
+A SQL parser for PostgreSQL.
 
+## Supported features for now
+1. INSERT.
+2. UPDATE.
+3. SELECT.
+4. DELETE.
+
+## Unsupported features
+
+1. WITH Clause for DELETE, INSERT, SELECT, UPDATE.
+2. WINDOW Clause for SELECT.

@@ -1,4 +1,4 @@
-package sql
+package sqlparser
 
 // A Visitor's Visit method is invoked for each node encountered by Walk.
 // If the result visitor w is not nil, Walk visits each of the children
@@ -35,208 +35,55 @@ func walk(v Visitor, node Node) (err error) {
 			return err
 		}
 
-	case *ExplainStatement:
-		if n.Stmt != nil {
-			if err := walk(v, n.Stmt); err != nil {
-				return err
-			}
-		}
-
-	case *RollbackStatement:
-		if err := walkIdent(v, n.SavepointName); err != nil {
-			return err
-		}
-
-	case *SavepointStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-
-	case *ReleaseStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-
-	case *CreateTableStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkColumnDefinitionList(v, n.Columns); err != nil {
-			return err
-		}
-		if err := walkConstraintList(v, n.Constraints); err != nil {
-			return err
-		}
-		if n.Select != nil {
-			if err := walk(v, n.Select); err != nil {
-				return err
-			}
-		}
-
-	case *AlterTableStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkIdent(v, n.NewName); err != nil {
-			return err
-		}
-		if err := walkIdent(v, n.ColumnName); err != nil {
-			return err
-		}
-		if err := walkIdent(v, n.NewColumnName); err != nil {
-			return err
-		}
-		if n.ColumnDef != nil {
-			if err := walk(v, n.ColumnDef); err != nil {
-				return err
-			}
-		}
-
-	case *AnalyzeStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-
-	case *CreateViewStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkIdentList(v, n.Columns); err != nil {
-			return err
-		}
-		if n.Select != nil {
-			if err := walk(v, n.Select); err != nil {
-				return err
-			}
-		}
-
-	case *DropTableStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-
-	case *DropViewStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-
-	case *DropIndexStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-
-	case *DropTriggerStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-
-	case *CreateIndexStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkIdent(v, n.Table); err != nil {
-			return err
-		}
-		if err := walkIndexedColumnList(v, n.Columns); err != nil {
-			return err
-		}
-		if err := walkExpr(v, n.WhereExpr); err != nil {
-			return err
-		}
-
-	case *CreateTriggerStatement:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkIdentList(v, n.UpdateOfColumns); err != nil {
-			return err
-		}
-		if err := walkIdent(v, n.Table); err != nil {
-			return err
-		}
-		if err := walkExpr(v, n.WhenExpr); err != nil {
-			return err
-		}
-		for _, x := range n.Body {
-			if err := walk(v, x); err != nil {
-				return err
-			}
-		}
-
 	case *SelectStatement:
-		if n.WithClause != nil {
-			if err := walk(v, n.WithClause); err != nil {
-				return err
-			}
-		}
-		for _, x := range n.ValueLists {
-			if err := walk(v, x); err != nil {
-				return err
-			}
-		}
-		for _, x := range n.Columns {
-			if err := walk(v, x); err != nil {
-				return err
-			}
-		}
-		if n.Source != nil {
-			if err := walk(v, n.Source); err != nil {
-				return err
-			}
-		}
-		if err := walkExpr(v, n.WhereExpr); err != nil {
+		if err := walk(v, n.Columns); err != nil {
 			return err
 		}
-		if err := walkExprList(v, n.GroupByExprs); err != nil {
-			return err
-		}
-		if err := walkExpr(v, n.HavingExpr); err != nil {
-			return err
-		}
-		for _, x := range n.Windows {
-			if err := walk(v, x); err != nil {
+		if n.FromItems != nil {
+			if err := walk(v, n.FromItems); err != nil {
 				return err
 			}
+		}
+		if err := walkExpr(v, n.Condition); err != nil {
+			return err
+		}
+		if err := walkExprs(v, n.GroupingElements); err != nil {
+			return err
+		}
+		if err := walkExpr(v, n.HavingCondition); err != nil {
+			return err
 		}
 		if n.Compound != nil {
 			if err := walk(v, n.Compound); err != nil {
 				return err
 			}
 		}
-		for _, x := range n.OrderingTerms {
+		for _, x := range n.OrderBy {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if err := walkExpr(v, n.LimitExpr); err != nil {
+		if err := walkExpr(v, n.Limit); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.OffsetExpr); err != nil {
+		if err := walkExpr(v, n.Offset); err != nil {
 			return err
 		}
 
 	case *InsertStatement:
-		if n.WithClause != nil {
-			if err := walk(v, n.WithClause); err != nil {
-				return err
-			}
-		}
-		if err := walkIdent(v, n.Table); err != nil {
+		if err := walk(v, n.TableName); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.Alias); err != nil {
+		if err := walkIdentList(v, n.ColumnNames); err != nil {
 			return err
 		}
-		if err := walkIdentList(v, n.Columns); err != nil {
-			return err
-		}
-		for _, x := range n.ValueLists {
+		for _, x := range n.Expressions {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if n.Select != nil {
-			if err := walk(v, n.Select); err != nil {
+		if n.Query != nil {
+			if err := walk(v, n.Query); err != nil {
 				return err
 			}
 		}
@@ -247,13 +94,8 @@ func walk(v Visitor, node Node) (err error) {
 		}
 
 	case *UpdateStatement:
-		if n.WithClause != nil {
-			if err := walk(v, n.WithClause); err != nil {
-				return err
-			}
-		}
-		if n.Table != nil {
-			if err := walk(v, n.Table); err != nil {
+		if n.TableName != nil {
+			if err := walk(v, n.TableName); err != nil {
 				return err
 			}
 		}
@@ -262,7 +104,7 @@ func walk(v Visitor, node Node) (err error) {
 				return err
 			}
 		}
-		if err := walkExpr(v, n.WhereExpr); err != nil {
+		if err := walkExpr(v, n.Condition); err != nil {
 			return err
 		}
 
@@ -283,85 +125,13 @@ func walk(v Visitor, node Node) (err error) {
 		}
 
 	case *DeleteStatement:
-		if n.WithClause != nil {
-			if err := walk(v, n.WithClause); err != nil {
+		if n.TableName != nil {
+			if err := walk(v, n.TableName); err != nil {
 				return err
 			}
 		}
-		if n.Table != nil {
-			if err := walk(v, n.Table); err != nil {
-				return err
-			}
-		}
-		if err := walkExpr(v, n.WhereExpr); err != nil {
+		if err := walkExpr(v, n.Condition); err != nil {
 			return err
-		}
-		for _, x := range n.OrderingTerms {
-			if err := walk(v, x); err != nil {
-				return err
-			}
-		}
-		if err := walkExpr(v, n.LimitExpr); err != nil {
-			return err
-		}
-		if err := walkExpr(v, n.OffsetExpr); err != nil {
-			return err
-		}
-
-	case *PrimaryKeyConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkIdentList(v, n.Columns); err != nil {
-			return err
-		}
-
-	case *NotNullConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-
-	case *UniqueConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkIdentList(v, n.Columns); err != nil {
-			return err
-		}
-
-	case *CheckConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkExpr(v, n.Expr); err != nil {
-			return err
-		}
-
-	case *DefaultConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkExpr(v, n.Expr); err != nil {
-			return err
-		}
-
-	case *ForeignKeyConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if err := walkIdentList(v, n.Columns); err != nil {
-			return err
-		}
-		if err := walkIdent(v, n.ForeignTable); err != nil {
-			return err
-		}
-		if err := walkIdentList(v, n.ForeignColumns); err != nil {
-			return err
-		}
-		for _, x := range n.Args {
-			if err := walk(v, x); err != nil {
-				return err
-			}
 		}
 
 	case *ParenExpr:
@@ -380,16 +150,6 @@ func walk(v Visitor, node Node) (err error) {
 		}
 		if err := walkExpr(v, n.Y); err != nil {
 			return err
-		}
-
-	case *CastExpr:
-		if err := walkExpr(v, n.X); err != nil {
-			return err
-		}
-		if n.Type != nil {
-			if err := walk(v, n.Type); err != nil {
-				return err
-			}
 		}
 
 	case *CaseBlock:
@@ -413,8 +173,8 @@ func walk(v Visitor, node Node) (err error) {
 			return err
 		}
 
-	case *ExprList:
-		if err := walkExprList(v, n.Exprs); err != nil {
+	case *Exprs:
+		if err := walkExprs(v, n.Exprs); err != nil {
 			return err
 		}
 
@@ -430,16 +190,11 @@ func walk(v Visitor, node Node) (err error) {
 		if err := walkIdent(v, n.Name); err != nil {
 			return err
 		}
-		if err := walkExprList(v, n.Args); err != nil {
+		if err := walkExprs(v, n.Args); err != nil {
 			return err
 		}
 		if n.Filter != nil {
 			if err := walk(v, n.Filter); err != nil {
-				return err
-			}
-		}
-		if n.Over != nil {
-			if err := walk(v, n.Over); err != nil {
 				return err
 			}
 		}
@@ -449,26 +204,8 @@ func walk(v Visitor, node Node) (err error) {
 			return err
 		}
 
-	case *OverClause:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if n.Definition != nil {
-			if err := walk(v, n.Definition); err != nil {
-				return err
-			}
-		}
-
 	case *OrderingTerm:
 		if err := walkExpr(v, n.X); err != nil {
-			return err
-		}
-
-	case *FrameSpec:
-		if err := walkExpr(v, n.X); err != nil {
-			return err
-		}
-		if err := walkExpr(v, n.Y); err != nil {
 			return err
 		}
 
@@ -478,13 +215,6 @@ func walk(v Visitor, node Node) (err error) {
 		}
 		if err := walkExpr(v, n.Y); err != nil {
 			return err
-		}
-
-	case *Raise:
-		if n.Error != nil {
-			if err := walk(v, n.Error); err != nil {
-				return err
-			}
 		}
 
 	case *Exists:
@@ -504,14 +234,11 @@ func walk(v Visitor, node Node) (err error) {
 			return err
 		}
 
-	case *QualifiedTableName:
+	case *TableName:
 		if err := walkIdent(v, n.Name); err != nil {
 			return err
 		}
 		if err := walkIdent(v, n.Alias); err != nil {
-			return err
-		}
-		if err := walkIdent(v, n.Index); err != nil {
 			return err
 		}
 
@@ -547,19 +274,6 @@ func walk(v Visitor, node Node) (err error) {
 			return err
 		}
 
-	case *ColumnDefinition:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if n.Type != nil {
-			if err := walk(v, n.Type); err != nil {
-				return err
-			}
-		}
-		if err := walkConstraintList(v, n.Constraints); err != nil {
-			return err
-		}
-
 	case *ResultColumn:
 		if err := walkExpr(v, n.Expr); err != nil {
 			return err
@@ -571,34 +285,6 @@ func walk(v Visitor, node Node) (err error) {
 	case *IndexedColumn:
 		if err := walkExpr(v, n.X); err != nil {
 			return err
-		}
-
-	case *Window:
-		if err := walkIdent(v, n.Name); err != nil {
-			return err
-		}
-		if n.Definition != nil {
-			if err := walk(v, n.Definition); err != nil {
-				return err
-			}
-		}
-
-	case *WindowDefinition:
-		if err := walkIdent(v, n.Base); err != nil {
-			return err
-		}
-		if err := walkExprList(v, n.Partitions); err != nil {
-			return err
-		}
-		for _, x := range n.OrderingTerms {
-			if err := walk(v, x); err != nil {
-				return err
-			}
-		}
-		if n.Frame != nil {
-			if err := walk(v, n.Frame); err != nil {
-				return err
-			}
 		}
 
 	case *Type:
@@ -673,16 +359,7 @@ func walkExpr(v Visitor, x Expr) error {
 	return nil
 }
 
-func walkExprList(v Visitor, a []Expr) error {
-	for _, x := range a {
-		if err := walk(v, x); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func walkConstraintList(v Visitor, a []Constraint) error {
+func walkExprs(v Visitor, a []Expr) error {
 	for _, x := range a {
 		if err := walk(v, x); err != nil {
 			return err
@@ -692,15 +369,6 @@ func walkConstraintList(v Visitor, a []Constraint) error {
 }
 
 func walkIndexedColumnList(v Visitor, a []*IndexedColumn) error {
-	for _, x := range a {
-		if err := walk(v, x); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func walkColumnDefinitionList(v Visitor, a []*ColumnDefinition) error {
 	for _, x := range a {
 		if err := walk(v, x); err != nil {
 			return err
