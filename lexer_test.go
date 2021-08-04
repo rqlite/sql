@@ -38,6 +38,16 @@ func TestLexer_Lex(t *testing.T) {
 			AssertLex(t, `'unfinished`, sqlparser.ILLEGAL, `'unfinished`)
 		})
 	})
+
+	t.Run("MLCOMMENT", func(t *testing.T) {
+		t.Run("OK", func(t *testing.T) {
+			AssertLex(t, `/* this is a multiline comment */`, sqlparser.MLCOMMENT, `this is a multiline comment`)
+		})
+		t.Run("NoEndQuote", func(t *testing.T) {
+			AssertLex(t, `/* unfinished`, sqlparser.ILLEGAL, `/* unfinished`)
+		})
+	})
+
 	t.Run("BLOB", func(t *testing.T) {
 		t.Run("LowerX", func(t *testing.T) {
 			AssertLex(t, `x'0123456789abcdef'`, sqlparser.BLOB, `0123456789abcdef`)

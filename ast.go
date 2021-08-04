@@ -23,6 +23,7 @@ func (*DeleteStatement) node() {}
 func (*Exists) node()          {}
 func (*Exprs) node()           {}
 func (*FilterClause) node()    {}
+func (*Hint) node()            {}
 func (*Ident) node()           {}
 func (*IndexedColumn) node()   {}
 func (*InsertStatement) node() {}
@@ -277,6 +278,15 @@ type StringLit struct {
 // String returns the string representation of the expression.
 func (lit *StringLit) String() string {
 	return `'` + strings.Replace(lit.Value, `'`, `''`, -1) + `'`
+}
+
+type Hint struct {
+	Value string
+}
+
+// String returns the string representation of the expression.
+func (h *Hint) String() string {
+	return `/* ` + h.Value + ` */`
 }
 
 type BlobLit struct {
@@ -899,6 +909,8 @@ type SelectStatement struct {
 
 	Limit  Expr
 	Offset Expr // offset expression
+
+	Hint *Hint
 }
 
 // String returns the string representation of the statement.
@@ -906,6 +918,10 @@ func (s *SelectStatement) String() string {
 	var buf bytes.Buffer
 
 	buf.WriteString("SELECT ")
+	if s.Hint != nil {
+		fmt.Fprintf(&buf, "%s ", s.Hint.String())
+	}
+
 	if s.All {
 		buf.WriteString("ALL ")
 	} else if s.Distinct {

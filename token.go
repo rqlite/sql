@@ -30,16 +30,17 @@ const (
 	SPACE
 
 	literal_beg
-	IDENT   // IDENT
-	QIDENT  // "IDENT"
-	STRING  // 'string'
-	BLOB    // ???
-	FLOAT   // 123.45
-	INTEGER // 123
-	NULL    // NULL
-	TRUE    // true
-	FALSE   // false
-	BIND    //? or ?NNN or :VVV or @VVV or $VVV
+	IDENT     // IDENT
+	QIDENT    // "IDENT"
+	STRING    // 'string'
+	BLOB      // ???
+	FLOAT     // 123.45
+	INTEGER   // 123
+	MLCOMMENT // multiline comment
+	NULL      // NULL
+	TRUE      // true
+	FALSE     // false
+	BIND      //? or ?NNN or :VVV or @VVV or $VVV
 	literal_end
 
 	operator_beg
@@ -244,16 +245,17 @@ var tokens = [...]string{
 	COMMENT: "COMMENT",
 	SPACE:   "SPACE",
 
-	IDENT:   "IDENT",
-	QIDENT:  "QIDENT",
-	STRING:  "STRING",
-	BLOB:    "BLOB",
-	FLOAT:   "FLOAT",
-	INTEGER: "INTEGER",
-	NULL:    "NULL",
-	TRUE:    "TRUE",
-	FALSE:   "FALSE",
-	BIND:    "BIND",
+	IDENT:     "IDENT",
+	QIDENT:    "QIDENT",
+	STRING:    "STRING",
+	BLOB:      "BLOB",
+	FLOAT:     "FLOAT",
+	INTEGER:   "INTEGER",
+	MLCOMMENT: "MLCOMMENT",
+	NULL:      "NULL",
+	TRUE:      "TRUE",
+	FALSE:     "FALSE",
+	BIND:      "BIND",
 
 	SEMI:   ";",
 	LP:     "(",

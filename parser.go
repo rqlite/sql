@@ -480,6 +480,12 @@ func (p *Parser) parseSelectStatement(compounded bool) (_ *SelectStatement, err 
 	}
 	p.lex()
 
+	// Parse optional hint
+	if tok := p.peek(); tok == MLCOMMENT {
+		_, _, lit := p.lex()
+		stmt.Hint = &Hint{Value: lit}
+	}
+
 	// Parse optional "DISTINCT" or "ALL".
 	if tok := p.peek(); tok == ALL {
 		stmt.All = true

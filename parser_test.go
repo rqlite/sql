@@ -23,6 +23,18 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT /* hint */ * FROM tbl`, &sqlparser.SelectStatement{
+			Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{
+				Star: true,
+			}},
+			FromItems: &sqlparser.TableName{
+				Name: &sqlparser.Ident{Name: "tbl"},
+			},
+			Hint: &sqlparser.Hint{
+				Value: "hint",
+			},
+		})
+
 		AssertParseStatement(t, `SELECT DISTINCT * FROM tbl`, &sqlparser.SelectStatement{
 			Distinct: true,
 			Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{

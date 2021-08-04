@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"strings"
 	"unicode"
 )
 
@@ -97,6 +98,9 @@ func (l *Lexer) Lex() (pos Pos, token Token, lit string) {
 		case '*':
 			return pos, STAR, "*"
 		case '/':
+			if l.peek() == '*' {
+				return l.lexMultilineComment()
+			}
 			return pos, SLASH, "/"
 		case '%':
 			return pos, REM, "%"
@@ -158,6 +162,26 @@ func (l *Lexer) lexString() (Pos, Token, string) {
 				continue
 			}
 			return pos, STRING, l.buf.String()
+		}
+		l.buf.WriteRune(ch)
+	}
+}
+
+func (l *Lexer) lexMultilineComment() (Pos, Token, string) {
+	ch, pos := l.read()
+	assert(ch == '*')
+
+	l.buf.Reset()
+	for {
+		ch, _ := l.read()
+		if ch == -1 {
+			return pos, ILLEGAL, `/*` + l.buf.String()
+		} else if ch == '*' {
+			if l.peek() == '/' {
+				l.read()
+				l.read()
+				return pos, MLCOMMENT, strings.Trim(l.buf.String(), " ")
+			}
 		}
 		l.buf.WriteRune(ch)
 	}

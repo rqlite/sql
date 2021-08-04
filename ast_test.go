@@ -164,6 +164,11 @@ func TestSelectStatement_String(t *testing.T) {
 	}, `SELECT ALL "x"`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
+		Hint:    &sqlparser.Hint{Value: "HINT"},
+		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Expr: &sqlparser.Ident{Name: "x"}}},
+	}, `SELECT /* HINT */ "x"`)
+
+	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns:          &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
 		FromItems:        &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
 		Condition:        &sqlparser.BoolLit{Value: true},
