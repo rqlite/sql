@@ -2,13 +2,21 @@
 
 A SQL parser for PostgreSQL.
 
-## Supported features for now
-1. INSERT.
-2. UPDATE.
-3. SELECT.
-4. DELETE.
+## Installation
 
-## Unsupported features
+```bash
+go get github.com/longbridgeapp/sqlparser
+```
 
-1. WITH Clause for DELETE, INSERT, SELECT, UPDATE.
-2. WINDOW Clause for SELECT.
+## Usage
+
+TODO
+
+## SQL syntax supports
+
+[x] INSERT
+[x] UPDATE
+[x] SELECT
+[x] DELETE
+[ ] WITH Clause for DELETE, INSERT, SELECT, UPDATE
+[ ] WINDOW Clause for SELECT
