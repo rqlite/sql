@@ -1,5 +1,7 @@
 # SQLParser
 
+[![Go](https://github.com/longbridgeapp/sqlparser/actions/workflows/go.yml/badge.svg)](https://github.com/longbridgeapp/sqlparser/actions/workflows/go.yml)
+
 A SQL parser for PostgreSQL.
 
 ## Installation
