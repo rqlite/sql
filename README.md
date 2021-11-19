@@ -14,9 +14,9 @@ TODO
 
 ## SQL syntax supports
 
-[x] INSERT
-[x] UPDATE
-[x] SELECT
-[x] DELETE
-[ ] WITH Clause for DELETE, INSERT, SELECT, UPDATE
-[ ] WINDOW Clause for SELECT
+- [x] INSERT
+- [x] UPDATE
+- [x] SELECT
+- [x] DELETE
+- [ ] WITH Clause for DELETE, INSERT, SELECT, UPDATE
+- [ ] WINDOW Clause for SELECT
