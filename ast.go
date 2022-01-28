@@ -236,13 +236,20 @@ type Constraint interface {
 }
 
 type Ident struct {
-	Name   string // identifier name
-	Quoted bool   // true if double quoted
+	Name      string // identifier name
+	Quoted    bool   // true if double quoted
+	QuoteChar string // " for postgresql, ` for mysql, etc
 }
 
 // String returns the string representation of the expression.
 func (i *Ident) String() string {
-	return `"` + strings.Replace(i.Name, `"`, `""`, -1) + `"`
+	if i.Quoted {
+		if i.QuoteChar == `"` {
+			return i.QuoteChar + strings.ReplaceAll(i.Name, `"`, `""`) + i.QuoteChar
+		}
+		return i.QuoteChar + i.Name + i.QuoteChar
+	}
+	return i.Name
 }
 
 // IdentName returns the name of ident. Returns a blank string if ident is nil.

@@ -49,31 +49,43 @@ func TestSplitExprTree(t *testing.T) {
 
 func AssertSplitExprTree(tb testing.TB, s string, want []sqlparser.Expr) {
 	tb.Helper()
-	if diff := deep.Equal(sqlparser.SplitExprTree(StripExprPos(sqlparser.MustParseExprString(s))), want); diff != nil {
+	e := sqlparser.MustParseExprString(s)
+	if diff := deep.Equal(sqlparser.SplitExprTree(StripExprPos(e)), want); diff != nil {
 		tb.Fatal("mismatch: \n" + strings.Join(diff, "\n"))
 	}
 }
 
 func TestDeleteStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sqlparser.DeleteStatement{
-		TableName: &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}, Alias: &sqlparser.Ident{Name: "tbl2"}},
-	}, `DELETE FROM "tbl" AS "tbl2"`)
+		TableName: &sqlparser.TableName{
+			Name:  &sqlparser.Ident{Name: "tbl"},
+			Alias: &sqlparser.Ident{Name: "tbl2"},
+		},
+	}, `DELETE FROM tbl AS tbl2`)
 
 	AssertStatementStringer(t, &sqlparser.DeleteStatement{
-		TableName: &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
+		TableName: &sqlparser.TableName{
+			Name: &sqlparser.Ident{Name: "tbl", Quoted: true, QuoteChar: `"`},
+		},
 	}, `DELETE FROM "tbl"`)
+
+	AssertStatementStringer(t, &sqlparser.DeleteStatement{
+		TableName: &sqlparser.TableName{
+			Name: &sqlparser.Ident{Name: "tbl", Quoted: true, QuoteChar: "`"},
+		},
+	}, "DELETE FROM `tbl`")
 
 	AssertStatementStringer(t, &sqlparser.DeleteStatement{
 		TableName: &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
 		Condition: &sqlparser.BoolLit{Value: true},
-	}, `DELETE FROM "tbl" WHERE TRUE`)
+	}, `DELETE FROM tbl WHERE TRUE`)
 }
 
 func TestInsertStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sqlparser.InsertStatement{
 		TableName:     &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
 		DefaultValues: true,
-	}, `INSERT INTO "tbl" DEFAULT VALUES`)
+	}, `INSERT INTO tbl DEFAULT VALUES`)
 
 	AssertStatementStringer(t, &sqlparser.InsertStatement{
 		TableName: &sqlparser.TableName{
@@ -81,26 +93,26 @@ func TestInsertStatement_String(t *testing.T) {
 			Alias: &sqlparser.Ident{Name: "x"},
 		},
 		DefaultValues: true,
-	}, `INSERT INTO "tbl" AS "x" DEFAULT VALUES`)
+	}, `INSERT INTO tbl AS x DEFAULT VALUES`)
 
 	AssertStatementStringer(t, &sqlparser.InsertStatement{
 		TableName: &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
 		Query: &sqlparser.SelectStatement{
 			Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
 		},
-	}, `INSERT INTO "tbl" SELECT *`)
+	}, `INSERT INTO tbl SELECT *`)
 
 	AssertStatementStringer(t, &sqlparser.InsertStatement{
 		TableName: &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
 		ColumnNames: []*sqlparser.Ident{
 			{Name: "x"},
-			{Name: "y"},
+			{Name: "y", Quoted: true, QuoteChar: `"`},
 		},
 		Expressions: []*sqlparser.Exprs{
 			{Exprs: []sqlparser.Expr{&sqlparser.NullLit{}, &sqlparser.NullLit{}}},
 			{Exprs: []sqlparser.Expr{&sqlparser.NullLit{}, &sqlparser.NullLit{}}},
 		},
-	}, `INSERT INTO "tbl" ("x", "y") VALUES (NULL, NULL), (NULL, NULL)`)
+	}, `INSERT INTO tbl (x, "y") VALUES (NULL, NULL), (NULL, NULL)`)
 
 	AssertStatementStringer(t, &sqlparser.InsertStatement{
 		TableName:     &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
@@ -108,7 +120,7 @@ func TestInsertStatement_String(t *testing.T) {
 		UpsertClause: &sqlparser.UpsertClause{
 			DoNothing: true,
 		},
-	}, `INSERT INTO "tbl" DEFAULT VALUES ON CONFLICT DO NOTHING`)
+	}, `INSERT INTO tbl DEFAULT VALUES ON CONFLICT DO NOTHING`)
 
 	AssertStatementStringer(t, &sqlparser.InsertStatement{
 		TableName:     &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
@@ -125,13 +137,13 @@ func TestInsertStatement_String(t *testing.T) {
 			},
 			UpdateWhereExpr: &sqlparser.BoolLit{Value: false},
 		},
-	}, `INSERT INTO "tbl" DEFAULT VALUES ON CONFLICT ("x" ASC, "y" DESC) WHERE TRUE DO UPDATE SET "x" = 100, ("y", "z") = 200 WHERE FALSE`)
+	}, `INSERT INTO tbl DEFAULT VALUES ON CONFLICT (x ASC, y DESC) WHERE TRUE DO UPDATE SET x = 100, (y, z) = 200 WHERE FALSE`)
 
 	AssertStatementStringer(t, &sqlparser.InsertStatement{
 		TableName:         &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
 		DefaultValues:     true,
 		OutputExpressions: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
-	}, `INSERT INTO "tbl" DEFAULT VALUES RETURNING *`)
+	}, `INSERT INTO tbl DEFAULT VALUES RETURNING *`)
 
 	AssertStatementStringer(t, &sqlparser.InsertStatement{
 		TableName:     &sqlparser.TableName{Name: &sqlparser.Ident{Name: "tbl"}},
@@ -140,7 +152,7 @@ func TestInsertStatement_String(t *testing.T) {
 			&sqlparser.ResultColumn{Expr: &sqlparser.Ident{Name: "x"}, Alias: &sqlparser.Ident{Name: "y"}},
 			&sqlparser.ResultColumn{Expr: &sqlparser.Ident{Name: "z"}},
 		},
-	}, `INSERT INTO "tbl" DEFAULT VALUES RETURNING "x" AS "y", "z"`)
+	}, `INSERT INTO tbl DEFAULT VALUES RETURNING x AS y, z`)
 }
 
 func TestSelectStatement_String(t *testing.T) {
@@ -149,24 +161,24 @@ func TestSelectStatement_String(t *testing.T) {
 			&sqlparser.ResultColumn{Expr: &sqlparser.Ident{Name: "x"}, Alias: &sqlparser.Ident{Name: "y"}},
 			&sqlparser.ResultColumn{Expr: &sqlparser.Ident{Name: "z"}},
 		},
-	}, `SELECT "x" AS "y", "z"`)
+	}, `SELECT x AS y, z`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Distinct: true,
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{
 			Expr: &sqlparser.Ident{Name: "x"},
 		}},
-	}, `SELECT DISTINCT "x"`)
+	}, `SELECT DISTINCT x`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		All:     true,
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Expr: &sqlparser.Ident{Name: "x"}}},
-	}, `SELECT ALL "x"`)
+	}, `SELECT ALL x`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Hint:    &sqlparser.Hint{Value: "HINT"},
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Expr: &sqlparser.Ident{Name: "x"}}},
-	}, `SELECT /* HINT */ "x"`)
+	}, `SELECT /* HINT */ x`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns:          &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
@@ -174,7 +186,7 @@ func TestSelectStatement_String(t *testing.T) {
 		Condition:        &sqlparser.BoolLit{Value: true},
 		GroupingElements: []sqlparser.Expr{&sqlparser.Ident{Name: "x"}, &sqlparser.Ident{Name: "y"}},
 		HavingCondition:  &sqlparser.Ident{Name: "z"},
-	}, `SELECT * FROM "tbl" WHERE TRUE GROUP BY "x", "y" HAVING "z"`)
+	}, `SELECT * FROM tbl WHERE TRUE GROUP BY x, y HAVING z`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
@@ -182,7 +194,7 @@ func TestSelectStatement_String(t *testing.T) {
 			X:     &sqlparser.SelectStatement{Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}}},
 			Alias: &sqlparser.Ident{Name: "tbl"},
 		},
-	}, `SELECT * FROM (SELECT *) AS "tbl"`)
+	}, `SELECT * FROM (SELECT *) AS tbl`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
@@ -230,7 +242,7 @@ func TestSelectStatement_String(t *testing.T) {
 			{X: &sqlparser.Ident{Name: "x"}},
 			{X: &sqlparser.Ident{Name: "y"}},
 		},
-	}, `SELECT * ORDER BY "x", "y"`)
+	}, `SELECT * ORDER BY x, y`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
@@ -245,7 +257,7 @@ func TestSelectStatement_String(t *testing.T) {
 			Operator: &sqlparser.JoinOperator{Comma: true},
 			Y:        &sqlparser.TableName{Name: &sqlparser.Ident{Name: "y"}},
 		},
-	}, `SELECT * FROM "x", "y"`)
+	}, `SELECT * FROM x, y`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
@@ -255,7 +267,7 @@ func TestSelectStatement_String(t *testing.T) {
 			Y:          &sqlparser.TableName{Name: &sqlparser.Ident{Name: "y"}},
 			Constraint: &sqlparser.OnConstraint{X: &sqlparser.BoolLit{Value: true}},
 		},
-	}, `SELECT * FROM "x" JOIN "y" ON TRUE`)
+	}, `SELECT * FROM x JOIN y ON TRUE`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
@@ -267,7 +279,7 @@ func TestSelectStatement_String(t *testing.T) {
 				Columns: []*sqlparser.Ident{{Name: "a"}, {Name: "b"}},
 			},
 		},
-	}, `SELECT * FROM "x" NATURAL INNER JOIN "y" USING ("a", "b")`)
+	}, `SELECT * FROM x NATURAL INNER JOIN y USING (a, b)`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
@@ -276,7 +288,7 @@ func TestSelectStatement_String(t *testing.T) {
 			Operator: &sqlparser.JoinOperator{Left: true},
 			Y:        &sqlparser.TableName{Name: &sqlparser.Ident{Name: "y"}},
 		},
-	}, `SELECT * FROM "x" LEFT JOIN "y"`)
+	}, `SELECT * FROM x LEFT JOIN y`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
@@ -285,7 +297,7 @@ func TestSelectStatement_String(t *testing.T) {
 			Operator: &sqlparser.JoinOperator{Left: true, Outer: true},
 			Y:        &sqlparser.TableName{Name: &sqlparser.Ident{Name: "y"}},
 		},
-	}, `SELECT * FROM "x" LEFT OUTER JOIN "y"`)
+	}, `SELECT * FROM x LEFT OUTER JOIN y`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Star: true}},
@@ -294,7 +306,7 @@ func TestSelectStatement_String(t *testing.T) {
 			Operator: &sqlparser.JoinOperator{Cross: true},
 			Y:        &sqlparser.TableName{Name: &sqlparser.Ident{Name: "y"}},
 		},
-	}, `SELECT * FROM "x" CROSS JOIN "y"`)
+	}, `SELECT * FROM x CROSS JOIN y`)
 }
 
 func TestUpdateStatement_String(t *testing.T) {
@@ -305,12 +317,13 @@ func TestUpdateStatement_String(t *testing.T) {
 			{Columns: []*sqlparser.Ident{{Name: "y"}}, Expr: &sqlparser.NumberLit{Value: "200"}},
 		},
 		Condition: &sqlparser.BoolLit{Value: true},
-	}, `UPDATE "tbl" SET "x" = 100, "y" = 200 WHERE TRUE`)
+	}, `UPDATE tbl SET x = 100, y = 200 WHERE TRUE`)
 }
 
 func TestIdent_String(t *testing.T) {
-	AssertExprStringer(t, &sqlparser.Ident{Name: "foo"}, `"foo"`)
-	AssertExprStringer(t, &sqlparser.Ident{Name: "foo \" bar"}, `"foo "" bar"`)
+	AssertExprStringer(t, &sqlparser.Ident{Name: "foo"}, `foo`)
+	AssertExprStringer(t, &sqlparser.Ident{Name: "foo \" bar", Quoted: true, QuoteChar: `"`}, `"foo "" bar"`)
+	AssertExprStringer(t, &sqlparser.Ident{Name: `foo " bar`, Quoted: true, QuoteChar: "`"}, "`foo \" bar`")
 }
 
 func TestStringLit_String(t *testing.T) {
@@ -394,7 +407,7 @@ func TestCaseExpr_String(t *testing.T) {
 			{Condition: &sqlparser.NumberLit{Value: "2"}, Body: &sqlparser.BoolLit{Value: false}},
 		},
 		ElseExpr: &sqlparser.NullLit{},
-	}, `CASE "foo" WHEN 1 THEN TRUE WHEN 2 THEN FALSE ELSE NULL END`)
+	}, `CASE foo WHEN 1 THEN TRUE WHEN 2 THEN FALSE ELSE NULL END`)
 
 	AssertExprStringer(t, &sqlparser.CaseExpr{
 		Blocks: []*sqlparser.CaseBlock{
@@ -409,8 +422,17 @@ func TestExprs_String(t *testing.T) {
 }
 
 func TestQualifiedRef_String(t *testing.T) {
-	AssertExprStringer(t, &sqlparser.QualifiedRef{Table: &sqlparser.Ident{Name: "tbl"}, Column: &sqlparser.Ident{Name: "col"}}, `"tbl"."col"`)
-	AssertExprStringer(t, &sqlparser.QualifiedRef{Table: &sqlparser.Ident{Name: "tbl"}, Star: true}, `"tbl".*`)
+	AssertExprStringer(t,
+		&sqlparser.QualifiedRef{
+			Table:  &sqlparser.Ident{Name: "tbl"},
+			Column: &sqlparser.Ident{Name: "col"},
+		},
+		`tbl.col`,
+	)
+	AssertExprStringer(t,
+		&sqlparser.QualifiedRef{Table: &sqlparser.Ident{Name: "tbl"}, Star: true},
+		`tbl.*`,
+	)
 }
 
 func TestCall_String(t *testing.T) {

@@ -31,7 +31,7 @@ const (
 
 	literal_beg
 	IDENT     // IDENT
-	QIDENT    // "IDENT"
+	QIDENT    // "IDENT" or `IDENT`
 	STRING    // 'string'
 	BLOB      // ???
 	FLOAT     // 123.45
