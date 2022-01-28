@@ -242,7 +242,8 @@ type Ident struct {
 
 // String returns the string representation of the expression.
 func (i *Ident) String() string {
-	return `"` + strings.Replace(i.Name, `"`, `""`, -1) + `"`
+	// return `"` + strings.Replace(i.Name, `"`, `""`, -1) + `"`
+	return i.Name
 }
 
 // IdentName returns the name of ident. Returns a blank string if ident is nil.
