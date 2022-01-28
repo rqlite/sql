@@ -37,8 +37,8 @@ func (l *Lexer) Lex() (pos Pos, token Token, lit string) {
 			return l.lexBlob()
 		} else if isAlpha(ch) || ch == '_' {
 			return l.lexUnquotedIdent(l.pos, "")
-		} else if ch == '"' {
-			return l.lexQuotedIdent()
+		} else if ch == '"' || ch == '`' {
+			return l.lexQuotedIdent(ch)
 		} else if ch == '\'' {
 			return l.lexString()
 		} else if ch == '?' || ch == ':' || ch == '@' || ch == '$' {
@@ -125,21 +125,23 @@ func (l *Lexer) lexUnquotedIdent(pos Pos, prefix string) (Pos, Token, string) {
 	return pos, tok, lit
 }
 
-func (l *Lexer) lexQuotedIdent() (Pos, Token, string) {
+func (l *Lexer) lexQuotedIdent(char rune) (Pos, Token, string) {
 	ch, pos := l.read()
-	assert(ch == '"')
+	assert(ch == char)
 
 	l.buf.Reset()
+	l.buf.WriteRune(char)
 	for {
 		ch, _ := l.read()
 		if ch == -1 {
-			return pos, ILLEGAL, `"` + l.buf.String()
-		} else if ch == '"' {
-			if l.peek() == '"' { // escaped quote
+			return pos, ILLEGAL, l.buf.String()
+		} else if ch == char {
+			if l.peek() == char { // escaped quote
 				l.read()
-				l.buf.WriteRune('"')
+				l.buf.WriteRune(char)
 				continue
 			}
+			l.buf.WriteRune(char)
 			return pos, QIDENT, l.buf.String()
 		}
 		l.buf.WriteRune(ch)

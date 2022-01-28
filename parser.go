@@ -84,7 +84,7 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 	pos, tok, lit := p.lex()
 	switch tok {
 	case IDENT, QIDENT:
-		return &Ident{Name: lit, Quoted: tok == QIDENT}, nil
+		return identByNameAndTok(lit, tok), nil
 	default:
 		return nil, p.errorExpected(pos, tok, desc)
 	}
@@ -879,7 +879,7 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 	_, tok, lit := p.lex()
 	switch tok {
 	case IDENT, QIDENT:
-		ident := &Ident{Name: lit, Quoted: tok == QIDENT}
+		ident := identByNameAndTok(lit, tok)
 		if p.peek() == DOT {
 			return p.parseQualifiedRef(ident)
 		} else if p.peek() == LP {
@@ -1007,7 +1007,7 @@ func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {
 		expr.Star = true
 	} else if isIdentToken(p.peek()) {
 		_, tok, lit := p.lex()
-		expr.Column = &Ident{Name: lit, Quoted: tok == QIDENT}
+		expr.Column = identByNameAndTok(lit, tok)
 	} else {
 		return &expr, p.errorExpected(p.pos, p.tok, "column name")
 	}
@@ -1296,6 +1296,14 @@ func (p *Parser) errorExpected(pos Pos, tok Token, msg string) error {
 		}
 	}
 	return &Error{Pos: pos, Msg: msg}
+}
+
+func identByNameAndTok(lit string, tok Token) *Ident {
+	quoted := tok == QIDENT
+	if quoted {
+		return &Ident{Name: lit[1 : len(lit)-1], Quoted: quoted, QuoteChar: lit[0:1]}
+	}
+	return &Ident{Name: lit, Quoted: false}
 }
 
 // Error represents a parse error.

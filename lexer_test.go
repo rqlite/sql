@@ -13,7 +13,10 @@ func TestLexer_Lex(t *testing.T) {
 			AssertLex(t, `foo_BAR123`, sqlparser.IDENT, `foo_BAR123`)
 		})
 		t.Run("Quoted", func(t *testing.T) {
-			AssertLex(t, `"crazy ~!#*&# column name"" foo"`, sqlparser.QIDENT, `crazy ~!#*&# column name" foo`)
+			AssertLex(t, `"crazy ~!#*&# column name"" foo"`, sqlparser.QIDENT, `"crazy ~!#*&# column name" foo"`)
+		})
+		t.Run("BackQuoted", func(t *testing.T) {
+			AssertLex(t, "`crazy ~!#*&# column name foo`", sqlparser.QIDENT, "`crazy ~!#*&# column name foo`")
 		})
 		t.Run("NoEndQuote", func(t *testing.T) {
 			AssertLex(t, `"unfinished`, sqlparser.ILLEGAL, `"unfinished`)

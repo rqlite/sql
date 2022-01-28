@@ -618,8 +618,12 @@ func TestParser_ParseExpr(t *testing.T) {
 			Column: &sqlparser.Ident{Name: "col"},
 		})
 		AssertParseExpr(t, `"tbl"."col"`, &sqlparser.QualifiedRef{
-			Table:  &sqlparser.Ident{Name: "tbl", Quoted: true},
-			Column: &sqlparser.Ident{Name: "col", Quoted: true},
+			Table:  &sqlparser.Ident{Name: "tbl", Quoted: true, QuoteChar: `"`},
+			Column: &sqlparser.Ident{Name: "col", Quoted: true, QuoteChar: `"`},
+		})
+		AssertParseExpr(t, "`tbl`.`col`", &sqlparser.QualifiedRef{
+			Table:  &sqlparser.Ident{Name: "tbl", Quoted: true, QuoteChar: "`"},
+			Column: &sqlparser.Ident{Name: "col", Quoted: true, QuoteChar: "`"},
 		})
 		AssertParseExprError(t, `tbl.`, `1:4: expected column name, found 'EOF'`)
 	})
