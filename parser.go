@@ -15,10 +15,11 @@ var (
 type Parser struct {
 	l *Lexer
 
-	pos  Pos    // current position
-	tok  Token  // current token
-	lit  string // current literal value
-	full bool   // buffer full
+	pos   Pos    // current position
+	tok   Token  // current token
+	lit   string // current literal value
+	full  bool   // buffer full
+	binds int    // bind count
 }
 
 // NewParser returns a new instance of Parser that reads from r.
@@ -897,7 +898,8 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 	case TRUE, FALSE:
 		return &BoolLit{Value: tok == TRUE}, nil
 	case BIND:
-		return &BindExpr{Name: lit}, nil
+		p.binds += 1
+		return &BindExpr{Name: lit, Pos: p.binds - 1}, nil
 	case PLUS, MINUS:
 		expr, err = p.parseOperand()
 		if err != nil {

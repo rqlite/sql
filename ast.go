@@ -336,6 +336,7 @@ func (lit *BoolLit) String() string {
 
 type BindExpr struct {
 	Name string // binding name
+	Pos  int    // binding position
 }
 
 // String returns the string representation of the expression.
