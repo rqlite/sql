@@ -182,7 +182,7 @@ func TestSelectStatement_String(t *testing.T) {
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
 		Hint:    &sqlparser.Hint{Value: "HINT"},
-		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Expr: &sqlparser.Ident{Name: "x"}}},
+		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{Expr: &sqlparser.Ident{Name: "x", Quoted: true, QuoteChar: `"`}}},
 	}, `SELECT /* HINT */ "x"`)
 
 	AssertStatementStringer(t, &sqlparser.SelectStatement{
