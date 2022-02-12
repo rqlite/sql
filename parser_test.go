@@ -1710,8 +1710,8 @@ func TestParser_ParseStatement(t *testing.T) {
 			OrderingTerms: []*sql.OrderingTerm{
 				&sql.OrderingTerm{X: &sql.Call{
 					Name:   &sql.Ident{NamePos: pos(18), Name: "random"},
-					Lparen: sql.Pos{Offset: 24, Line: 1, Column: 25},
-					Rparen: sql.Pos{Offset: 25, Line: 1, Column: 26},
+					Lparen: pos(24),
+					Rparen: pos(25),
 				},
 				},
 			},
@@ -1903,6 +1903,30 @@ func TestParser_ParseStatement(t *testing.T) {
 					&sql.NumberLit{ValuePos: pos(34), Value: "2"},
 				},
 				Rparen: pos(35),
+			}},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES (1, random())`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+				{NamePos: pos(20), Name: "y"},
+			},
+			ColumnsRparen: pos(21),
+			Values:        pos(23),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(30),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(31), Value: "1"},
+					&sql.Call{
+						Name:   &sql.Ident{NamePos: pos(34), Name: "random"},
+						Lparen: pos(40),
+						Rparen: pos(41),
+					},
+				},
+				Rparen: pos(42),
 			}},
 		})
 		AssertParseStatement(t, `REPLACE INTO tbl (x, y) VALUES (1, 2), (3, 4)`, &sql.InsertStatement{
