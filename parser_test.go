@@ -1284,6 +1284,31 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("Select", func(t *testing.T) {
+		AssertParseStatement(t, `SELECT 5678`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.NumberLit{ValuePos: pos(7), Value: "5678"},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT datetime('now')`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Call{
+						Name:   &sql.Ident{NamePos: pos(7), Name: "datetime"},
+						Lparen: pos(15),
+						Rparen: pos(21),
+						Args: []sql.Expr{
+							&sql.StringLit{ValuePos: pos(16), Value: "now"},
+						},
+					},
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * FROM tbl`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
