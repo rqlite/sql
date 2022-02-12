@@ -1700,6 +1700,23 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT * ORDER BY random()`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			Order:   pos(9),
+			OrderBy: pos(15),
+			OrderingTerms: []*sql.OrderingTerm{
+				&sql.OrderingTerm{X: &sql.Call{
+					Name:   &sql.Ident{NamePos: pos(18), Name: "random"},
+					Lparen: sql.Pos{Offset: 24, Line: 1, Column: 25},
+					Rparen: sql.Pos{Offset: 25, Line: 1, Column: 26},
+				},
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * LIMIT 1`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
