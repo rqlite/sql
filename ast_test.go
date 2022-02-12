@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/benbjohnson/sql"
 	"github.com/go-test/deep"
+	"github.com/rqlite/sql"
 )
 
 func TestExprString(t *testing.T) {
