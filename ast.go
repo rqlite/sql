@@ -1826,7 +1826,7 @@ func (c *Call) String() string {
 
 func (c *Call) evalString() (string, error) {
 	name := strings.ToUpper(c.Name.Name)
-	switch strings.ToUpper(c.Name.Name) {
+	switch name {
 	case "RANDOM":
 		var fn func() uint64
 		if c.RandFn != nil {
