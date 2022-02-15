@@ -3,8 +3,15 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
+	"strconv"
 	"strings"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 type Node interface {
 	node()
@@ -1757,6 +1764,9 @@ type Call struct {
 	Rparen   Pos           // position of right paren
 	Filter   *FilterClause // filter clause
 	Over     *OverClause   // over clause
+
+	Eval   bool // Evaluate the call before converting to string
+	RandFn func() uint64
 }
 
 // Clone returns a deep copy of c.
@@ -1774,6 +1784,12 @@ func (c *Call) Clone() *Call {
 
 // String returns the string representation of the expression.
 func (c *Call) String() string {
+	if c.Eval {
+		if s, err := c.evalString(); err == nil {
+			return s
+		}
+	}
+
 	var buf bytes.Buffer
 	buf.WriteString(c.Name.Name)
 	buf.WriteString("(")
@@ -1806,6 +1822,20 @@ func (c *Call) String() string {
 	}
 
 	return buf.String()
+}
+
+func (c *Call) evalString() (string, error) {
+	name := strings.ToUpper(c.Name.Name)
+	switch strings.ToUpper(c.Name.Name) {
+	case "RANDOM":
+		var fn func() uint64
+		if c.RandFn != nil {
+			fn = c.RandFn
+		}
+		return strconv.Itoa(int(fn())), nil
+	default:
+		return "", fmt.Errorf("eval of %s unsupported", name)
+	}
 }
 
 type FilterClause struct {
