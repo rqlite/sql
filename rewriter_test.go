@@ -50,8 +50,9 @@ func Test_Rewriter(t *testing.T) {
 		}
 
 		match := regexp.MustCompile(tt.exp)
-		if !match.MatchString(s.String()) {
-			t.Fatalf("test %d failed, exp: %s, got: %s", i, tt.exp, s.String())
+		rendered := s.String()
+		if !match.MatchString(rendered) {
+			t.Fatalf("test %d failed, exp: '%s', got: '%s'", i, tt.exp, rendered)
 		}
 	}
 }

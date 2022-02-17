@@ -24,7 +24,7 @@ func (rw *Rewriter) Visit(node Node) (w Visitor, err error) {
 		return nil, nil
 	case *Call:
 		n.Eval = rw.RewriteRand
-		return w, nil
+		return rw, nil
 	}
 	return rw, nil
 }
