@@ -34,6 +34,21 @@ func Test_Rewriter(t *testing.T) {
 			exp:         `SELECT -?[0-9]+`,
 			rewriteRand: true,
 		},
+		{
+			in:          `SELECT abs(random())`,
+			exp:         `SELECT abs\(random\(\)\)`,
+			rewriteRand: false,
+		},
+		{
+			in:          `SELECT abs(random())`,
+			exp:         `SELECT abs\(-?[0-9]+\)`,
+			rewriteRand: true,
+		},
+		{
+			in:          `SELECT random() + 1`,
+			exp:         `SELECT -?[0-9]+ \+ 1`,
+			rewriteRand: true,
+		},
 	} {
 		rw := &sql.Rewriter{
 			RewriteRand: tt.rewriteRand,
