@@ -13,6 +13,10 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
+const (
+	TimeLayout = "2006-01-02 15:04:05.000"
+)
+
 type Node interface {
 	node()
 	fmt.Stringer
@@ -1767,6 +1771,7 @@ type Call struct {
 
 	Eval   bool // Evaluate the call before converting to string
 	RandFn func() uint64
+	NowFn  func() time.Time
 }
 
 // Clone returns a deep copy of c.
@@ -1833,9 +1838,35 @@ func (c *Call) evalString() (string, error) {
 			fn = c.RandFn
 		}
 		return strconv.Itoa(int(fn())), nil
-	default:
-		return "", fmt.Errorf("eval of %s unsupported", name)
+	case "DATE", "TIME", "DATETIME", "JULIANDAY", "STRFTIME":
+		fn := time.Now
+		if c.NowFn != nil {
+			fn = c.NowFn
+		}
+
+		if len(c.Args) < 1 {
+			break
+		}
+		nowIdx := 0
+
+		if name == "STRFTIME" {
+			if len(c.Args) < 2 {
+				break
+			}
+			nowIdx = 1
+		}
+
+		a, ok := c.Args[nowIdx].(*StringLit)
+		if ok && strings.ToUpper(a.Value) == "NOW" {
+			cc := c.Clone()
+			cc.Eval = false
+			cc.Args[nowIdx] = &StringLit{
+				Value: fn().Format(TimeLayout),
+			}
+			return cc.String(), nil
+		}
 	}
+	return "", fmt.Errorf("eval of %s unsupported", name)
 }
 
 type FilterClause struct {

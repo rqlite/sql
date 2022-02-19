@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
 	"github.com/rqlite/sql"
@@ -1066,12 +1067,37 @@ func TestCall_String(t *testing.T) {
 }
 
 func TestCallEval_String(t *testing.T) {
-	fn := func() uint64 {
+	randFn := func() uint64 {
 		return 1234
 	}
-	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "random"}, Eval: true, RandFn: fn}, `1234`)
-	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "RaNDOM"}, Eval: true, RandFn: fn}, `1234`)
-	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}, Eval: true, RandFn: fn}, `foo()`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "random"}, Eval: true, RandFn: randFn}, `1234`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "RaNDOM"}, Eval: true, RandFn: randFn}, `1234`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}, Eval: true, RandFn: randFn}, `foo()`)
+
+	nowFn := func() time.Time {
+		n, err := time.Parse(sql.TimeLayout, "2022-02-19 10:47:06.903")
+		if err != nil {
+			panic(err)
+		}
+		return n
+	}
+	// Simple rewriting.
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "date"}, Args: []sql.Expr{&sql.StringLit{Value: "now"}}, Eval: true, NowFn: nowFn}, `date('2022-02-19 10:47:06.903')`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "dAte"}, Args: []sql.Expr{&sql.StringLit{Value: "now"}}, Eval: true, NowFn: nowFn}, `dAte('2022-02-19 10:47:06.903')`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "datetime"}, Args: []sql.Expr{&sql.StringLit{Value: "2023-02-19 12:33:06.666"}}, Eval: true, NowFn: nowFn}, `datetime('2023-02-19 12:33:06.666')`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "time"}, Args: []sql.Expr{&sql.StringLit{Value: "now"}}, Eval: true, NowFn: nowFn}, `time('2022-02-19 10:47:06.903')`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "julianday"}, Args: []sql.Expr{&sql.StringLit{Value: "now"}}, Eval: true, NowFn: nowFn}, `julianday('2022-02-19 10:47:06.903')`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "JULIANDAY"}, Args: []sql.Expr{&sql.StringLit{Value: "now"}}, Eval: true, NowFn: nowFn}, `JULIANDAY('2022-02-19 10:47:06.903')`)
+
+	// Multiple arguments when using strftime
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "strftime"}, Args: []sql.Expr{&sql.StringLit{Value: "%Y-%m-%d"}, &sql.StringLit{Value: "now"}}, Eval: true, NowFn: nowFn}, `strftime('%Y-%m-%d', '2022-02-19 10:47:06.903')`)
+
+	// Add a time-modifier
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "date"}, Args: []sql.Expr{&sql.StringLit{Value: "now"}, &sql.StringLit{Value: "utc"}}, Eval: true, NowFn: nowFn}, `date('2022-02-19 10:47:06.903', 'utc')`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "strftime"}, Args: []sql.Expr{&sql.StringLit{Value: "%Y-%m-%d"}, &sql.StringLit{Value: "now"}, &sql.StringLit{Value: "utc"}}, Eval: true, NowFn: nowFn}, `strftime('%Y-%m-%d', '2022-02-19 10:47:06.903', 'utc')`)
+
+	// Don't rewrite if not instructued to do so.
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "date"}, Args: []sql.Expr{&sql.StringLit{Value: "now"}}, Eval: false, NowFn: nowFn}, `date('now')`)
 }
 
 func TestRaise_String(t *testing.T) {
