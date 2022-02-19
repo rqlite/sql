@@ -1954,6 +1954,37 @@ func TestParser_ParseStatement(t *testing.T) {
 				Rparen: pos(42),
 			}},
 		})
+		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES (1, abs(random()))`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+				{NamePos: pos(20), Name: "y"},
+			},
+			ColumnsRparen: pos(21),
+			Values:        pos(23),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(30),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(31), Value: "1"},
+					&sql.Call{
+						Name:   &sql.Ident{NamePos: pos(34), Name: "abs"},
+						Lparen: pos(37),
+						Rparen: pos(46),
+						Args: []sql.Expr{
+							&sql.Call{
+								Name:   &sql.Ident{NamePos: pos(38), Name: "random"},
+								Lparen: pos(44),
+								Rparen: pos(45),
+							},
+						},
+					},
+				},
+				Rparen: pos(47),
+			}},
+		})
 		AssertParseStatement(t, `REPLACE INTO tbl (x, y) VALUES (1, 2), (3, 4)`, &sql.InsertStatement{
 			Replace:       pos(0),
 			Into:          pos(8),
