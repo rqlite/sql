@@ -25,6 +25,11 @@ func Test_Rewriter(t *testing.T) {
 			rewriteRand: true,
 		},
 		{
+			in:          `INSERT INTO "names" VALUES (RANDOM(), 'bob', '123-45-678')`,
+			exp:         `INSERT INTO "names" VALUES \(-?[0-9]+, 'bob', '123-45-678'\)`,
+			rewriteRand: true,
+		},
+		{
 			in:          `SELECT * FROM foo ORDER BY random()`,
 			exp:         `SELECT \* FROM "foo" ORDER BY random\(\)`,
 			rewriteRand: true,
