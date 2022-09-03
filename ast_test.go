@@ -836,7 +836,7 @@ func TestNullLit_String(t *testing.T) {
 }
 
 func TestBindExpr_String(t *testing.T) {
-	AssertExprStringer(t, &sql.BindExpr{Name: "foo"}, `$foo`)
+	AssertExprStringer(t, &sql.BindExpr{Name: "foo"}, `foo`)
 }
 
 func TestParenExpr_String(t *testing.T) {
