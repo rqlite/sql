@@ -13,7 +13,7 @@ func Test_Rewriter(t *testing.T) {
 		in          string
 		exp         string
 		rewriteRand bool
-		randFound bool
+		randFound   bool
 	}{
 		{
 			in:          `INSERT INTO foo(col1) VALUES (random())`,
