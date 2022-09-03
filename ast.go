@@ -1380,7 +1380,7 @@ func (expr *BindExpr) Clone() *BindExpr {
 // String returns the string representation of the expression.
 func (expr *BindExpr) String() string {
 	// TODO(BBJ): Support all bind characters.
-	return "$" + expr.Name
+	return expr.Name
 }
 
 type UnaryExpr struct {
