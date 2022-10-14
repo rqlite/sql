@@ -2088,6 +2088,8 @@ func (p *Parser) mustParseLiteral() Expr {
 	switch tok {
 	case STRING:
 		return &StringLit{ValuePos: pos, Value: lit}
+	case CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP:
+		return &TimestampLit{ValuePos: pos, Value: lit}
 	case BLOB:
 		return &BlobLit{ValuePos: pos, Value: lit}
 	case FLOAT, INTEGER:

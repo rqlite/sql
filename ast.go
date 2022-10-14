@@ -74,6 +74,7 @@ func (*RollbackStatement) node()      {}
 func (*SavepointStatement) node()     {}
 func (*SelectStatement) node()        {}
 func (*StringLit) node()              {}
+func (*TimestampLit) node()           {}
 func (*Type) node()                   {}
 func (*UnaryExpr) node()              {}
 func (*UniqueConstraint) node()       {}
@@ -209,6 +210,7 @@ func (*QualifiedRef) expr() {}
 func (*Raise) expr()        {}
 func (*Range) expr()        {}
 func (*StringLit) expr()    {}
+func (*TimestampLit) expr() {}
 func (*UnaryExpr) expr()    {}
 
 // CloneExpr returns a deep copy expr.
@@ -251,6 +253,8 @@ func CloneExpr(expr Expr) Expr {
 	case *Range:
 		return expr.Clone()
 	case *StringLit:
+		return expr.Clone()
+	case *TimestampLit:
 		return expr.Clone()
 	case *UnaryExpr:
 		return expr.Clone()
@@ -1283,6 +1287,25 @@ func (lit *StringLit) Clone() *StringLit {
 // String returns the string representation of the expression.
 func (lit *StringLit) String() string {
 	return `'` + strings.Replace(lit.Value, `'`, `''`, -1) + `'`
+}
+
+type TimestampLit struct {
+	ValuePos Pos    // literal position
+	Value    string // literal value
+}
+
+// Clone returns a deep copy of lit.
+func (lit *TimestampLit) Clone() *TimestampLit {
+	if lit == nil {
+		return nil
+	}
+	other := *lit
+	return &other
+}
+
+// String returns the string representation of the expression.
+func (lit *TimestampLit) String() string {
+	return lit.Value
 }
 
 type BlobLit struct {
