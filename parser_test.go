@@ -266,6 +266,50 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 			Rparen: pos(41),
 		})
+
+		AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT, ts DATETIME DEFAULT CURRENT_TIMESTAMP)`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				Name:    "tbl",
+				NamePos: pos(13),
+			},
+			Lparen: pos(17),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{
+						NamePos: pos(18),
+						Name:    "col1",
+					},
+					Type: &sql.Type{
+						Name: &sql.Ident{
+							NamePos: pos(23),
+							Name:    "TEXT",
+						},
+					},
+				},
+				{
+					Name: &sql.Ident{
+						NamePos: pos(29),
+						Name:    "ts",
+					},
+					Type: &sql.Type{
+						Name: &sql.Ident{
+							NamePos: pos(32),
+							Name:    "DATETIME",
+						},
+					},
+					Constraints: []sql.Constraint{
+						&sql.DefaultConstraint{
+							Default: pos(41),
+							Expr:    &sql.TimestampLit{Value: "CURRENT_TIMESTAMP", ValuePos: pos(49)},
+						},
+					},
+				},
+			},
+			Rparen: pos(66),
+		})
+
 		AssertParseStatementError(t, `CREATE TABLE IF`, `1:15: expected NOT, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE IF NOT`, `1:19: expected EXISTS, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1`, `1:22: expected type name, found 'EOF'`)
