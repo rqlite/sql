@@ -3,7 +3,7 @@ package sql_test
 import (
 	"testing"
 
-	"github.com/benbjohnson/sql"
+	"github.com/rqlite/sql"
 )
 
 func TestPos_String(t *testing.T) {

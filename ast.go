@@ -3,8 +3,15 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
+	"strconv"
 	"strings"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 type Node interface {
 	node()
@@ -67,6 +74,7 @@ func (*RollbackStatement) node()      {}
 func (*SavepointStatement) node()     {}
 func (*SelectStatement) node()        {}
 func (*StringLit) node()              {}
+func (*TimestampLit) node()           {}
 func (*Type) node()                   {}
 func (*UnaryExpr) node()              {}
 func (*UniqueConstraint) node()       {}
@@ -202,6 +210,7 @@ func (*QualifiedRef) expr() {}
 func (*Raise) expr()        {}
 func (*Range) expr()        {}
 func (*StringLit) expr()    {}
+func (*TimestampLit) expr() {}
 func (*UnaryExpr) expr()    {}
 
 // CloneExpr returns a deep copy expr.
@@ -244,6 +253,8 @@ func CloneExpr(expr Expr) Expr {
 	case *Range:
 		return expr.Clone()
 	case *StringLit:
+		return expr.Clone()
+	case *TimestampLit:
 		return expr.Clone()
 	case *UnaryExpr:
 		return expr.Clone()
@@ -1278,6 +1289,25 @@ func (lit *StringLit) String() string {
 	return `'` + strings.Replace(lit.Value, `'`, `''`, -1) + `'`
 }
 
+type TimestampLit struct {
+	ValuePos Pos    // literal position
+	Value    string // literal value
+}
+
+// Clone returns a deep copy of lit.
+func (lit *TimestampLit) Clone() *TimestampLit {
+	if lit == nil {
+		return nil
+	}
+	other := *lit
+	return &other
+}
+
+// String returns the string representation of the expression.
+func (lit *TimestampLit) String() string {
+	return lit.Value
+}
+
 type BlobLit struct {
 	ValuePos Pos    // literal position
 	Value    string // literal value
@@ -1373,7 +1403,7 @@ func (expr *BindExpr) Clone() *BindExpr {
 // String returns the string representation of the expression.
 func (expr *BindExpr) String() string {
 	// TODO(BBJ): Support all bind characters.
-	return "$" + expr.Name
+	return expr.Name
 }
 
 type UnaryExpr struct {
@@ -1757,6 +1787,9 @@ type Call struct {
 	Rparen   Pos           // position of right paren
 	Filter   *FilterClause // filter clause
 	Over     *OverClause   // over clause
+
+	Eval   bool // Evaluate the call before converting to string
+	RandFn func() uint64
 }
 
 // Clone returns a deep copy of c.
@@ -1774,6 +1807,12 @@ func (c *Call) Clone() *Call {
 
 // String returns the string representation of the expression.
 func (c *Call) String() string {
+	if c.Eval {
+		if s, err := c.evalString(); err == nil {
+			return s
+		}
+	}
+
 	var buf bytes.Buffer
 	buf.WriteString(c.Name.Name)
 	buf.WriteString("(")
@@ -1806,6 +1845,20 @@ func (c *Call) String() string {
 	}
 
 	return buf.String()
+}
+
+func (c *Call) evalString() (string, error) {
+	name := strings.ToUpper(c.Name.Name)
+	switch name {
+	case "RANDOM":
+		fn := rand.Uint64
+		if c.RandFn != nil {
+			fn = c.RandFn
+		}
+		return strconv.Itoa(int(fn())), nil
+	default:
+		return "", fmt.Errorf("eval of %s unsupported", name)
+	}
 }
 
 type FilterClause struct {

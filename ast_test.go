@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/benbjohnson/sql"
 	"github.com/go-test/deep"
+	"github.com/rqlite/sql"
 )
 
 func TestExprString(t *testing.T) {
@@ -836,7 +836,7 @@ func TestNullLit_String(t *testing.T) {
 }
 
 func TestBindExpr_String(t *testing.T) {
-	AssertExprStringer(t, &sql.BindExpr{Name: "foo"}, `$foo`)
+	AssertExprStringer(t, &sql.BindExpr{Name: "foo"}, `foo`)
 }
 
 func TestParenExpr_String(t *testing.T) {
@@ -1065,6 +1065,15 @@ func TestCall_String(t *testing.T) {
 	})
 }
 
+func TestCallEval_String(t *testing.T) {
+	fn := func() uint64 {
+		return 1234
+	}
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "random"}, Eval: true, RandFn: fn}, `1234`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "RaNDOM"}, Eval: true, RandFn: fn}, `1234`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}, Eval: true, RandFn: fn}, `foo()`)
+}
+
 func TestRaise_String(t *testing.T) {
 	AssertExprStringer(t, &sql.Raise{Rollback: pos(0), Error: &sql.StringLit{Value: "err"}}, `RAISE(ROLLBACK, 'err')`)
 	AssertExprStringer(t, &sql.Raise{Abort: pos(0), Error: &sql.StringLit{Value: "err"}}, `RAISE(ABORT, 'err')`)
@@ -1115,7 +1124,7 @@ func AssertNodeStringerPanic(tb testing.TB, node sql.Node, msg string) {
 	var r interface{}
 	func() {
 		defer func() { r = recover() }()
-		node.String()
+		_ = node.String()
 	}()
 	if r == nil {
 		tb.Fatal("expected node stringer to panic")

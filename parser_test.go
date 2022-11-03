@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/benbjohnson/sql"
 	"github.com/go-test/deep"
+	"github.com/rqlite/sql"
 )
 
 func TestParser_ParseStatement(t *testing.T) {
@@ -266,6 +266,50 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 			Rparen: pos(41),
 		})
+
+		AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT, ts DATETIME DEFAULT CURRENT_TIMESTAMP)`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				Name:    "tbl",
+				NamePos: pos(13),
+			},
+			Lparen: pos(17),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{
+						NamePos: pos(18),
+						Name:    "col1",
+					},
+					Type: &sql.Type{
+						Name: &sql.Ident{
+							NamePos: pos(23),
+							Name:    "TEXT",
+						},
+					},
+				},
+				{
+					Name: &sql.Ident{
+						NamePos: pos(29),
+						Name:    "ts",
+					},
+					Type: &sql.Type{
+						Name: &sql.Ident{
+							NamePos: pos(32),
+							Name:    "DATETIME",
+						},
+					},
+					Constraints: []sql.Constraint{
+						&sql.DefaultConstraint{
+							Default: pos(41),
+							Expr:    &sql.TimestampLit{Value: "CURRENT_TIMESTAMP", ValuePos: pos(49)},
+						},
+					},
+				},
+			},
+			Rparen: pos(66),
+		})
+
 		AssertParseStatementError(t, `CREATE TABLE IF`, `1:15: expected NOT, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE IF NOT`, `1:19: expected EXISTS, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1`, `1:22: expected type name, found 'EOF'`)
@@ -1284,6 +1328,31 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("Select", func(t *testing.T) {
+		AssertParseStatement(t, `SELECT 5678`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.NumberLit{ValuePos: pos(7), Value: "5678"},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT datetime('now')`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Call{
+						Name:   &sql.Ident{NamePos: pos(7), Name: "datetime"},
+						Lparen: pos(15),
+						Rparen: pos(21),
+						Args: []sql.Expr{
+							&sql.StringLit{ValuePos: pos(16), Value: "now"},
+						},
+					},
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * FROM tbl`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
@@ -1700,6 +1769,23 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT * ORDER BY random()`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			Order:   pos(9),
+			OrderBy: pos(15),
+			OrderingTerms: []*sql.OrderingTerm{
+				&sql.OrderingTerm{X: &sql.Call{
+					Name:   &sql.Ident{NamePos: pos(18), Name: "random"},
+					Lparen: pos(24),
+					Rparen: pos(25),
+				},
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * LIMIT 1`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
@@ -1886,6 +1972,161 @@ func TestParser_ParseStatement(t *testing.T) {
 					&sql.NumberLit{ValuePos: pos(34), Value: "2"},
 				},
 				Rparen: pos(35),
+			}},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES (?, ?)`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+				{NamePos: pos(20), Name: "y"},
+			},
+			ColumnsRparen: pos(21),
+			Values:        pos(23),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(30),
+				Exprs: []sql.Expr{
+					&sql.BindExpr{NamePos: pos(31), Name: "?"},
+					&sql.BindExpr{NamePos: pos(34), Name: "?"},
+				},
+				Rparen: pos(35),
+			}},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES (?1, ?2)`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+				{NamePos: pos(20), Name: "y"},
+			},
+			ColumnsRparen: pos(21),
+			Values:        pos(23),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(30),
+				Exprs: []sql.Expr{
+					&sql.BindExpr{NamePos: pos(31), Name: "?1"},
+					&sql.BindExpr{NamePos: pos(35), Name: "?2"},
+				},
+				Rparen: pos(37),
+			}},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES (:foo, :bar)`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+				{NamePos: pos(20), Name: "y"},
+			},
+			ColumnsRparen: pos(21),
+			Values:        pos(23),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(30),
+				Exprs: []sql.Expr{
+					&sql.BindExpr{NamePos: pos(31), Name: ":foo"},
+					&sql.BindExpr{NamePos: pos(37), Name: ":bar"},
+				},
+				Rparen: pos(41),
+			}},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES (@foo, @bar)`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+				{NamePos: pos(20), Name: "y"},
+			},
+			ColumnsRparen: pos(21),
+			Values:        pos(23),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(30),
+				Exprs: []sql.Expr{
+					&sql.BindExpr{NamePos: pos(31), Name: "@foo"},
+					&sql.BindExpr{NamePos: pos(37), Name: "@bar"},
+				},
+				Rparen: pos(41),
+			}},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES ($foo, $bar)`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+				{NamePos: pos(20), Name: "y"},
+			},
+			ColumnsRparen: pos(21),
+			Values:        pos(23),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(30),
+				Exprs: []sql.Expr{
+					&sql.BindExpr{NamePos: pos(31), Name: "$foo"},
+					&sql.BindExpr{NamePos: pos(37), Name: "$bar"},
+				},
+				Rparen: pos(41),
+			}},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES (1, random())`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+				{NamePos: pos(20), Name: "y"},
+			},
+			ColumnsRparen: pos(21),
+			Values:        pos(23),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(30),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(31), Value: "1"},
+					&sql.Call{
+						Name:   &sql.Ident{NamePos: pos(34), Name: "random"},
+						Lparen: pos(40),
+						Rparen: pos(41),
+					},
+				},
+				Rparen: pos(42),
+			}},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES (1, abs(random()))`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+				{NamePos: pos(20), Name: "y"},
+			},
+			ColumnsRparen: pos(21),
+			Values:        pos(23),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(30),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(31), Value: "1"},
+					&sql.Call{
+						Name:   &sql.Ident{NamePos: pos(34), Name: "abs"},
+						Lparen: pos(37),
+						Rparen: pos(46),
+						Args: []sql.Expr{
+							&sql.Call{
+								Name:   &sql.Ident{NamePos: pos(38), Name: "random"},
+								Lparen: pos(44),
+								Rparen: pos(45),
+							},
+						},
+					},
+				},
+				Rparen: pos(47),
 			}},
 		})
 		AssertParseStatement(t, `REPLACE INTO tbl (x, y) VALUES (1, 2), (3, 4)`, &sql.InsertStatement{
