@@ -90,6 +90,13 @@ type Statement interface {
 	stmt()
 }
 
+// HasReturning is implemented by DELETE, INSERT, and UPDATE statements,
+// i.e. statements supporting the sqlite RETURNING clause.
+type HasReturning interface {
+	// Returning returns true if the statement has a returning clause
+	Returning() bool
+}
+
 func (*AlterTableStatement) stmt()    {}
 func (*AnalyzeStatement) stmt()       {}
 func (*BeginStatement) stmt()         {}
@@ -2421,7 +2428,12 @@ type InsertStatement struct {
 	Default       Pos // position of DEFAULT keyword
 	DefaultValues Pos // position of VALUES keyword after DEFAULT
 
-	UpsertClause *UpsertClause // optional upsert clause
+	UpsertClause    *UpsertClause    // optional upsert clause
+	ReturningClause *ReturningClause // optional returning clause
+}
+
+func (s *InsertStatement) Returning() bool {
+	return s.ReturningClause != nil
 }
 
 // Clone returns a deep copy of s.
@@ -2594,10 +2606,15 @@ type UpdateStatement struct {
 
 	Table *QualifiedTableName // table name
 
-	Set         Pos           // position of SET keyword
-	Assignments []*Assignment // list of column assignments
-	Where       Pos           // position of WHERE keyword
-	WhereExpr   Expr          // conditional expression
+	Set             Pos              // position of SET keyword
+	Assignments     []*Assignment    // list of column assignments
+	Where           Pos              // position of WHERE keyword
+	WhereExpr       Expr             // conditional expression
+	ReturningClause *ReturningClause // optional returning clause
+}
+
+func (s *UpdateStatement) Returning() bool {
+	return s.ReturningClause != nil
 }
 
 // Clone returns a deep copy of s.
@@ -2660,6 +2677,8 @@ type DeleteStatement struct {
 	Where     Pos  // position of WHERE keyword
 	WhereExpr Expr // conditional expression
 
+	ReturningClause *ReturningClause // optional returning clause
+
 	Order         Pos             // position of ORDER keyword
 	OrderBy       Pos             // position of BY keyword after ORDER
 	OrderingTerms []*OrderingTerm // terms of ORDER BY clause
@@ -2669,6 +2688,10 @@ type DeleteStatement struct {
 	Offset      Pos  // position of OFFSET keyword
 	OffsetComma Pos  // position of COMMA (instead of OFFSET)
 	OffsetExpr  Expr // offset expression
+}
+
+func (s *DeleteStatement) Returning() bool {
+	return s.ReturningClause != nil
 }
 
 // Clone returns a deep copy of s.
@@ -3438,5 +3461,33 @@ func (d *WindowDefinition) String() string {
 
 	buf.WriteString(")")
 
+	return buf.String()
+}
+
+type ReturningClause struct {
+	Returning Pos             // position of RETURNING keyword
+	Columns   []*ResultColumn // list of result columns in the RETURNING clause
+}
+
+// Clone returns a deep copy of s.
+func (s *ReturningClause) Clone() *ReturningClause {
+	if s == nil {
+		return nil
+	}
+	other := *s
+	other.Returning = s.Returning
+	other.Columns = cloneResultColumns(s.Columns)
+	return &other
+}
+
+func (s *ReturningClause) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("RETURNING ")
+	for i, col := range s.Columns {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(col.String())
+	}
 	return buf.String()
 }

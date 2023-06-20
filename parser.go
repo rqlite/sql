@@ -1262,6 +1262,14 @@ func (p *Parser) parseInsertStatement(withClause *WithClause) (_ *InsertStatemen
 		}
 	}
 
+	if p.peek() == RETURNING {
+		cl, err := p.parseReturningClause()
+		if err != nil {
+			return &stmt, err
+		}
+		stmt.ReturningClause = cl
+	}
+
 	return &stmt, nil
 }
 
@@ -1420,7 +1428,37 @@ func (p *Parser) parseUpdateStatement(withClause *WithClause) (_ *UpdateStatemen
 		}
 	}
 
+	if p.peek() == RETURNING {
+		cl, err := p.parseReturningClause()
+		if err != nil {
+			return &stmt, err
+		}
+		stmt.ReturningClause = cl
+	}
+
 	return &stmt, nil
+}
+
+func (p *Parser) parseReturningClause() (_ *ReturningClause, err error) {
+	assert(p.peek() == RETURNING)
+
+	cl := ReturningClause{}
+	cl.Returning, _, _ = p.scan()
+
+	// Parse result columns.
+	for {
+		col, err := p.parseResultColumn()
+		if err != nil {
+			return &cl, err
+		}
+		cl.Columns = append(cl.Columns, col)
+
+		if p.peek() != COMMA {
+			break
+		}
+		p.scan()
+	}
+	return &cl, nil
 }
 
 func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatement, err error) {
@@ -1445,6 +1483,14 @@ func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatemen
 		if stmt.WhereExpr, err = p.ParseExpr(); err != nil {
 			return &stmt, err
 		}
+	}
+
+	if p.peek() == RETURNING {
+		cl, err := p.parseReturningClause()
+		if err != nil {
+			return &stmt, err
+		}
+		stmt.ReturningClause = cl
 	}
 
 	// Parse ORDER BY clause. This differs from the SELECT parsing in that
