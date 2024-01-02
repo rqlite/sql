@@ -13,7 +13,6 @@ jobs:
     #### expecting it in the form of
     ####   /go/src/github.com/circleci/go-tool
     ####   /go/src/bitbucket.org/circleci/go-tool
-    working_directory: /go/src/github.com/rqlite/sql
     steps:
       - checkout
 
@@ -22,6 +21,7 @@ jobs:
       - run: bash gofmt.sh
       - run: go vet ./...
       - run: go test -v ./...
+    resource_class: large
 
   race:
     docker:
@@ -32,7 +32,6 @@ jobs:
     #### expecting it in the form of
     ####   /go/src/github.com/circleci/go-tool
     ####   /go/src/bitbucket.org/circleci/go-tool
-    working_directory: /go/src/github.com/rqlite/sql
     steps:
       - checkout
 
@@ -42,6 +41,7 @@ jobs:
           command: go test -v -race ./...
           environment:
                 GORACE: "halt_on_error=1"
+    resource_class: large
 
 workflows:
   version: 2
