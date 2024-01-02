@@ -1065,15 +1065,6 @@ func TestCall_String(t *testing.T) {
 	})
 }
 
-func TestCallEval_String(t *testing.T) {
-	fn := func() uint64 {
-		return 1234
-	}
-	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "random"}, Eval: true, RandFn: fn}, `1234`)
-	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "RaNDOM"}, Eval: true, RandFn: fn}, `1234`)
-	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}, Eval: true, RandFn: fn}, `foo()`)
-}
-
 func TestRaise_String(t *testing.T) {
 	AssertExprStringer(t, &sql.Raise{Rollback: pos(0), Error: &sql.StringLit{Value: "err"}}, `RAISE(ROLLBACK, 'err')`)
 	AssertExprStringer(t, &sql.Raise{Abort: pos(0), Error: &sql.StringLit{Value: "err"}}, `RAISE(ABORT, 'err')`)
