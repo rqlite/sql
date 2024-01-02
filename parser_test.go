@@ -1353,6 +1353,41 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT julianday('now')`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Call{
+						Name:   &sql.Ident{NamePos: pos(7), Name: "julianday"},
+						Lparen: pos(16),
+						Rparen: pos(22),
+						Args: []sql.Expr{
+							&sql.StringLit{ValuePos: pos(17), Value: "now"},
+						},
+					},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT date('now','start of month','+1 month','-1 day')`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Call{
+						Name:   &sql.Ident{NamePos: pos(7), Name: "date"},
+						Lparen: pos(11),
+						Rparen: pos(54),
+						Args: []sql.Expr{
+							&sql.StringLit{ValuePos: pos(12), Value: "now"},
+							&sql.StringLit{ValuePos: pos(18), Value: "start of month"},
+							&sql.StringLit{ValuePos: pos(35), Value: "+1 month"},
+							&sql.StringLit{ValuePos: pos(46), Value: "-1 day"},
+						},
+					},
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * FROM tbl`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
