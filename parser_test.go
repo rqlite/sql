@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+
 	"github.com/longbridgeapp/sqlparser"
 )
 
@@ -468,7 +469,7 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
-		AssertParseStatementError(t, `INSERT`, `1:6: expected INTO, found 'EOF'`)
+		AssertParseStatementError(t, `INSERT`, `1:6: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO`, `1:11: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl AS`, `1:18: expected table alias, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl `, `1:16: expected DEFAULT VALUES, VALUES or SELECT, found 'EOF'`)

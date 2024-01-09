@@ -6,10 +6,8 @@ import (
 	"strings"
 )
 
-var (
-	// ErrNotImplemented not implemented
-	ErrNotImplemented = errors.New("not implemented")
-)
+// ErrNotImplemented not implemented
+var ErrNotImplemented = errors.New("not implemented")
 
 // Parser represents a SQL parser.
 type Parser struct {
@@ -97,10 +95,11 @@ func (p *Parser) parseInsertStatement() (_ *InsertStatement, err error) {
 
 	var stmt InsertStatement
 
-	if p.peek() != INTO {
-		return &stmt, p.errorExpected(p.pos, p.tok, "INTO")
+	// In MySQL the `INSERT INTO`, the `INTO` is optional.
+	// https://dev.mysql.com/doc/refman/8.0/en/insert.html
+	if p.peek() == INTO {
+		p.lex()
 	}
-	p.lex()
 
 	// Parse table name & optional alias.
 	if stmt.TableName, err = p.parseTableName(); err != nil {
@@ -967,7 +966,6 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 			x = &BinaryExpr{X: x, Op: op, Y: y}
 		}
 	}
-
 }
 
 func (p *Parser) parseExprs() (_ *Exprs, err error) {
