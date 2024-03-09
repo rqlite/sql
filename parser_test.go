@@ -2425,6 +2425,30 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			},
 		})
+		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) RETURNING x AS y`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+			},
+			ColumnsRparen: pos(18),
+			Values:        pos(20),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(27),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(28), Value: "1"},
+				},
+				Rparen: pos(29),
+			}},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(31),
+				Columns: []*sql.ResultColumn{
+					{Expr: &sql.Ident{NamePos: pos(41), Name: "x"}, As: pos(43), Alias: &sql.Ident{NamePos: pos(46), Name: "y"}},
+				},
+			},
+		})
 		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) RETURNING x,y`, &sql.InsertStatement{
 			Insert:        pos(0),
 			Into:          pos(7),
