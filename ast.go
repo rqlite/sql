@@ -2674,7 +2674,15 @@ func (c *ReturningClause) Clone() *ReturningClause {
 
 // String returns the string representation of the clause.
 func (c *ReturningClause) String() string {
-	return "RETURNING"
+	var buf bytes.Buffer
+	buf.WriteString("RETURNING ")
+	for i, col := range c.Columns {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(col.String())
+	}
+	return buf.String()
 }
 
 type DeleteStatement struct {

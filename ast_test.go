@@ -481,6 +481,21 @@ func TestInsertStatement_String(t *testing.T) {
 	}, `INSERT INTO "tbl" ("x", "y") VALUES (NULL, NULL), (NULL, NULL)`)
 
 	AssertStatementStringer(t, &sql.InsertStatement{
+		Table: &sql.Ident{Name: "tbl"},
+		Columns: []*sql.Ident{
+			{Name: "x"},
+			{Name: "y"},
+		},
+		ValueLists: []*sql.ExprList{
+			{Exprs: []sql.Expr{&sql.NumberLit{Value: "1"}, &sql.NumberLit{Value: "2"}}},
+		},
+		ReturningClause: &sql.ReturningClause{
+			Returning: pos(31),
+			Columns:   []*sql.ResultColumn{{Star: pos(41)}},
+		},
+	}, `INSERT INTO "tbl" ("x", "y") VALUES (1, 2) RETURNING *`)
+
+	AssertStatementStringer(t, &sql.InsertStatement{
 		WithClause: &sql.WithClause{
 			CTEs: []*sql.CTE{
 				{
