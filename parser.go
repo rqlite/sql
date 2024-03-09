@@ -1262,6 +1262,12 @@ func (p *Parser) parseInsertStatement(withClause *WithClause) (_ *InsertStatemen
 		}
 	}
 
+	// Parse optional RETURNING clause.
+	if p.peek() == RETURNING {
+		if stmt.ReturningClause, err = p.parseReturningClause(); err != nil {
+			return &stmt, err
+		}
+	}
 	return &stmt, nil
 }
 
@@ -1345,6 +1351,29 @@ func (p *Parser) parseUpsertClause() (_ *UpsertClause, err error) {
 		if clause.UpdateWhereExpr, err = p.ParseExpr(); err != nil {
 			return &clause, err
 		}
+	}
+
+	return &clause, nil
+}
+
+func (p *Parser) parseReturningClause() (_ *ReturningClause, err error) {
+	assert(p.peek() == RETURNING)
+
+	var clause ReturningClause
+
+	clause.Returning, _, _ = p.scan()
+	// Parse result columns.
+	for {
+		col, err := p.parseResultColumn()
+		if err != nil {
+			return &clause, err
+		}
+		clause.Columns = append(clause.Columns, col)
+
+		if p.peek() != COMMA {
+			break
+		}
+		p.scan()
 	}
 
 	return &clause, nil
