@@ -70,6 +70,7 @@ func (*Raise) node()                  {}
 func (*Range) node()                  {}
 func (*ReleaseStatement) node()       {}
 func (*ResultColumn) node()           {}
+func (*ReturningClause) node()        {}
 func (*RollbackStatement) node()      {}
 func (*SavepointStatement) node()     {}
 func (*SelectStatement) node()        {}
