@@ -2603,6 +2603,8 @@ type UpdateStatement struct {
 	Assignments []*Assignment // list of column assignments
 	Where       Pos           // position of WHERE keyword
 	WhereExpr   Expr          // conditional expression
+
+	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
 // Clone returns a deep copy of s.
@@ -2693,6 +2695,8 @@ type DeleteStatement struct {
 	Offset      Pos  // position of OFFSET keyword
 	OffsetComma Pos  // position of COMMA (instead of OFFSET)
 	OffsetExpr  Expr // offset expression
+
+	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
 // Clone returns a deep copy of s.

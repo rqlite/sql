@@ -1268,6 +1268,7 @@ func (p *Parser) parseInsertStatement(withClause *WithClause) (_ *InsertStatemen
 			return &stmt, err
 		}
 	}
+
 	return &stmt, nil
 }
 
@@ -1449,6 +1450,13 @@ func (p *Parser) parseUpdateStatement(withClause *WithClause) (_ *UpdateStatemen
 		}
 	}
 
+	// Parse optional RETURNING clause.
+	if p.peek() == RETURNING {
+		if stmt.ReturningClause, err = p.parseReturningClause(); err != nil {
+			return &stmt, err
+		}
+	}
+
 	return &stmt, nil
 }
 
@@ -1518,6 +1526,13 @@ func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatemen
 			if stmt.OffsetExpr, err = p.ParseExpr(); err != nil {
 				return &stmt, err
 			}
+		}
+	}
+
+	// Parse optional RETURNING clause.
+	if p.peek() == RETURNING {
+		if stmt.ReturningClause, err = p.parseReturningClause(); err != nil {
+			return &stmt, err
 		}
 	}
 
