@@ -2421,7 +2421,8 @@ type InsertStatement struct {
 	Default       Pos // position of DEFAULT keyword
 	DefaultValues Pos // position of VALUES keyword after DEFAULT
 
-	UpsertClause *UpsertClause // optional upsert clause
+	UpsertClause    *UpsertClause    // optional upsert clause
+	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
 // Clone returns a deep copy of s.
@@ -2437,6 +2438,7 @@ func (s *InsertStatement) Clone() *InsertStatement {
 	other.ValueLists = cloneExprLists(s.ValueLists)
 	other.Select = s.Select.Clone()
 	other.UpsertClause = s.UpsertClause.Clone()
+	other.ReturningClause = s.ReturningClause.Clone()
 	return &other
 }
 
@@ -2504,6 +2506,9 @@ func (s *InsertStatement) String() string {
 
 	if s.UpsertClause != nil {
 		fmt.Fprintf(&buf, " %s", s.UpsertClause.String())
+	}
+	if s.ReturningClause != nil {
+		fmt.Fprintf(&buf, " %s", s.ReturningClause.String())
 	}
 
 	return buf.String()
@@ -2598,6 +2603,8 @@ type UpdateStatement struct {
 	Assignments []*Assignment // list of column assignments
 	Where       Pos           // position of WHERE keyword
 	WhereExpr   Expr          // conditional expression
+
+	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
 // Clone returns a deep copy of s.
@@ -2651,6 +2658,33 @@ func (s *UpdateStatement) String() string {
 	return buf.String()
 }
 
+type ReturningClause struct {
+	Returning Pos             // position of RETURNING keyword
+	Columns   []*ResultColumn // list of result columns in the SELECT clause
+}
+
+// Clone returns a deep copy of c.
+func (c *ReturningClause) Clone() *ReturningClause {
+	if c == nil {
+		return nil
+	}
+	other := *c
+	return &other
+}
+
+// String returns the string representation of the clause.
+func (c *ReturningClause) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("RETURNING ")
+	for i, col := range c.Columns {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(col.String())
+	}
+	return buf.String()
+}
+
 type DeleteStatement struct {
 	WithClause *WithClause         // clause containing CTEs
 	Delete     Pos                 // position of UPDATE keyword
@@ -2669,6 +2703,8 @@ type DeleteStatement struct {
 	Offset      Pos  // position of OFFSET keyword
 	OffsetComma Pos  // position of COMMA (instead of OFFSET)
 	OffsetExpr  Expr // offset expression
+
+	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
 // Clone returns a deep copy of s.

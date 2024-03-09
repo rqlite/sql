@@ -2379,6 +2379,131 @@ func TestParser_ParseStatement(t *testing.T) {
 				DoNothing: pos(62),
 			},
 		})
+		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) RETURNING *`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+			},
+			ColumnsRparen: pos(18),
+			Values:        pos(20),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(27),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(28), Value: "1"},
+				},
+				Rparen: pos(29),
+			}},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(31),
+				Columns:   []*sql.ResultColumn{{Star: pos(41)}},
+			},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) RETURNING x`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+			},
+			ColumnsRparen: pos(18),
+			Values:        pos(20),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(27),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(28), Value: "1"},
+				},
+				Rparen: pos(29),
+			}},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(31),
+				Columns: []*sql.ResultColumn{
+					{Expr: &sql.Ident{NamePos: pos(41), Name: "x"}},
+				},
+			},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) RETURNING x AS y`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+			},
+			ColumnsRparen: pos(18),
+			Values:        pos(20),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(27),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(28), Value: "1"},
+				},
+				Rparen: pos(29),
+			}},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(31),
+				Columns: []*sql.ResultColumn{
+					{Expr: &sql.Ident{NamePos: pos(41), Name: "x"}, As: pos(43), Alias: &sql.Ident{NamePos: pos(46), Name: "y"}},
+				},
+			},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) RETURNING x,y`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+			},
+			ColumnsRparen: pos(18),
+			Values:        pos(20),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(27),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(28), Value: "1"},
+				},
+				Rparen: pos(29),
+			}},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(31),
+				Columns: []*sql.ResultColumn{
+					{Expr: &sql.Ident{NamePos: pos(41), Name: "x"}},
+					{Expr: &sql.Ident{NamePos: pos(43), Name: "y"}},
+				},
+			},
+		})
+		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) RETURNING x,y*2`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			ColumnsLparen: pos(16),
+			Columns: []*sql.Ident{
+				{NamePos: pos(17), Name: "x"},
+			},
+			ColumnsRparen: pos(18),
+			Values:        pos(20),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(27),
+				Exprs: []sql.Expr{
+					&sql.NumberLit{ValuePos: pos(28), Value: "1"},
+				},
+				Rparen: pos(29),
+			}},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(31),
+				Columns: []*sql.ResultColumn{
+					{Expr: &sql.Ident{NamePos: pos(41), Name: "x"}},
+					{Expr: &sql.BinaryExpr{
+						X:  &sql.Ident{Name: "y", NamePos: pos(43)},
+						Op: sql.STAR, OpPos: pos(44),
+						Y: &sql.NumberLit{Value: "2", ValuePos: pos(45)},
+					},
+					},
+				},
+			},
+		})
 		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) ON CONFLICT (y) WHERE true DO UPDATE SET foo = 1, (bar, baz) = 2 WHERE false`, &sql.InsertStatement{
 			Insert:        pos(0),
 			Into:          pos(7),
@@ -2446,6 +2571,7 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1`, `1:29: expected comma or right paren, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) SELECT`, `1:26: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) DEFAULT`, `1:27: expected VALUES, found 'EOF'`)
+		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1) RETURNING`, `1:40: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1) ON`, `1:33: expected CONFLICT, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1) ON CONFLICT (`, `1:44: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1) ON CONFLICT (x`, `1:45: expected comma or right paren, found 'EOF'`)
@@ -2631,6 +2757,23 @@ func TestParser_ParseStatement(t *testing.T) {
 				X:     &sql.Ident{NamePos: pos(22), Name: "x"},
 				OpPos: pos(24), Op: sql.EQ,
 				Y: &sql.NumberLit{ValuePos: pos(26), Value: "1"},
+			},
+		})
+		AssertParseStatement(t, `DELETE FROM tbl WHERE x = 1 RETURNING x`, &sql.DeleteStatement{
+			Delete: pos(0),
+			From:   pos(7),
+			Table: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			},
+			Where: pos(16),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(22), Name: "x"},
+				OpPos: pos(24), Op: sql.EQ,
+				Y: &sql.NumberLit{ValuePos: pos(26), Value: "1"},
+			},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(28),
+				Columns:   []*sql.ResultColumn{{Expr: &sql.Ident{NamePos: pos(38), Name: "x"}}},
 			},
 		})
 		AssertParseStatement(t, `WITH cte (x) AS (SELECT y) DELETE FROM tbl`, &sql.DeleteStatement{
