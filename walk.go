@@ -245,6 +245,11 @@ func walk(v Visitor, node Node) (err error) {
 				return err
 			}
 		}
+		if n.ReturningClause != nil {
+			if err := walk(v, n.ReturningClause); err != nil {
+				return err
+			}
+		}
 
 	case *UpdateStatement:
 		if n.WithClause != nil {
@@ -265,6 +270,11 @@ func walk(v Visitor, node Node) (err error) {
 		if err := walkExpr(v, n.WhereExpr); err != nil {
 			return err
 		}
+		if n.ReturningClause != nil {
+			if err := walk(v, n.ReturningClause); err != nil {
+				return err
+			}
+		}
 
 	case *UpsertClause:
 		if err := walkIndexedColumnList(v, n.Columns); err != nil {
@@ -280,6 +290,13 @@ func walk(v Visitor, node Node) (err error) {
 		}
 		if err := walkExpr(v, n.UpdateWhereExpr); err != nil {
 			return err
+		}
+
+	case *ReturningClause:
+		for _, x := range n.Columns {
+			if err := walk(v, x); err != nil {
+				return err
+			}
 		}
 
 	case *DeleteStatement:
@@ -306,6 +323,11 @@ func walk(v Visitor, node Node) (err error) {
 		}
 		if err := walkExpr(v, n.OffsetExpr); err != nil {
 			return err
+		}
+		if n.ReturningClause != nil {
+			if err := walk(v, n.ReturningClause); err != nil {
+				return err
+			}
 		}
 
 	case *PrimaryKeyConstraint:
