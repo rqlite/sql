@@ -2571,6 +2571,7 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1`, `1:29: expected comma or right paren, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) SELECT`, `1:26: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) DEFAULT`, `1:27: expected VALUES, found 'EOF'`)
+		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1) RETURNING`, `1:40: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1) ON`, `1:33: expected CONFLICT, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1) ON CONFLICT (`, `1:44: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO tbl (x) VALUES (1) ON CONFLICT (x`, `1:45: expected comma or right paren, found 'EOF'`)
@@ -2756,6 +2757,23 @@ func TestParser_ParseStatement(t *testing.T) {
 				X:     &sql.Ident{NamePos: pos(22), Name: "x"},
 				OpPos: pos(24), Op: sql.EQ,
 				Y: &sql.NumberLit{ValuePos: pos(26), Value: "1"},
+			},
+		})
+		AssertParseStatement(t, `DELETE FROM tbl WHERE x = 1 RETURNING x`, &sql.DeleteStatement{
+			Delete: pos(0),
+			From:   pos(7),
+			Table: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			},
+			Where: pos(16),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(22), Name: "x"},
+				OpPos: pos(24), Op: sql.EQ,
+				Y: &sql.NumberLit{ValuePos: pos(26), Value: "1"},
+			},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(28),
+				Columns:   []*sql.ResultColumn{{Expr: &sql.Ident{NamePos: pos(38), Name: "x"}}},
 			},
 		})
 		AssertParseStatement(t, `WITH cte (x) AS (SELECT y) DELETE FROM tbl`, &sql.DeleteStatement{
