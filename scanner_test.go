@@ -148,6 +148,12 @@ func TestScanner_Scan(t *testing.T) {
 	t.Run("DOT", func(t *testing.T) {
 		AssertScan(t, ".", sql.DOT, ".")
 	})
+	t.Run("JSON_EXTRACT_JSON", func(t *testing.T) {
+		AssertScan(t, "->", sql.JSON_EXTRACT_JSON, "->")
+	})
+	t.Run("JSON_EXTRACT_SQL", func(t *testing.T) {
+		AssertScan(t, "->>", sql.JSON_EXTRACT_SQL, "->>")
+	})
 	t.Run("ILLEGAL", func(t *testing.T) {
 		AssertScan(t, "^", sql.ILLEGAL, "^")
 	})

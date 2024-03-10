@@ -90,6 +90,14 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 		case '+':
 			return pos, PLUS, "+"
 		case '-':
+			if s.peek() == '>' {
+				s.read()
+				if s.peek() == '>' {
+					s.read()
+					return pos, JSON_EXTRACT_SQL, "->>"
+				}
+				return pos, JSON_EXTRACT_JSON, "->"
+			}
 			return pos, MINUS, "-"
 		case '*':
 			return pos, STAR, "*"

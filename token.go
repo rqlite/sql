@@ -65,6 +65,9 @@ const (
 	REM    // %
 	CONCAT // ||
 	DOT    // .
+
+	JSON_EXTRACT_JSON // ->
+	JSON_EXTRACT_SQL  // ->>
 	operator_end
 
 	keyword_beg
@@ -462,7 +465,8 @@ func (tok Token) IsBinaryOp() bool {
 	switch tok {
 	case PLUS, MINUS, STAR, SLASH, REM, CONCAT, NOT, BETWEEN,
 		LSHIFT, RSHIFT, BITAND, BITOR, LT, LE, GT, GE, EQ, NE,
-		IS, IN, LIKE, GLOB, MATCH, REGEXP, AND, OR:
+		IS, IN, LIKE, GLOB, MATCH, REGEXP, AND, OR,
+		JSON_EXTRACT_JSON, JSON_EXTRACT_SQL:
 		return true
 	default:
 		return false
@@ -499,7 +503,7 @@ func (op Token) Precedence() int {
 		return 8
 	case STAR, SLASH, REM:
 		return 9
-	case CONCAT:
+	case CONCAT, JSON_EXTRACT_JSON, JSON_EXTRACT_SQL:
 		return 10
 	case BITNOT:
 		return 11
