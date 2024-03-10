@@ -95,6 +95,7 @@ const (
 	CASE
 	CAST
 	CHECK
+	COLLATE
 	COLUMN
 	COLUMNKW
 	COMMIT
@@ -306,6 +307,7 @@ var tokens = [...]string{
 	CASE:              "CASE",
 	CAST:              "CAST",
 	CHECK:             "CHECK",
+	COLLATE:           "COLLATE",
 	COLUMN:            "COLUMN",
 	COLUMNKW:          "COLUMNKW",
 	COMMIT:            "COMMIT",

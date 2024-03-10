@@ -472,6 +472,8 @@ func (p *Parser) parseConstraint(isTable bool) (_ Constraint, err error) {
 		return p.parseDefaultConstraint(constraintPos, name)
 	case GENERATED, AS:
 		return p.parseGeneratedConstraint(constraintPos, name)
+	case COLLATE:
+		return p.parseCollateConstraint(constraintPos, name)
 	default:
 		assert(p.peek() == REFERENCES)
 		return p.parseForeignKeyConstraint(constraintPos, name, isTable)
@@ -555,7 +557,7 @@ func (p *Parser) parseUniqueConstraint(constraintPos Pos, name *Ident, isTable b
 		cons.Lparen, _, _ = p.scan()
 
 		for {
-			col, err := p.parseIdent("column name")
+			col, err := p.parseIndexedColumn()
 			if err != nil {
 				return &cons, err
 			}
@@ -671,6 +673,27 @@ func (p *Parser) parseGeneratedConstraint(constraintPos Pos, name *Ident) (_ *Ge
 	case VIRTUAL:
 		cons.Virtual, _, _ = p.scan()
 	}
+
+	return &cons, nil
+}
+
+func (p *Parser) parseCollateConstraint(constraintPos Pos, name *Ident) (_ *CollateConstraint, err error) {
+	assert(p.peek() == COLLATE)
+
+	var cons CollateConstraint
+	cons.Constraint = constraintPos
+	cons.Name = name
+
+	if p.peek() != COLLATE {
+		return &cons, p.errorExpected(p.pos, p.tok, "COLLATE")
+	}
+	cons.Collate, _, _ = p.scan()
+
+	collation, err := p.parseIdent("collation name")
+	if err != nil {
+		return &cons, err
+	}
+	cons.Collation = collation
 
 	return &cons, nil
 }
@@ -1461,6 +1484,14 @@ func (p *Parser) parseIndexedColumn() (_ *IndexedColumn, err error) {
 	if col.X, err = p.ParseExpr(); err != nil {
 		return &col, err
 	}
+
+	if p.peek() == COLLATE {
+		col.Collate, _, _ = p.scan()
+		if col.Collation, err = p.parseIdent("collation name"); err != nil {
+			return &col, err
+		}
+	}
+
 	if p.peek() == ASC {
 		col.Asc, _, _ = p.scan()
 	} else if p.peek() == DESC {
@@ -3068,7 +3099,7 @@ func isConstraintStartToken(tok Token, isTable bool) bool {
 		return true // table & column
 	case FOREIGN:
 		return isTable // table only
-	case NOT, DEFAULT, REFERENCES, GENERATED, AS:
+	case NOT, DEFAULT, REFERENCES, GENERATED, AS, COLLATE:
 		return !isTable // column only
 	default:
 		return false

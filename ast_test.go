@@ -213,9 +213,9 @@ func TestCreateTableStatement_String(t *testing.T) {
 			},
 			&sql.UniqueConstraint{
 				Name: &sql.Ident{Name: "uniq"},
-				Columns: []*sql.Ident{
-					{Name: "x"},
-					{Name: "y"},
+				Columns: []*sql.IndexedColumn{
+					{X: &sql.Ident{Name: "x"}},
+					{X: &sql.Ident{Name: "y"}},
 				},
 			},
 			&sql.CheckConstraint{

@@ -814,6 +814,32 @@ func TestParser_ParseStatement(t *testing.T) {
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT AS (1`, `1:33: expected right paren, found 'EOF'`)
 			})
 
+			t.Run("Collate", func(t *testing.T) {
+				AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT COLLATE NOCASE)`, &sql.CreateTableStatement{
+					Create: pos(0),
+					Table:  pos(7),
+					Name:   &sql.Ident{Name: "tbl", NamePos: pos(13)},
+					Lparen: pos(17),
+					Columns: []*sql.ColumnDefinition{
+						{
+							Name: &sql.Ident{Name: "col1", NamePos: pos(18)},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "TEXT", NamePos: pos(23)},
+							},
+							Constraints: []sql.Constraint{
+								&sql.CollateConstraint{
+									Collate:   pos(28),
+									Collation: &sql.Ident{NamePos: pos(36), Name: "NOCASE"},
+								},
+							},
+						},
+					},
+					Rparen: pos(42),
+				})
+
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT COLLATE`, `1:35: expected collation name, found 'EOF'`)
+			})
+
 			t.Run("ForeignKey", func(t *testing.T) {
 				t.Run("Simple", func(t *testing.T) {
 					AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT REFERENCES foo (col2))`, &sql.CreateTableStatement{
@@ -1082,7 +1108,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (foo x`, `1:47: expected comma or right paren, found x`)
 			})
 			t.Run("Unique", func(t *testing.T) {
-				AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT, CONSTRAINT con1 UNIQUE (col1, col2))`, &sql.CreateTableStatement{
+				AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT, CONSTRAINT con1 UNIQUE (col1, col2 COLLATE NOCASE))`, &sql.CreateTableStatement{
 					Create: pos(0),
 					Table:  pos(7),
 					Name:   &sql.Ident{Name: "tbl", NamePos: pos(13)},
@@ -1101,17 +1127,21 @@ func TestParser_ParseStatement(t *testing.T) {
 							Name:       &sql.Ident{Name: "con1", NamePos: pos(40)},
 							Unique:     pos(45),
 							Lparen:     pos(52),
-							Columns: []*sql.Ident{
-								{Name: "col1", NamePos: pos(53)},
-								{Name: "col2", NamePos: pos(59)},
+							Columns: []*sql.IndexedColumn{
+								{X: &sql.Ident{Name: "col1", NamePos: pos(53)}},
+								{
+									X:         &sql.Ident{Name: "col2", NamePos: pos(59)},
+									Collate:   pos(64),
+									Collation: &sql.Ident{Name: "NOCASE", NamePos: pos(72)},
+								},
 							},
-							Rparen: pos(63),
+							Rparen: pos(78),
 						},
 					},
-					Rparen: pos(64),
+					Rparen: pos(79),
 				})
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, UNIQUE`, `1:35: expected left paren, found 'EOF'`)
-				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, UNIQUE (1`, `1:38: expected column name, found 1`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, UNIQUE (1`, `1:38: expected comma or right paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, UNIQUE (x y`, `1:40: expected comma or right paren, found y`)
 			})
 			t.Run("Check", func(t *testing.T) {
@@ -1352,6 +1382,22 @@ func TestParser_ParseStatement(t *testing.T) {
 				{X: &sql.Ident{NamePos: pos(39), Name: "x"}},
 			},
 			Rparen: pos(40),
+		})
+		AssertParseStatement(t, `CREATE INDEX idx ON tbl (x COLLATE NOCASE)`, &sql.CreateIndexStatement{
+			Create: pos(0),
+			Index:  pos(7),
+			Name:   &sql.Ident{NamePos: pos(13), Name: "idx"},
+			On:     pos(17),
+			Table:  &sql.Ident{NamePos: pos(20), Name: "tbl"},
+			Lparen: pos(24),
+			Columns: []*sql.IndexedColumn{
+				{
+					X:         &sql.Ident{NamePos: pos(25), Name: "x"},
+					Collate:   pos(27),
+					Collation: &sql.Ident{NamePos: pos(35), Name: "NOCASE"},
+				},
+			},
+			Rparen: pos(41),
 		})
 		AssertParseStatementError(t, `CREATE UNIQUE`, `1:13: expected INDEX, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE INDEX`, `1:12: expected index name, found 'EOF'`)
