@@ -260,10 +260,76 @@ func TestParser_ParseStatement(t *testing.T) {
 			Rparen: sql.Pos{Offset: 65, Line: 3, Column: 13},
 		})
 
+		AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT) WITHOUT ROWID`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				Name:    "tbl",
+				NamePos: pos(13),
+			},
+			Lparen: pos(17),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{NamePos: pos(18), Name: "col1"},
+					Type: &sql.Type{
+						Name: &sql.Ident{NamePos: pos(23), Name: "TEXT"},
+					},
+				},
+			},
+			Rparen:  pos(27),
+			Without: pos(29),
+			Rowid:   pos(37),
+		})
+
+		AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT) STRICT`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				Name:    "tbl",
+				NamePos: pos(13),
+			},
+			Lparen: pos(17),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{NamePos: pos(18), Name: "col1"},
+					Type: &sql.Type{
+						Name: &sql.Ident{NamePos: pos(23), Name: "TEXT"},
+					},
+				},
+			},
+			Rparen: pos(27),
+			Strict: pos(29),
+		})
+
+		AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT) WITHOUT ROWID, STRICT`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				Name:    "tbl",
+				NamePos: pos(13),
+			},
+			Lparen: pos(17),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{NamePos: pos(18), Name: "col1"},
+					Type: &sql.Type{
+						Name: &sql.Ident{NamePos: pos(23), Name: "TEXT"},
+					},
+				},
+			},
+			Rparen:  pos(27),
+			Without: pos(29),
+			Rowid:   pos(37),
+			Strict:  pos(44),
+		})
+
 		AssertParseStatementError(t, `CREATE TABLE`, `1:12: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl `, `1:17: expected AS or left paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (`, `1:18: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT`, `1:27: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
+		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT) WITHOUT`, `1:36: expected ROWID, found 'EOF'`)
+		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT) WITHOUT ROWID,`, `1:43: expected STRICT or WITHOUT ROWID, found 'EOF'`)
+		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT) STRICT,`, `1:36: expected STRICT or WITHOUT ROWID, found 'EOF'`)
 
 		AssertParseStatement(t, `CREATE TABLE IF NOT EXISTS tbl (col1 TEXT)`, &sql.CreateTableStatement{
 			Create:      pos(0),

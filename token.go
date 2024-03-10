@@ -203,6 +203,7 @@ const (
 	RETURNING
 	ROLLBACK
 	ROW
+	ROWID
 	ROWS
 	SAVEPOINT
 	SELECT
@@ -210,6 +211,7 @@ const (
 	SET
 	SPAN
 	STORED
+	STRICT
 	TABLE
 	TEMP
 	THEN
@@ -412,6 +414,7 @@ var tokens = [...]string{
 	RETURNING:         "RETURNING",
 	ROLLBACK:          "ROLLBACK",
 	ROW:               "ROW",
+	ROWID:             "ROWID",
 	ROWS:              "ROWS",
 	SAVEPOINT:         "SAVEPOINT",
 	SELECT:            "SELECT",
@@ -419,6 +422,7 @@ var tokens = [...]string{
 	SET:               "SET",
 	SPAN:              "SPAN",
 	STORED:            "STORED",
+	STRICT:            "STRICT",
 	TABLE:             "TABLE",
 	TEMP:              "TEMP",
 	THEN:              "THEN",

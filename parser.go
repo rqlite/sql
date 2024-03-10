@@ -315,6 +315,31 @@ func (p *Parser) parseCreateTableStatement(createPos Pos) (_ *CreateTableStateme
 			return &stmt, p.errorExpected(p.pos, p.tok, "right paren")
 		}
 		stmt.Rparen, _, _ = p.scan()
+
+		if p.peek() == STRICT || p.peek() == WITHOUT {
+			for {
+				switch p.peek() {
+				case STRICT:
+					stmt.Strict, _, _ = p.scan()
+
+				case WITHOUT:
+					stmt.Without, _, _ = p.scan()
+					if p.peek() != ROWID {
+						return &stmt, p.errorExpected(p.pos, p.tok, "ROWID")
+					}
+					stmt.Rowid, _, _ = p.scan()
+
+				default:
+					return &stmt, p.errorExpected(p.pos, p.tok, "STRICT or WITHOUT ROWID")
+				}
+
+				if p.peek() != COMMA {
+					break
+				}
+				p.scan()
+			}
+		}
+
 		return &stmt, nil
 	case AS:
 		stmt.As, _, _ = p.scan()
