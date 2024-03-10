@@ -90,7 +90,15 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 		case '+':
 			return pos, PLUS, "+"
 		case '-':
-			return pos, MINUS, "-"
+			if s.peek() == '-' {
+				// Double hyphen comment to end of line.
+				s.read()
+				for ch := s.peek(); ch != '\n' && ch != -1; ch = s.peek() {
+					s.read()
+				}
+			} else {
+				return pos, MINUS, "-"
+			}
 		case '*':
 			return pos, STAR, "*"
 		case '/':
