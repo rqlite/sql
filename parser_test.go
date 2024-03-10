@@ -400,6 +400,43 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `CREATE TABLE tbl AS`, `1:19: expected SELECT or VALUES, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl AS WITH`, `1:24: expected table name, found 'EOF'`)
 
+		t.Run("WithComment", func(t *testing.T) {
+			t.Run("SingleLine", func(t *testing.T) {
+				AssertParseStatement(t, "CREATE TABLE tbl\n\t-- test one two\n\t(col1 TEXT)", &sql.CreateTableStatement{
+					Create: pos(0),
+					Table:  pos(7),
+					Name:   &sql.Ident{Name: "tbl", NamePos: sql.Pos{Offset: 13, Line: 1, Column: 14}},
+					Lparen: sql.Pos{Offset: 35, Line: 3, Column: 2},
+					Columns: []*sql.ColumnDefinition{
+						{
+							Name: &sql.Ident{Name: "col1", NamePos: sql.Pos{Offset: 36, Line: 3, Column: 3}},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "TEXT", NamePos: sql.Pos{Offset: 41, Line: 3, Column: 8}},
+							},
+						},
+					},
+					Rparen: sql.Pos{Offset: 45, Line: 3, Column: 12},
+				})
+			})
+			t.Run("MultiLine", func(t *testing.T) {
+				AssertParseStatement(t, "CREATE TABLE tbl\n\t/* test one\ntwo*/ (col1 TEXT)", &sql.CreateTableStatement{
+					Create: pos(0),
+					Table:  pos(7),
+					Name:   &sql.Ident{Name: "tbl", NamePos: sql.Pos{Offset: 13, Line: 1, Column: 14}},
+					Lparen: sql.Pos{Offset: 36, Line: 3, Column: 7},
+					Columns: []*sql.ColumnDefinition{
+						{
+							Name: &sql.Ident{Name: "col1", NamePos: sql.Pos{Offset: 37, Line: 3, Column: 8}},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "TEXT", NamePos: sql.Pos{Offset: 42, Line: 3, Column: 13}},
+							},
+						},
+					},
+					Rparen: sql.Pos{Offset: 46, Line: 3, Column: 17},
+				})
+			})
+		})
+
 		t.Run("ColumnConstraint", func(t *testing.T) {
 			t.Run("PrimaryKey", func(t *testing.T) {
 				t.Run("Simple", func(t *testing.T) {
@@ -625,7 +662,7 @@ func TestParser_ParseStatement(t *testing.T) {
 										ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 										ForeignLparen: pos(43),
 										ForeignColumns: []*sql.Ident{
-											&sql.Ident{Name: "col2", NamePos: pos(44)},
+											{Name: "col2", NamePos: pos(44)},
 										},
 										ForeignRparen: pos(48),
 									},
@@ -642,11 +679,11 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen: pos(48),
 						Args: []*sql.ForeignKeyArg{
-							&sql.ForeignKeyArg{
+							{
 								On:       pos(50),
 								OnDelete: pos(53),
 								Set:      pos(60),
@@ -664,11 +701,11 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen: pos(48),
 						Args: []*sql.ForeignKeyArg{
-							&sql.ForeignKeyArg{
+							{
 								On:         pos(50),
 								OnDelete:   pos(53),
 								Set:        pos(60),
@@ -686,11 +723,11 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen: pos(48),
 						Args: []*sql.ForeignKeyArg{
-							&sql.ForeignKeyArg{
+							{
 								On:       pos(50),
 								OnDelete: pos(53),
 								Cascade:  pos(60),
@@ -707,11 +744,11 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen: pos(48),
 						Args: []*sql.ForeignKeyArg{
-							&sql.ForeignKeyArg{
+							{
 								On:       pos(50),
 								OnDelete: pos(53),
 								Restrict: pos(60),
@@ -728,11 +765,11 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen: pos(48),
 						Args: []*sql.ForeignKeyArg{
-							&sql.ForeignKeyArg{
+							{
 								On:       pos(50),
 								OnDelete: pos(53),
 								No:       pos(60),
@@ -750,16 +787,16 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen: pos(48),
 						Args: []*sql.ForeignKeyArg{
-							&sql.ForeignKeyArg{
+							{
 								On:       pos(50),
 								OnDelete: pos(53),
 								Cascade:  pos(60),
 							},
-							&sql.ForeignKeyArg{
+							{
 								On:       pos(68),
 								OnUpdate: pos(71),
 								Restrict: pos(78),
@@ -776,7 +813,7 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen: pos(48),
 						Deferrable:    pos(50),
@@ -791,7 +828,7 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen: pos(48),
 						Not:           pos(50),
@@ -807,7 +844,7 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen:     pos(48),
 						Deferrable:        pos(50),
@@ -824,7 +861,7 @@ func TestParser_ParseStatement(t *testing.T) {
 						ForeignTable:  &sql.Ident{Name: "foo", NamePos: pos(39)},
 						ForeignLparen: pos(43),
 						ForeignColumns: []*sql.Ident{
-							&sql.Ident{Name: "col2", NamePos: pos(44)},
+							{Name: "col2", NamePos: pos(44)},
 						},
 						ForeignRparen:      pos(48),
 						Deferrable:         pos(50),
@@ -858,8 +895,8 @@ func TestParser_ParseStatement(t *testing.T) {
 							Key:     pos(37),
 							Lparen:  pos(41),
 							Columns: []*sql.Ident{
-								&sql.Ident{Name: "col1", NamePos: pos(42)},
-								&sql.Ident{Name: "col2", NamePos: pos(48)},
+								{Name: "col1", NamePos: pos(42)},
+								{Name: "col2", NamePos: pos(48)},
 							},
 							Rparen: pos(52),
 						},
@@ -894,8 +931,8 @@ func TestParser_ParseStatement(t *testing.T) {
 							Unique:     pos(45),
 							Lparen:     pos(52),
 							Columns: []*sql.Ident{
-								&sql.Ident{Name: "col1", NamePos: pos(53)},
-								&sql.Ident{Name: "col2", NamePos: pos(59)},
+								{Name: "col1", NamePos: pos(53)},
+								{Name: "col2", NamePos: pos(59)},
 							},
 							Rparen: pos(63),
 						},
@@ -959,16 +996,16 @@ func TestParser_ParseStatement(t *testing.T) {
 							ForeignKey: pos(37),
 							Lparen:     pos(41),
 							Columns: []*sql.Ident{
-								&sql.Ident{Name: "col1", NamePos: pos(42)},
-								&sql.Ident{Name: "col2", NamePos: pos(48)},
+								{Name: "col1", NamePos: pos(42)},
+								{Name: "col2", NamePos: pos(48)},
 							},
 							Rparen:        pos(52),
 							References:    pos(54),
 							ForeignTable:  &sql.Ident{Name: "tbl2", NamePos: pos(65)},
 							ForeignLparen: pos(70),
 							ForeignColumns: []*sql.Ident{
-								&sql.Ident{Name: "x", NamePos: pos(71)},
-								&sql.Ident{Name: "y", NamePos: pos(74)},
+								{Name: "x", NamePos: pos(71)},
+								{Name: "y", NamePos: pos(74)},
 							},
 							ForeignRparen: pos(75),
 						},
@@ -1019,8 +1056,8 @@ func TestParser_ParseStatement(t *testing.T) {
 			Name:   &sql.Ident{NamePos: pos(12), Name: "vw"},
 			Lparen: pos(15),
 			Columns: []*sql.Ident{
-				&sql.Ident{NamePos: pos(16), Name: "col1"},
-				&sql.Ident{NamePos: pos(22), Name: "col2"},
+				{NamePos: pos(16), Name: "col1"},
+				{NamePos: pos(22), Name: "col2"},
 			},
 			Rparen: pos(26),
 			As:     pos(28),
@@ -1790,8 +1827,8 @@ func TestParser_ParseStatement(t *testing.T) {
 			Order:   pos(9),
 			OrderBy: pos(15),
 			OrderingTerms: []*sql.OrderingTerm{
-				&sql.OrderingTerm{X: &sql.Ident{NamePos: pos(18), Name: "foo"}, Asc: pos(22)},
-				&sql.OrderingTerm{X: &sql.Ident{NamePos: pos(27), Name: "bar"}, Desc: pos(31)},
+				{X: &sql.Ident{NamePos: pos(18), Name: "foo"}, Asc: pos(22)},
+				{X: &sql.Ident{NamePos: pos(27), Name: "bar"}, Desc: pos(31)},
 			},
 		})
 
@@ -1803,11 +1840,12 @@ func TestParser_ParseStatement(t *testing.T) {
 			Order:   pos(9),
 			OrderBy: pos(15),
 			OrderingTerms: []*sql.OrderingTerm{
-				&sql.OrderingTerm{X: &sql.Call{
-					Name:   &sql.Ident{NamePos: pos(18), Name: "random"},
-					Lparen: pos(24),
-					Rparen: pos(25),
-				},
+				{
+					X: &sql.Call{
+						Name:   &sql.Ident{NamePos: pos(18), Name: "random"},
+						Lparen: pos(24),
+						Rparen: pos(25),
+					},
 				},
 			},
 		})
@@ -1855,7 +1893,7 @@ func TestParser_ParseStatement(t *testing.T) {
 			Order:   pos(24),
 			OrderBy: pos(30),
 			OrderingTerms: []*sql.OrderingTerm{
-				&sql.OrderingTerm{X: &sql.Ident{NamePos: pos(33), Name: "foo"}},
+				{X: &sql.Ident{NamePos: pos(33), Name: "foo"}},
 			},
 		})
 		AssertParseStatement(t, `SELECT * UNION ALL SELECT *`, &sql.SelectStatement{
@@ -2521,11 +2559,12 @@ func TestParser_ParseStatement(t *testing.T) {
 				Returning: pos(31),
 				Columns: []*sql.ResultColumn{
 					{Expr: &sql.Ident{NamePos: pos(41), Name: "x"}},
-					{Expr: &sql.BinaryExpr{
-						X:  &sql.Ident{Name: "y", NamePos: pos(43)},
-						Op: sql.STAR, OpPos: pos(44),
-						Y: &sql.NumberLit{Value: "2", ValuePos: pos(45)},
-					},
+					{
+						Expr: &sql.BinaryExpr{
+							X:  &sql.Ident{Name: "y", NamePos: pos(43)},
+							Op: sql.STAR, OpPos: pos(44),
+							Y: &sql.NumberLit{Value: "2", ValuePos: pos(45)},
+						},
 					},
 				},
 			},
