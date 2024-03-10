@@ -97,7 +97,7 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 					return pos, JSON_EXTRACT_SQL, "->>"
 				}
 				return pos, JSON_EXTRACT_JSON, "->"
-      } else if s.peek() == '-' {
+			} else if s.peek() == '-' {
 				s.read()
 				return pos, COMMENT, s.scanSingleLineComment()
 			}
