@@ -234,6 +234,32 @@ func TestParser_ParseStatement(t *testing.T) {
 			Rparen: pos(47),
 		})
 
+		// With comments
+		AssertParseStatement(t, "CREATE TABLE tbl ( -- comment\n\tcol1 TEXT, -- comment\n\t  col2 TEXT)", &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				Name:    "tbl",
+				NamePos: pos(13),
+			},
+			Lparen: pos(17),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{NamePos: sql.Pos{Offset: 31, Line: 2, Column: 2}, Name: "col1"},
+					Type: &sql.Type{
+						Name: &sql.Ident{NamePos: sql.Pos{Offset: 36, Line: 2, Column: 7}, Name: "TEXT"},
+					},
+				},
+				{
+					Name: &sql.Ident{NamePos: sql.Pos{Offset: 56, Line: 3, Column: 4}, Name: "col2"},
+					Type: &sql.Type{
+						Name: &sql.Ident{NamePos: sql.Pos{Offset: 61, Line: 3, Column: 9}, Name: "TEXT"},
+					},
+				},
+			},
+			Rparen: sql.Pos{Offset: 65, Line: 3, Column: 13},
+		})
+
 		AssertParseStatementError(t, `CREATE TABLE`, `1:12: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl `, `1:17: expected AS or left paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (`, `1:18: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
@@ -373,6 +399,43 @@ func TestParser_ParseStatement(t *testing.T) {
 		})
 		AssertParseStatementError(t, `CREATE TABLE tbl AS`, `1:19: expected SELECT or VALUES, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl AS WITH`, `1:24: expected table name, found 'EOF'`)
+
+		t.Run("WithComment", func(t *testing.T) {
+			t.Run("SingleLine", func(t *testing.T) {
+				AssertParseStatement(t, "CREATE TABLE tbl\n\t-- test one two\n\t(col1 TEXT)", &sql.CreateTableStatement{
+					Create: pos(0),
+					Table:  pos(7),
+					Name:   &sql.Ident{Name: "tbl", NamePos: sql.Pos{Offset: 13, Line: 1, Column: 14}},
+					Lparen: sql.Pos{Offset: 35, Line: 3, Column: 2},
+					Columns: []*sql.ColumnDefinition{
+						{
+							Name: &sql.Ident{Name: "col1", NamePos: sql.Pos{Offset: 36, Line: 3, Column: 3}},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "TEXT", NamePos: sql.Pos{Offset: 41, Line: 3, Column: 8}},
+							},
+						},
+					},
+					Rparen: sql.Pos{Offset: 45, Line: 3, Column: 12},
+				})
+			})
+			t.Run("MultiLine", func(t *testing.T) {
+				AssertParseStatement(t, "CREATE TABLE tbl\n\t/* test one\ntwo*/ (col1 TEXT)", &sql.CreateTableStatement{
+					Create: pos(0),
+					Table:  pos(7),
+					Name:   &sql.Ident{Name: "tbl", NamePos: sql.Pos{Offset: 13, Line: 1, Column: 14}},
+					Lparen: sql.Pos{Offset: 36, Line: 3, Column: 7},
+					Columns: []*sql.ColumnDefinition{
+						{
+							Name: &sql.Ident{Name: "col1", NamePos: sql.Pos{Offset: 37, Line: 3, Column: 8}},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "TEXT", NamePos: sql.Pos{Offset: 42, Line: 3, Column: 13}},
+							},
+						},
+					},
+					Rparen: sql.Pos{Offset: 46, Line: 3, Column: 17},
+				})
+			})
+		})
 
 		t.Run("ColumnConstraint", func(t *testing.T) {
 			t.Run("PrimaryKey", func(t *testing.T) {

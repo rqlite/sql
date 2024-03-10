@@ -97,11 +97,18 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 					return pos, JSON_EXTRACT_SQL, "->>"
 				}
 				return pos, JSON_EXTRACT_JSON, "->"
+      } else if s.peek() == '-' {
+				s.read()
+				return pos, COMMENT, s.scanSingleLineComment()
 			}
 			return pos, MINUS, "-"
 		case '*':
 			return pos, STAR, "*"
 		case '/':
+			if s.peek() == '*' {
+				s.read()
+				return pos, COMMENT, s.scanMultiLineComment()
+			}
 			return pos, SLASH, "/"
 		case '%':
 			return pos, REM, "%"
@@ -163,6 +170,37 @@ func (s *Scanner) scanString() (Pos, Token, string) {
 				continue
 			}
 			return pos, STRING, s.buf.String()
+		}
+		s.buf.WriteRune(ch)
+	}
+}
+
+func (s *Scanner) scanSingleLineComment() string {
+	s.buf.Reset()
+	s.buf.WriteString("--")
+
+	for {
+		ch, _ := s.read()
+		switch ch {
+		case -1, '\n':
+			return s.buf.String()
+		default:
+			s.buf.WriteRune(ch)
+		}
+	}
+}
+
+func (s *Scanner) scanMultiLineComment() string {
+	s.buf.Reset()
+	s.buf.WriteString("/*")
+	for {
+		ch, _ := s.read()
+		if ch == -1 {
+			return s.buf.String()
+		} else if ch == '*' && s.peek() == '/' {
+			s.read()
+			s.buf.WriteString("*/")
+			return s.buf.String()
 		}
 		s.buf.WriteRune(ch)
 	}
