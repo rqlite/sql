@@ -352,8 +352,12 @@ func (p *Parser) parseColumnDefinition() (_ *ColumnDefinition, err error) {
 	var col ColumnDefinition
 	if col.Name, err = p.parseIdent("column name"); err != nil {
 		return &col, err
-	} else if col.Type, err = p.parseType(); err != nil {
-		return &col, err
+	}
+
+	if _, tok, lit := p.peekScan(); tok == IDENT && isTypeName(lit) {
+		if col.Type, err = p.parseType(); err != nil {
+			return &col, err
+		}
 	}
 
 	if col.Constraints, err = p.parseColumnConstraints(); err != nil {
@@ -2986,6 +2990,14 @@ func (p *Parser) peek() Token {
 	return p.tok
 }
 
+func (p *Parser) peekScan() (Pos, Token, string) {
+	if !p.full {
+		p.scan()
+		p.unscan()
+	}
+	return p.pos, p.tok, p.lit
+}
+
 func (p *Parser) unscan() {
 	assert(!p.full)
 	p.full = true
@@ -3036,6 +3048,17 @@ func isLiteralToken(tok Token) bool {
 	switch tok {
 	case FLOAT, INTEGER, STRING, BLOB, TRUE, FALSE, NULL,
 		CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP:
+		return true
+	default:
+		return false
+	}
+}
+
+func isTypeName(s string) bool {
+	switch s {
+	case "BIGINT", "BLOB", "BOOLEAN", "CHARACTER", "CLOB", "DATE", "DATETIME",
+		"DECIMAL", "DOUBLE", "FLOAT", "INT", "INTEGER", "MEDIUMINT", "NCHAR",
+		"NUMERIC", "NVARCHAR", "REAL", "SMALLINT", "TEXT", "TINYINT", "VARCHAR":
 		return true
 	default:
 		return false
