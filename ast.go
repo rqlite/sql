@@ -1492,6 +1492,10 @@ func (expr *BinaryExpr) String() string {
 		return expr.X.String() + " = " + expr.Y.String()
 	case NE:
 		return expr.X.String() + " != " + expr.Y.String()
+	case JSON_EXTRACT_JSON:
+		return expr.X.String() + " -> " + expr.Y.String()
+	case JSON_EXTRACT_SQL:
+		return expr.X.String() + " ->> " + expr.Y.String()
 	case IS:
 		return expr.X.String() + " IS " + expr.Y.String()
 	case ISNOT:

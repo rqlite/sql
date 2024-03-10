@@ -3260,6 +3260,16 @@ func TestParser_ParseExpr(t *testing.T) {
 				Y:   &sql.NumberLit{ValuePos: pos(20), Value: "3"},
 			},
 		})
+		AssertParseExpr(t, `1 -> 2`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.JSON_EXTRACT_JSON,
+			Y: &sql.NumberLit{ValuePos: pos(5), Value: "2"},
+		})
+		AssertParseExpr(t, `1 ->> 2`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.JSON_EXTRACT_SQL,
+			Y: &sql.NumberLit{ValuePos: pos(6), Value: "2"},
+		})
 		AssertParseExprError(t, `1 BETWEEN`, `1:9: expected expression, found 'EOF'`)
 		AssertParseExprError(t, `1 BETWEEN 2`, `1:11: expected range expression, found 'EOF'`)
 		AssertParseExprError(t, `1 BETWEEN 2 + 3`, `1:15: expected range expression, found 'EOF'`)

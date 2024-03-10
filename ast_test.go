@@ -897,6 +897,8 @@ func TestBinaryExpr_String(t *testing.T) {
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.NOTREGEXP, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 NOT REGEXP 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.AND, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 AND 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.OR, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 OR 2`)
+	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.JSON_EXTRACT_JSON, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 -> 2`)
+	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.JSON_EXTRACT_SQL, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 ->> 2`)
 	AssertNodeStringerPanic(t, &sql.BinaryExpr{}, `sql.BinaryExpr.String(): invalid op ILLEGAL`)
 }
 
