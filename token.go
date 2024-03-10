@@ -76,6 +76,7 @@ const (
 	AGG_FUNCTION
 	ALL
 	ALTER
+	ALWAYS
 	ANALYZE
 	AND
 	AS
@@ -130,6 +131,7 @@ const (
 	FOREIGN
 	FROM
 	FUNCTION
+	GENERATED
 	GLOB
 	GROUP
 	GROUPS
@@ -204,6 +206,7 @@ const (
 	SELECT_COLUMN
 	SET
 	SPAN
+	STORED
 	TABLE
 	TEMP
 	THEN
@@ -282,6 +285,7 @@ var tokens = [...]string{
 	AGG_FUNCTION:      "AGG_FUNCTION",
 	ALL:               "ALL",
 	ALTER:             "ALTER",
+	ALWAYS:            "ALWAYS",
 	ANALYZE:           "ANALYZE",
 	AND:               "AND",
 	AS:                "AS",
@@ -336,6 +340,7 @@ var tokens = [...]string{
 	FOREIGN:           "FOREIGN",
 	FROM:              "FROM",
 	FUNCTION:          "FUNCTION",
+	GENERATED:         "GENERATED",
 	GLOB:              "GLOB",
 	GROUP:             "GROUP",
 	GROUPS:            "GROUPS",
@@ -410,6 +415,7 @@ var tokens = [...]string{
 	SELECT_COLUMN:     "SELECT_COLUMN",
 	SET:               "SET",
 	SPAN:              "SPAN",
+	STORED:            "STORED",
 	TABLE:             "TABLE",
 	TEMP:              "TEMP",
 	THEN:              "THEN",

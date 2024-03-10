@@ -441,6 +441,8 @@ func (p *Parser) parseConstraint(isTable bool) (_ Constraint, err error) {
 		return p.parseCheckConstraint(constraintPos, name)
 	case DEFAULT:
 		return p.parseDefaultConstraint(constraintPos, name)
+	case GENERATED, AS:
+		return p.parseGeneratedConstraint(constraintPos, name)
 	default:
 		assert(p.peek() == REFERENCES)
 		return p.parseForeignKeyConstraint(constraintPos, name, isTable)
@@ -596,6 +598,51 @@ func (p *Parser) parseDefaultConstraint(constraintPos Pos, name *Ident) (_ *Defa
 		}
 		cons.Rparen, _, _ = p.scan()
 	}
+	return &cons, nil
+}
+
+func (p *Parser) parseGeneratedConstraint(constraintPos Pos, name *Ident) (_ *GeneratedConstraint, err error) {
+	assert(p.peek() == GENERATED || p.peek() == AS)
+
+	var cons GeneratedConstraint
+	cons.Constraint = constraintPos
+	cons.Name = name
+
+	if p.peek() == GENERATED {
+		cons.Generated, _, _ = p.scan()
+
+		if p.peek() != ALWAYS {
+			return &cons, p.errorExpected(p.pos, p.tok, "ALWAYS")
+		}
+		cons.Always, _, _ = p.scan()
+	}
+
+	if p.peek() != AS {
+		return &cons, p.errorExpected(p.pos, p.tok, "AS")
+	}
+	cons.As, _, _ = p.scan()
+
+	if p.peek() != LP {
+		return &cons, p.errorExpected(p.pos, p.tok, "left paren")
+	}
+	cons.Lparen, _, _ = p.scan()
+
+	if cons.Expr, err = p.ParseExpr(); err != nil {
+		return &cons, err
+	}
+
+	if p.peek() != RP {
+		return &cons, p.errorExpected(p.pos, p.tok, "right paren")
+	}
+	cons.Rparen, _, _ = p.scan()
+
+	switch p.peek() {
+	case STORED:
+		cons.Stored, _, _ = p.scan()
+	case VIRTUAL:
+		cons.Virtual, _, _ = p.scan()
+	}
+
 	return &cons, nil
 }
 
@@ -2247,7 +2294,6 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 			x = &BinaryExpr{X: x, OpPos: pos, Op: op, Y: y}
 		}
 	}
-
 }
 
 func (p *Parser) parseExprList() (_ *ExprList, err error) {
@@ -2973,7 +3019,7 @@ func isConstraintStartToken(tok Token, isTable bool) bool {
 		return true // table & column
 	case FOREIGN:
 		return isTable // table only
-	case NOT, DEFAULT, REFERENCES:
+	case NOT, DEFAULT, REFERENCES, GENERATED, AS:
 		return !isTable // column only
 	default:
 		return false

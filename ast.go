@@ -50,6 +50,7 @@ func (*FilterClause) node()           {}
 func (*ForeignKeyArg) node()          {}
 func (*ForeignKeyConstraint) node()   {}
 func (*FrameSpec) node()              {}
+func (*GeneratedConstraint) node()    {}
 func (*Ident) node()                  {}
 func (*IndexedColumn) node()          {}
 func (*InsertStatement) node()        {}
@@ -735,6 +736,7 @@ func (*NotNullConstraint) constraint()    {}
 func (*UniqueConstraint) constraint()     {}
 func (*CheckConstraint) constraint()      {}
 func (*DefaultConstraint) constraint()    {}
+func (*GeneratedConstraint) constraint()  {}
 func (*ForeignKeyConstraint) constraint() {}
 
 // CloneConstraint returns a deep copy cons.
@@ -753,6 +755,8 @@ func CloneConstraint(cons Constraint) Constraint {
 	case *CheckConstraint:
 		return cons.Clone()
 	case *DefaultConstraint:
+		return cons.Clone()
+	case *GeneratedConstraint:
 		return cons.Clone()
 	case *ForeignKeyConstraint:
 		return cons.Clone()
@@ -974,6 +978,56 @@ func (c *DefaultConstraint) String() string {
 	} else {
 		buf.WriteString(c.Expr.String())
 	}
+	return buf.String()
+}
+
+type GeneratedConstraint struct {
+	Constraint Pos    // position of CONSTRAINT keyword
+	Name       *Ident // constraint name
+	Generated  Pos    // position of GENERATED keyword
+	Always     Pos    // position of ALWAYS keyword
+	As         Pos    // position of AS keyword
+	Lparen     Pos    // position of left paren
+	Expr       Expr   // default expression
+	Rparen     Pos    // position of right paren
+	Stored     Pos    // position of STORED keyword
+	Virtual    Pos    // position of VIRTUAL keyword
+}
+
+// Clone returns a deep copy of c.
+func (c *GeneratedConstraint) Clone() *GeneratedConstraint {
+	if c == nil {
+		return c
+	}
+	other := *c
+	other.Name = c.Name.Clone()
+	other.Expr = CloneExpr(c.Expr)
+	return &other
+}
+
+// String returns the string representation of the constraint.
+func (c *GeneratedConstraint) String() string {
+	var buf bytes.Buffer
+	if c.Name != nil {
+		buf.WriteString("CONSTRAINT ")
+		buf.WriteString(c.Name.String())
+		buf.WriteString(" ")
+	}
+
+	if c.Generated.IsValid() {
+		buf.WriteString("GENERATED ALWAYS ")
+	}
+
+	buf.WriteString("AS (")
+	buf.WriteString(c.Expr.String())
+	buf.WriteString(")")
+
+	if c.Stored.IsValid() {
+		buf.WriteString(" STORED")
+	} else if c.Virtual.IsValid() {
+		buf.WriteString(" VIRTUAL")
+	}
+
 	return buf.String()
 }
 
