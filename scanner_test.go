@@ -26,6 +26,31 @@ func TestScanner_Scan(t *testing.T) {
 		})
 	})
 
+	t.Run("COMMENT", func(t *testing.T) {
+		t.Run("SingleLine", func(t *testing.T) {
+			t.Run("Newline", func(t *testing.T) {
+				AssertScan(t, "-- foo bar\n--baz", sql.COMMENT, `-- foo bar`)
+			})
+			t.Run("EOF", func(t *testing.T) {
+				AssertScan(t, "-- foo bar", sql.COMMENT, `-- foo bar`)
+			})
+			t.Run("NoContent", func(t *testing.T) {
+				AssertScan(t, "--", sql.COMMENT, `--`)
+			})
+		})
+		t.Run("MultiLine", func(t *testing.T) {
+			t.Run("Newline", func(t *testing.T) {
+				AssertScan(t, "/* foo bar */", sql.COMMENT, `/* foo bar */`)
+			})
+			t.Run("EOF", func(t *testing.T) {
+				AssertScan(t, "/* foo bar", sql.COMMENT, `/* foo bar`)
+			})
+			t.Run("NoContent", func(t *testing.T) {
+				AssertScan(t, "/**/", sql.COMMENT, `/**/`)
+			})
+		})
+	})
+
 	t.Run("KEYWORD", func(t *testing.T) {
 		AssertScan(t, `BEGIN`, sql.BEGIN, `BEGIN`)
 	})

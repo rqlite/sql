@@ -2247,7 +2247,6 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 			x = &BinaryExpr{X: x, OpPos: pos, Op: op, Y: y}
 		}
 	}
-
 }
 
 func (p *Parser) parseExprList() (_ *ExprList, err error) {
@@ -2885,8 +2884,13 @@ func (p *Parser) scan() (Pos, Token, string) {
 		return p.pos, p.tok, p.lit
 	}
 
-	p.pos, p.tok, p.lit = p.s.Scan()
-	return p.pos, p.tok, p.lit
+	// Continue scanning until we find a non-comment token.
+	for {
+		if pos, tok, lit := p.s.Scan(); tok != COMMENT {
+			p.pos, p.tok, p.lit = pos, tok, lit
+			return p.pos, p.tok, p.lit
+		}
+	}
 }
 
 // scanBinaryOp performs a scan but combines multi-word operations into a single token.
