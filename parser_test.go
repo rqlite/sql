@@ -643,6 +643,91 @@ func TestParser_ParseStatement(t *testing.T) {
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT (TABLE`, `1:38: expected expression, found 'TABLE'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT (true`, `1:41: expected right paren, found 'EOF'`)
 			})
+
+			t.Run("Generated", func(t *testing.T) {
+				AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT GENERATED ALWAYS AS (1))`, &sql.CreateTableStatement{
+					Create: pos(0),
+					Table:  pos(7),
+					Name:   &sql.Ident{Name: "tbl", NamePos: pos(13)},
+					Lparen: pos(17),
+					Columns: []*sql.ColumnDefinition{
+						{
+							Name: &sql.Ident{Name: "col1", NamePos: pos(18)},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "TEXT", NamePos: pos(23)},
+							},
+							Constraints: []sql.Constraint{
+								&sql.GeneratedConstraint{
+									Generated: pos(28),
+									Always:    pos(38),
+									As:        pos(45),
+									Lparen:    pos(48),
+									Expr:      &sql.NumberLit{Value: "1", ValuePos: pos(49)},
+									Rparen:    pos(50),
+								},
+							},
+						},
+					},
+					Rparen: pos(51),
+				})
+
+				AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT AS (1) STORED)`, &sql.CreateTableStatement{
+					Create: pos(0),
+					Table:  pos(7),
+					Name:   &sql.Ident{Name: "tbl", NamePos: pos(13)},
+					Lparen: pos(17),
+					Columns: []*sql.ColumnDefinition{
+						{
+							Name: &sql.Ident{Name: "col1", NamePos: pos(18)},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "TEXT", NamePos: pos(23)},
+							},
+							Constraints: []sql.Constraint{
+								&sql.GeneratedConstraint{
+									As:     pos(28),
+									Lparen: pos(31),
+									Expr:   &sql.NumberLit{Value: "1", ValuePos: pos(32)},
+									Rparen: pos(33),
+									Stored: pos(35),
+								},
+							},
+						},
+					},
+					Rparen: pos(41),
+				})
+
+				AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT AS (1) VIRTUAL)`, &sql.CreateTableStatement{
+					Create: pos(0),
+					Table:  pos(7),
+					Name:   &sql.Ident{Name: "tbl", NamePos: pos(13)},
+					Lparen: pos(17),
+					Columns: []*sql.ColumnDefinition{
+						{
+							Name: &sql.Ident{Name: "col1", NamePos: pos(18)},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "TEXT", NamePos: pos(23)},
+							},
+							Constraints: []sql.Constraint{
+								&sql.GeneratedConstraint{
+									As:      pos(28),
+									Lparen:  pos(31),
+									Expr:    &sql.NumberLit{Value: "1", ValuePos: pos(32)},
+									Rparen:  pos(33),
+									Virtual: pos(35),
+								},
+							},
+						},
+					},
+					Rparen: pos(42),
+				})
+
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT GENERATED`, `1:37: expected ALWAYS, found 'EOF'`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT GENERATED ALWAYS`, `1:44: expected AS, found 'EOF'`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT AS `, `1:31: expected left paren, found 'EOF'`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT AS (`, `1:32: expected expression, found 'EOF'`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT AS (1`, `1:33: expected right paren, found 'EOF'`)
+			})
+
 			t.Run("ForeignKey", func(t *testing.T) {
 				t.Run("Simple", func(t *testing.T) {
 					AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT REFERENCES foo (col2))`, &sql.CreateTableStatement{

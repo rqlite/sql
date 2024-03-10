@@ -367,6 +367,14 @@ func walk(v Visitor, node Node) (err error) {
 			return err
 		}
 
+	case *GeneratedConstraint:
+		if err := walkIdent(v, n.Name); err != nil {
+			return err
+		}
+		if err := walkExpr(v, n.Expr); err != nil {
+			return err
+		}
+
 	case *ForeignKeyConstraint:
 		if err := walkIdent(v, n.Name); err != nil {
 			return err
