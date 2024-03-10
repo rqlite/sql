@@ -2238,9 +2238,19 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 	case RAISE:
 		p.unscan()
 		return p.parseRaise()
-	case NOT, EXISTS:
+	case NOT:
+		if p.peek() == EXISTS {
+			return p.parseExists(pos)
+		}
+
+		expr, err = p.parseOperand()
+		if err != nil {
+			return nil, err
+		}
+		return &UnaryExpr{OpPos: pos, Op: tok, X: expr}, nil
+	case EXISTS:
 		p.unscan()
-		return p.parseExists()
+		return p.parseExists(Pos{})
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "expression")
 	}
@@ -2757,14 +2767,11 @@ func (p *Parser) parseCaseExpr() (_ *CaseExpr, err error) {
 	return &expr, nil
 }
 
-func (p *Parser) parseExists() (_ *Exists, err error) {
-	assert(p.peek() == NOT || p.peek() == EXISTS)
+func (p *Parser) parseExists(notPos Pos) (_ *Exists, err error) {
+	assert(p.peek() == EXISTS)
 
 	var expr Exists
-
-	if p.peek() == NOT {
-		expr.Not, _, _ = p.scan()
-	}
+	expr.Not = notPos
 
 	if p.peek() != EXISTS {
 		return &expr, p.errorExpected(p.pos, p.tok, "EXISTS")
