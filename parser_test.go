@@ -686,6 +686,15 @@ func TestParser_ParseStatement(t *testing.T) {
 						t.Fatal(diff)
 					}
 				})
+				t.Run("DoubleQuotedIdent", func(t *testing.T) {
+					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 TEXT DEFAULT "foo")`).(*sql.CreateTableStatement)
+					if diff := deepEqual(stmt.Columns[0].Constraints[0], &sql.DefaultConstraint{
+						Default: pos(28),
+						Expr:    &sql.StringLit{Value: "foo", ValuePos: pos(36)},
+					}); diff != "" {
+						t.Fatal(diff)
+					}
+				})
 				t.Run("Blob", func(t *testing.T) {
 					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 TEXT DEFAULT x'0F0F')`).(*sql.CreateTableStatement)
 					if diff := deepEqual(stmt.Columns[0].Constraints[0], &sql.DefaultConstraint{

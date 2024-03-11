@@ -608,7 +608,16 @@ func (p *Parser) parseDefaultConstraint(constraintPos Pos, name *Ident) (_ *Defa
 	cons.Constraint = constraintPos
 	cons.Name = name
 	cons.Default, _, _ = p.scan()
-	if isLiteralToken(p.peek()) {
+
+	// This parses a double-quoted identifier as a string value even though
+	// SQLite docs say that it shouldn't if DQS is disabled. For that reason,
+	// we are including it only on the DEFAULT value parsing.
+	//
+	// See: https://github.com/rqlite/sql/issues/18
+	if p.peek() == QIDENT {
+		pos, _, lit := p.scan()
+		cons.Expr = &StringLit{ValuePos: pos, Value: lit}
+	} else if isLiteralToken(p.peek()) {
 		cons.Expr = p.mustParseLiteral()
 	} else if p.peek() == PLUS || p.peek() == MINUS {
 		if cons.Expr, err = p.parseSignedNumber("signed number"); err != nil {
