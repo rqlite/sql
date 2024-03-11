@@ -128,6 +128,7 @@ func TestScanner_Scan(t *testing.T) {
 	})
 	t.Run("EQ", func(t *testing.T) {
 		AssertScan(t, "=", sql.EQ, "=")
+		AssertScan(t, "==", sql.EQ, "==")
 	})
 	t.Run("LE", func(t *testing.T) {
 		AssertScan(t, "<=", sql.LE, "<=")

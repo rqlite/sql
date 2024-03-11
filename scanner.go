@@ -60,6 +60,10 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 			}
 			return pos, BITNOT, "!"
 		case '=':
+			if s.peek() == '=' {
+				s.read()
+				return pos, EQ, "=="
+			}
 			return pos, EQ, "="
 		case '<':
 			if s.peek() == '=' {
