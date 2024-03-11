@@ -234,6 +234,26 @@ func TestParser_ParseStatement(t *testing.T) {
 			Rparen: pos(47),
 		})
 
+		// No column type
+		AssertParseStatement(t, `CREATE TABLE tbl (col1, col2)`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				Name:    "tbl",
+				NamePos: pos(13),
+			},
+			Lparen: pos(17),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{NamePos: pos(18), Name: "col1"},
+				},
+				{
+					Name: &sql.Ident{NamePos: pos(24), Name: "col2"},
+				},
+			},
+			Rparen: pos(28),
+		})
+
 		// With comments
 		AssertParseStatement(t, "CREATE TABLE tbl ( -- comment\n\tcol1 TEXT, -- comment\n\t  col2 TEXT)", &sql.CreateTableStatement{
 			Create: pos(0),
@@ -404,7 +424,7 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		AssertParseStatementError(t, `CREATE TABLE IF`, `1:15: expected NOT, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE IF NOT`, `1:19: expected EXISTS, found 'EOF'`)
-		AssertParseStatementError(t, `CREATE TABLE tbl (col1`, `1:22: expected type name, found 'EOF'`)
+		AssertParseStatementError(t, `CREATE TABLE tbl (col1`, `1:22: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 DECIMAL(`, `1:31: expected precision, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 DECIMAL(-12,`, `1:35: expected scale, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 DECIMAL(1,2`, `1:34: expected right paren, found 'EOF'`)
