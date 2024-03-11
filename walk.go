@@ -347,7 +347,7 @@ func walk(v Visitor, node Node) (err error) {
 		if err := walkIdent(v, n.Name); err != nil {
 			return err
 		}
-		if err := walkIdentList(v, n.Columns); err != nil {
+		if err := walkIndexedColumnList(v, n.Columns); err != nil {
 			return err
 		}
 

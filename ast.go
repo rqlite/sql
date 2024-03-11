@@ -31,6 +31,7 @@ func (*CaseBlock) node()              {}
 func (*CaseExpr) node()               {}
 func (*CastExpr) node()               {}
 func (*CheckConstraint) node()        {}
+func (*CollateConstraint) node()      {}
 func (*ColumnDefinition) node()       {}
 func (*CommitStatement) node()        {}
 func (*CreateIndexStatement) node()   {}
@@ -741,6 +742,7 @@ func (*UniqueConstraint) constraint()     {}
 func (*CheckConstraint) constraint()      {}
 func (*DefaultConstraint) constraint()    {}
 func (*GeneratedConstraint) constraint()  {}
+func (*CollateConstraint) constraint()    {}
 func (*ForeignKeyConstraint) constraint() {}
 
 // CloneConstraint returns a deep copy cons.
@@ -761,6 +763,8 @@ func CloneConstraint(cons Constraint) Constraint {
 	case *DefaultConstraint:
 		return cons.Clone()
 	case *GeneratedConstraint:
+		return cons.Clone()
+	case *CollateConstraint:
 		return cons.Clone()
 	case *ForeignKeyConstraint:
 		return cons.Clone()
@@ -868,9 +872,9 @@ type UniqueConstraint struct {
 	Name       *Ident // constraint name
 	Unique     Pos    // position of UNIQUE keyword
 
-	Lparen  Pos      // position of left paren (table only)
-	Columns []*Ident // indexed columns (table only)
-	Rparen  Pos      // position of right paren (table only)
+	Lparen  Pos              // position of left paren (table only)
+	Columns []*IndexedColumn // indexed columns (table only)
+	Rparen  Pos              // position of right paren (table only)
 }
 
 // Clone returns a deep copy of c.
@@ -880,7 +884,11 @@ func (c *UniqueConstraint) Clone() *UniqueConstraint {
 	}
 	other := *c
 	other.Name = c.Name.Clone()
-	other.Columns = cloneIdents(c.Columns)
+	other.Columns = make([]*IndexedColumn, len(c.Columns))
+	for i := range c.Columns {
+		other.Columns[i] = c.Columns[i].Clone()
+	}
+
 	return &other
 }
 
@@ -1032,6 +1040,38 @@ func (c *GeneratedConstraint) String() string {
 		buf.WriteString(" VIRTUAL")
 	}
 
+	return buf.String()
+}
+
+type CollateConstraint struct {
+	Constraint Pos    // position of CONSTRAINT keyword
+	Name       *Ident // constraint name
+	Collate    Pos    // position of COLLATE keyword
+	Collation  *Ident // collation name
+}
+
+// Clone returns a deep copy of c.
+func (c *CollateConstraint) Clone() *CollateConstraint {
+	if c == nil {
+		return c
+	}
+	other := *c
+	other.Name = c.Name.Clone()
+	other.Collation = c.Collation.Clone()
+	return &other
+}
+
+// String returns the string representation of the constraint.
+func (c *CollateConstraint) String() string {
+	var buf bytes.Buffer
+	if c.Name != nil {
+		buf.WriteString("CONSTRAINT ")
+		buf.WriteString(c.Name.String())
+		buf.WriteString(" ")
+	}
+
+	buf.WriteString("COLLATE ")
+	buf.WriteString(c.Collation.String())
 	return buf.String()
 }
 
@@ -2875,9 +2915,11 @@ func (a *Assignment) String() string {
 }
 
 type IndexedColumn struct {
-	X    Expr // column expression
-	Asc  Pos  // position of optional ASC keyword
-	Desc Pos  // position of optional DESC keyword
+	X         Expr   // column expression
+	Collate   Pos    // position of COLLATE keyword
+	Collation *Ident // collation name
+	Asc       Pos    // position of optional ASC keyword
+	Desc      Pos    // position of optional DESC keyword
 }
 
 // Clone returns a deep copy of c.
@@ -2887,6 +2929,7 @@ func (c *IndexedColumn) Clone() *IndexedColumn {
 	}
 	other := *c
 	other.X = CloneExpr(c.X)
+	other.Collation = c.Collation.Clone()
 	return &other
 }
 
@@ -2903,12 +2946,21 @@ func cloneIndexedColumns(a []*IndexedColumn) []*IndexedColumn {
 
 // String returns the string representation of the column.
 func (c *IndexedColumn) String() string {
-	if c.Asc.IsValid() {
-		return fmt.Sprintf("%s ASC", c.X.String())
-	} else if c.Desc.IsValid() {
-		return fmt.Sprintf("%s DESC", c.X.String())
+	var buf bytes.Buffer
+	buf.WriteString(c.X.String())
+
+	if c.Collate.IsValid() {
+		buf.WriteString(" COLLATE ")
+		buf.WriteString(c.Collation.String())
 	}
-	return c.X.String()
+
+	if c.Asc.IsValid() {
+		buf.WriteString(" ASC")
+	} else if c.Desc.IsValid() {
+		buf.WriteString(" DESC")
+	}
+
+	return buf.String()
 }
 
 type SelectStatement struct {
