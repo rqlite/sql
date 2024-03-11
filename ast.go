@@ -636,6 +636,10 @@ type CreateTableStatement struct {
 	Constraints []Constraint        // table constraints
 	Rparen      Pos                 // position of right paren of column list
 
+	Without Pos // position of WITHOUT keyword (optional)
+	Rowid   Pos // position of ROWID keyword (optional)
+	Strict  Pos // position of STRICT keyword (optional)
+
 	As     Pos              // position of AS keyword (optional)
 	Select *SelectStatement // select stmt to build from
 }
