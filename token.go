@@ -6,16 +6,22 @@ import (
 	"strings"
 )
 
-var keywords map[string]Token
+var (
+	keywords      = make(map[string]Token)
+	bareTokensMap = make(map[Token]struct{})
+)
 
 func init() {
-	keywords = make(map[string]Token)
 	for i := keyword_beg + 1; i < keyword_end; i++ {
 		keywords[tokens[i]] = i
 	}
 	keywords[tokens[NULL]] = NULL
 	keywords[tokens[TRUE]] = TRUE
 	keywords[tokens[FALSE]] = FALSE
+
+	for _, tok := range bareTokens {
+		bareTokensMap[tok] = struct{}{}
+	}
 }
 
 // Token is the set of lexical tokens of the Go programming language.
@@ -451,6 +457,20 @@ var tokens = [...]string{
 	WITHOUT:           "WITHOUT",
 }
 
+// A list of keywords that can be used as unquoted identifiers.
+var bareTokens = [...]Token{
+	ABORT, ACTION, AFTER, ALWAYS, ANALYZE, ASC, ATTACH, BEFORE, BEGIN, BY,
+	CASCADE, CAST, COLUMN, CONFLICT, CROSS, CURRENT, CURRENT_DATE,
+	CURRENT_TIME, CURRENT_TIMESTAMP, DATABASE, DEFERRED, DESC, DETACH, DO,
+	EACH, END, EXCLUDE, EXCLUSIVE, EXPLAIN, FAIL, FILTER, FIRST, FOLLOWING,
+	FOR, GENERATED, GLOB, GROUPS, IF, IGNORE, IMMEDIATE, INDEXED, INITIALLY,
+	INNER, INSTEAD, KEY, LAST, LEFT, LIKE, MATCH, NATURAL, NO, NULLS, OF,
+	OFFSET, OTHERS, OUTER, OVER, PARTITION, PLAN, PRAGMA, PRECEDING, QUERY,
+	RAISE, RANGE, RECURSIVE, REGEXP, REINDEX, RELEASE, RENAME, REPLACE,
+	RESTRICT, ROLLBACK, ROW, ROWS, SAVEPOINT, TEMP, TIES, TRIGGER,
+	UNBOUNDED, VACUUM, VIEW, VIRTUAL, WINDOW, WITH, WITHOUT,
+}
+
 func (tok Token) String() string {
 	s := ""
 	if 0 <= tok && tok < Token(len(tokens)) {
@@ -467,6 +487,12 @@ func Lookup(ident string) Token {
 		return tok
 	}
 	return IDENT
+}
+
+// isBareToken returns true if keyword token can be used as an identifier.
+func isBareToken(tok Token) bool {
+	_, ok := bareTokensMap[tok]
+	return ok
 }
 
 func (tok Token) IsLiteral() bool {

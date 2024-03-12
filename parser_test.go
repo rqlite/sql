@@ -254,6 +254,23 @@ func TestParser_ParseStatement(t *testing.T) {
 			Rparen: pos(28),
 		})
 
+		// Column name as a bare keyword
+		AssertParseStatement(t, `CREATE TABLE tbl (key)`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				Name:    "tbl",
+				NamePos: pos(13),
+			},
+			Lparen: pos(17),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{NamePos: pos(18), Name: "key"},
+				},
+			},
+			Rparen: pos(21),
+		})
+
 		// With comments
 		AssertParseStatement(t, "CREATE TABLE tbl ( -- comment\n\tcol1 TEXT, -- comment\n\t  col2 TEXT)", &sql.CreateTableStatement{
 			Create: pos(0),
