@@ -355,8 +355,7 @@ func (p *Parser) parseCreateTableStatement(createPos Pos) (_ *CreateTableStateme
 func (p *Parser) parseColumnDefinitions() (_ []*ColumnDefinition, err error) {
 	var columns []*ColumnDefinition
 	for {
-		switch {
-		case isIdentToken(p.peek()):
+		if tok := p.peek(); isIdentToken(tok) || isBareToken(tok) {
 			col, err := p.parseColumnDefinition()
 			columns = append(columns, col)
 			if err != nil {
@@ -365,9 +364,9 @@ func (p *Parser) parseColumnDefinitions() (_ []*ColumnDefinition, err error) {
 			if p.peek() == COMMA {
 				p.scan()
 			}
-		case p.peek() == RP || isConstraintStartToken(p.peek(), true):
+		} else if tok == RP || isConstraintStartToken(tok, true) {
 			return columns, nil
-		default:
+		} else {
 			return columns, p.errorExpected(p.pos, p.tok, "column name, CONSTRAINT, or right paren")
 		}
 	}
@@ -1217,6 +1216,9 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 	case IDENT, QIDENT:
 		return &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}, nil
 	default:
+		if isBareToken(tok) {
+			return &Ident{Name: lit, NamePos: pos}, nil
+		}
 		return nil, p.errorExpected(pos, tok, desc)
 	}
 }
