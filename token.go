@@ -233,6 +233,7 @@ const (
 	WINDOW
 	WITH
 	WITHOUT
+	DUPLICATE
 	keyword_end
 
 	ANY // ???
@@ -444,6 +445,7 @@ var tokens = [...]string{
 	WINDOW:            "WINDOW",
 	WITH:              "WITH",
 	WITHOUT:           "WITHOUT",
+	DUPLICATE:         "DUPLICATE",
 }
 
 func (tok Token) String() string {

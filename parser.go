@@ -212,8 +212,12 @@ func (p *Parser) parseUpsertClause() (_ *UpsertClause, err error) {
 
 	// Parse "ON CONFLICT"
 	p.lex()
-	if p.peek() != CONFLICT {
-		return &clause, p.errorExpected(p.pos, p.tok, "CONFLICT")
+	switch p.peek() {
+	case CONFLICT:
+	case DUPLICATE:
+		clause.DuplicateKey = true
+	default:
+		return &clause, p.errorExpected(p.pos, p.tok, "CONFLICT or DUPLICATE")
 	}
 	p.lex()
 
@@ -244,9 +248,11 @@ func (p *Parser) parseUpsertClause() (_ *UpsertClause, err error) {
 		}
 	}
 
-	// Parse "DO NOTHING" or "DO UPDATE SET".
-	if p.peek() != DO {
+	// Parse "DO NOTHING" or "DO UPDATE SET" or "ON DUPLICATE KEY".
+	if !clause.DuplicateKey && p.peek() != DO {
 		return &clause, p.errorExpected(p.pos, p.tok, "DO")
+	} else if clause.DuplicateKey && p.peek() != KEY {
+		return &clause, p.errorExpected(p.pos, p.tok, "KEY")
 	}
 	p.lex()
 
@@ -262,10 +268,12 @@ func (p *Parser) parseUpsertClause() (_ *UpsertClause, err error) {
 	// Otherwise parse "UPDATE SET"
 	p.lex()
 	clause.DoUpdate = true
-	if p.peek() != SET {
-		return &clause, p.errorExpected(p.pos, p.tok, "SET")
+	if !clause.DuplicateKey {
+		if p.peek() != SET {
+			return &clause, p.errorExpected(p.pos, p.tok, "SET")
+		}
+		p.lex()
 	}
-	p.lex()
 
 	// Parse list of assignments.
 	for {

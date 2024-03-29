@@ -689,6 +689,7 @@ type UpsertClause struct {
 
 	DoNothing       bool          // position of NOTHING keyword after DO
 	DoUpdate        bool          // position of UPDATE keyword after DO
+	DuplicateKey    bool          // position of ON DUPLICATE KEY UPDATE keyword
 	Assignments     []*Assignment // list of column assignments
 	UpdateWhereExpr Expr          // optional conditional expression for DO UPDATE SET
 }
@@ -696,40 +697,49 @@ type UpsertClause struct {
 // String returns the string representation of the clause.
 func (c *UpsertClause) String() string {
 	var buf bytes.Buffer
-	buf.WriteString("ON CONFLICT")
-
-	if len(c.Columns) != 0 {
-		buf.WriteString(" (")
-		for i, col := range c.Columns {
-			if i != 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(col.String())
-		}
-		buf.WriteString(")")
-
-		if c.WhereExpr != nil {
-			fmt.Fprintf(&buf, " WHERE %s", c.WhereExpr.String())
-		}
-	}
-
-	buf.WriteString(" DO")
-	if c.DoNothing {
-		buf.WriteString(" NOTHING")
-	} else {
-		buf.WriteString(" UPDATE SET ")
+	if c.DuplicateKey {
+		buf.WriteString("ON DUPLICATE KEY UPDATE ")
 		for i := range c.Assignments {
 			if i != 0 {
 				buf.WriteString(", ")
 			}
 			buf.WriteString(c.Assignments[i].String())
 		}
+	} else {
+		buf.WriteString("ON CONFLICT")
 
-		if c.UpdateWhereExpr != nil {
-			fmt.Fprintf(&buf, " WHERE %s", c.UpdateWhereExpr.String())
+		if len(c.Columns) != 0 {
+			buf.WriteString(" (")
+			for i, col := range c.Columns {
+				if i != 0 {
+					buf.WriteString(", ")
+				}
+				buf.WriteString(col.String())
+			}
+			buf.WriteString(")")
+
+			if c.WhereExpr != nil {
+				fmt.Fprintf(&buf, " WHERE %s", c.WhereExpr.String())
+			}
+		}
+
+		buf.WriteString(" DO")
+		if c.DoNothing {
+			buf.WriteString(" NOTHING")
+		} else {
+			buf.WriteString(" UPDATE SET ")
+			for i := range c.Assignments {
+				if i != 0 {
+					buf.WriteString(", ")
+				}
+				buf.WriteString(c.Assignments[i].String())
+			}
+
+			if c.UpdateWhereExpr != nil {
+				fmt.Fprintf(&buf, " WHERE %s", c.UpdateWhereExpr.String())
+			}
 		}
 	}
-
 	return buf.String()
 }
 
