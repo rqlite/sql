@@ -312,6 +312,42 @@ func TestSelectStatement_String(t *testing.T) {
 			Y:        &sqlparser.TableName{Name: &sqlparser.Ident{Name: "y"}},
 		},
 	}, `SELECT * FROM x CROSS JOIN y`)
+
+	AssertStatementStringer(t, &sqlparser.SelectStatement{
+		Distinct: true,
+		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{
+			Star: true,
+		}},
+		Condition: &sqlparser.BinaryExpr{
+			X:  &sqlparser.Ident{Name: "ID"},
+			Op: sqlparser.EQ,
+			Y:  &sqlparser.NumberLit{Value: "1"},
+		},
+		FromItems: &sqlparser.TableName{
+			Name: &sqlparser.Ident{Name: "tbl"},
+		},
+		Locking: &sqlparser.LockingClause{
+			Strength: sqlparser.Update,
+			Option:   sqlparser.Nowait.ToPtr(),
+		}}, `SELECT DISTINCT * FROM tbl WHERE ID = 1 FOR UPDATE NOWAIT`)
+
+	AssertStatementStringer(t, &sqlparser.SelectStatement{
+		Distinct: true,
+		Columns: &sqlparser.OutputNames{&sqlparser.ResultColumn{
+			Star: true,
+		}},
+		Condition: &sqlparser.BinaryExpr{
+			X:  &sqlparser.Ident{Name: "ID"},
+			Op: sqlparser.EQ,
+			Y:  &sqlparser.NumberLit{Value: "1"},
+		},
+		FromItems: &sqlparser.TableName{
+			Name: &sqlparser.Ident{Name: "tbl"},
+		},
+		Locking: &sqlparser.LockingClause{
+			Strength: sqlparser.NoKeyUpdate,
+			Option:   sqlparser.SkipLocked.ToPtr(),
+		}}, `SELECT DISTINCT * FROM tbl WHERE ID = 1 FOR NO KEY UPDATE SKIP LOCKED`)
 }
 
 func TestUpdateStatement_String(t *testing.T) {

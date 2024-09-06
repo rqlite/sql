@@ -611,6 +611,60 @@ func (t *OrderingTerm) String() string {
 	return buf.String()
 }
 
+type LockStrength int
+
+const (
+	Update LockStrength = iota
+	NoKeyUpdate
+	Share
+	KeyShare
+)
+
+type LockOption int
+
+func (l LockOption) ToPtr() *LockOption {
+	return &l
+}
+
+const (
+	Nowait LockOption = iota
+	SkipLocked
+)
+
+type LockingClause struct {
+	Strength LockStrength
+
+	Option *LockOption
+}
+
+func (c *LockingClause) String() string {
+	var buf bytes.Buffer
+	buf.Grow(30)
+	buf.WriteString("FOR")
+
+	switch c.Strength {
+	case Update:
+		buf.WriteString(" UPDATE")
+	case NoKeyUpdate:
+		buf.WriteString(" NO KEY UPDATE")
+	case Share:
+		buf.WriteString(" SHARE")
+	case KeyShare:
+		buf.WriteString(" KEY SHARE")
+	}
+
+	if c.Option != nil {
+		switch *c.Option {
+		case Nowait:
+			buf.WriteString(" NOWAIT")
+		case SkipLocked:
+			buf.WriteString(" SKIP LOCKED")
+		}
+	}
+
+	return buf.String()
+}
+
 type ColumnArg interface {
 	Node
 	columnArg()
@@ -928,6 +982,8 @@ type SelectStatement struct {
 	Limit  Expr
 	Offset Expr // offset expression
 
+	Locking *LockingClause
+
 	Hint *Hint
 }
 
@@ -1002,6 +1058,10 @@ func (s *SelectStatement) String() string {
 		if s.Offset != nil {
 			fmt.Fprintf(&buf, " OFFSET %s", s.Offset.String())
 		}
+	}
+
+	if s.Locking != nil {
+		fmt.Fprintf(&buf, " %s", s.Locking.String())
 	}
 
 	return buf.String()
