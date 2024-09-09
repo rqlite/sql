@@ -234,6 +234,10 @@ const (
 	WITH
 	WITHOUT
 	DUPLICATE
+	SHARE
+	NOWAIT
+	SKIP
+	LOCKED
 	keyword_end
 
 	ANY // ???
@@ -446,6 +450,10 @@ var tokens = [...]string{
 	WITH:              "WITH",
 	WITHOUT:           "WITHOUT",
 	DUPLICATE:         "DUPLICATE",
+	SHARE:             "SHARE",
+	NOWAIT:            "NOWAIT",
+	SKIP:              "SKIP",
+	LOCKED:            "LOCKED",
 }
 
 func (tok Token) String() string {

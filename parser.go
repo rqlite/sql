@@ -616,6 +616,56 @@ func (p *Parser) parseSelectStatement(compounded bool) (_ *SelectStatement, err 
 		}
 	}
 
+	if !compounded && p.peek() == FOR {
+		locking := &LockingClause{}
+		p.lex()
+		switch p.peek() {
+		case UPDATE:
+			locking.Strength = Update
+			p.lex()
+		case NO:
+			p.lex()
+			if p.peek() != KEY {
+				return &stmt, p.errorExpected(p.pos, p.tok, "KEY")
+			}
+			p.lex()
+			if p.peek() != UPDATE {
+				return &stmt, p.errorExpected(p.pos, p.tok, "UPDATE")
+			}
+			locking.Strength = NoKeyUpdate
+			p.lex()
+		case SHARE:
+			locking.Strength = Share
+			p.lex()
+		case KEY:
+			p.lex()
+			if p.peek() != SHARE {
+				return &stmt, p.errorExpected(p.pos, p.tok, "SHARE")
+			}
+			locking.Strength = KeyShare
+			p.lex()
+		default:
+			return &stmt, p.errorExpected(p.pos, p.tok, "UPDATE | NO | SHARE | KEY")
+		}
+
+		switch p.peek() {
+		case NOWAIT:
+			locking.Option = Nowait.ToPtr()
+			p.lex()
+		case SKIP:
+			p.lex()
+			if p.peek() != LOCKED {
+				return &stmt, p.errorExpected(p.pos, p.tok, "LOCKED")
+			}
+			locking.Option = SkipLocked.ToPtr()
+			p.lex()
+		default:
+
+		}
+
+		stmt.Locking = locking
+	}
+
 	return &stmt, nil
 }
 
