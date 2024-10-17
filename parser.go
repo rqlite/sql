@@ -946,8 +946,9 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 			if err != nil {
 				return nil, err
 			}
+			expr = expr.(*ParenExpr).X
 		}
-		return &FnCallExpr{Fn: VALUES, X: expr}, nil
+		return &Call{Name: &Ident{Name: "VALUES"}, Args: []Expr{expr}}, nil
 
 	case IDENT, QIDENT:
 		ident := identByNameAndTok(lit, tok)

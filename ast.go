@@ -44,7 +44,6 @@ func (*StringLit) node()       {}
 func (*TableName) node()       {}
 func (*Type) node()            {}
 func (*UnaryExpr) node()       {}
-func (*FnCallExpr) node()      {}
 func (*UpdateStatement) node() {}
 func (*UpsertClause) node()    {}
 func (*UsingConstraint) node() {}
@@ -94,7 +93,6 @@ func (*QualifiedRef) expr() {}
 func (*Range) expr()        {}
 func (*StringLit) expr()    {}
 func (*UnaryExpr) expr()    {}
-func (*FnCallExpr) expr()   {}
 
 // ExprString returns the string representation of expr.
 // Returns a blank string if expr is nil.
@@ -362,19 +360,6 @@ func (expr *UnaryExpr) String() string {
 	default:
 		panic(fmt.Sprintf("sqlparser.UnaryExpr.String(): invalid op %s", expr.Op))
 	}
-}
-
-type FnCallExpr struct {
-	Fn Token // function
-	X  Expr  // param expression
-}
-
-func (expr *FnCallExpr) String() string {
-	paran, ok := expr.X.(*ParenExpr)
-	if ok {
-		return expr.Fn.String() + "(" + paran.X.String() + ")"
-	}
-	return expr.Fn.String() + "(" + expr.X.String() + ")"
 }
 
 type BinaryExpr struct {
