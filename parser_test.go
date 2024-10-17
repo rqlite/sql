@@ -1015,3 +1015,11 @@ func AssertParseExprError(tb testing.TB, s string, want string) {
 		tb.Fatalf("ParseExpr()=%q, want %q", err, want)
 	}
 }
+
+func TestSql_1(t *testing.T) {
+	sql := "INSERT INTO `daily_asset` (`trade_date`,`fund_account`,`client_id`,`day_income`,`hold_income`,`acc_income`,`day_income_ratio`,`acc_income_sw_ratio`,`acc_income_nav_ratio`,`market_value`,`fund_asset`,`total_asset`,`sw_total_net`,`bank_transfer_in`,`bank_transfer_out`,`acc_bank_transfer_in`,`acc_bank_transfer_out`,`net_in_balance`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE `fund_asset`=VALUES(`fund_asset`),`hold_income`=VALUES(`hold_income`),`market_value`=VALUES(`market_value`),`total_asset`=VALUES(`total_asset`),`bank_transfer_in`=VALUES(`bank_transfer_in`),`bank_transfer_out`=VALUES(`bank_transfer_out`),`net_in_balance`=VALUES(`net_in_balance`)"
+	_, err := sqlparser.NewParser(strings.NewReader(sql)).ParseStatement()
+	if err != nil {
+		t.Fatal(err)
+	}
+}

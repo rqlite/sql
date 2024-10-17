@@ -2,6 +2,7 @@ package sqlparser
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 )
@@ -220,6 +221,7 @@ func (p *Parser) parseUpsertClause() (_ *UpsertClause, err error) {
 		return &clause, p.errorExpected(p.pos, p.tok, "CONFLICT or DUPLICATE")
 	}
 	p.lex()
+	fmt.Printf("-------- on duplicate key: %v\n", clause.DuplicateKey)
 
 	// Parse optional indexed column list & WHERE conditional.
 	if p.peek() == LP {
@@ -935,6 +937,11 @@ func (p *Parser) ParseExpr() (expr Expr, err error) {
 
 func (p *Parser) parseOperand() (expr Expr, err error) {
 	_, tok, lit := p.lex()
+	//////////////////
+	if tok == VALUES {
+		_, tok, lit = p.lex()
+	}
+	//////////////////
 	switch tok {
 	case IDENT, QIDENT:
 		ident := identByNameAndTok(lit, tok)
