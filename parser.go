@@ -383,7 +383,7 @@ func (p *Parser) parseColumnDefinition() (_ *ColumnDefinition, err error) {
 			return &col, err
 		}
 	} else {
-		 return nil, p.errorExpected(p.pos, p.tok, "data type")
+		return nil, p.errorExpected(p.pos, p.tok, "data type")
 	}
 
 	if col.Constraints, err = p.parseColumnConstraints(); err != nil {
