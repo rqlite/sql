@@ -722,8 +722,10 @@ func cloneColumnDefinitions(a []*ColumnDefinition) []*ColumnDefinition {
 func (c *ColumnDefinition) String() string {
 	var buf bytes.Buffer
 	buf.WriteString(c.Name.String())
-	buf.WriteString(" ")
-	buf.WriteString(c.Type.String())
+	if c.Type != nil {
+		buf.WriteString(" ")
+		buf.WriteString(c.Type.String())
+	}
 	for i := range c.Constraints {
 		buf.WriteString(" ")
 		buf.WriteString(c.Constraints[i].String())
