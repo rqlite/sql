@@ -126,8 +126,11 @@ func TestCreateTableStatement_String(t *testing.T) {
 				Name: &sql.Ident{Name: "baz"},
 				Type: &sql.Type{Name: &sql.Ident{Name: "TEXT"}},
 			},
+			{
+				Name: &sql.Ident{Name: "no_type"},
+			},
 		},
-	}, `CREATE TABLE IF NOT EXISTS "foo" ("bar" INTEGER, "baz" TEXT)`)
+	}, `CREATE TABLE IF NOT EXISTS "foo" ("bar" INTEGER, "baz" TEXT, "no_type")`)
 
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name: &sql.Ident{Name: "foo"},
