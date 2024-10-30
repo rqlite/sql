@@ -91,6 +91,7 @@ func TestScanner_Scan(t *testing.T) {
 		AssertScan(t, `123.E45`, sql.FLOAT, `123.E45`)
 		AssertScan(t, `123E+4`, sql.FLOAT, `123E+4`)
 		AssertScan(t, `123E-4`, sql.FLOAT, `123E-4`)
+		AssertScan(t, `.0E-2`, sql.FLOAT, `.0E-2`)
 		AssertScan(t, `123E`, sql.ILLEGAL, `123E`)
 		AssertScan(t, `123E+`, sql.ILLEGAL, `123E+`)
 		AssertScan(t, `123E-`, sql.ILLEGAL, `123E-`)
