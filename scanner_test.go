@@ -95,7 +95,6 @@ func TestScanner_Scan(t *testing.T) {
 		AssertScan(t, `123E`, sql.ILLEGAL, `123E`)
 		AssertScan(t, `123E+`, sql.ILLEGAL, `123E+`)
 		AssertScan(t, `123E-`, sql.ILLEGAL, `123E-`)
-		AssertScan(t, `.E2`, sql.DOT, `.`)
 	})
 	t.Run("BIND", func(t *testing.T) {
 		AssertScan(t, `?'`, sql.BIND, `?`)
@@ -176,6 +175,7 @@ func TestScanner_Scan(t *testing.T) {
 	})
 	t.Run("DOT", func(t *testing.T) {
 		AssertScan(t, ".", sql.DOT, ".")
+		AssertScan(t, `.E2`, sql.DOT, `.`)
 	})
 	t.Run("JSON_EXTRACT_JSON", func(t *testing.T) {
 		AssertScan(t, "->", sql.JSON_EXTRACT_JSON, "->")
