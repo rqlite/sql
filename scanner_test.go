@@ -95,6 +95,7 @@ func TestScanner_Scan(t *testing.T) {
 		AssertScan(t, `123E`, sql.ILLEGAL, `123E`)
 		AssertScan(t, `123E+`, sql.ILLEGAL, `123E+`)
 		AssertScan(t, `123E-`, sql.ILLEGAL, `123E-`)
+		AssertScan(t, `.E2`, sql.DOT, `.`)
 	})
 	t.Run("BIND", func(t *testing.T) {
 		AssertScan(t, `?'`, sql.BIND, `?`)
