@@ -3187,6 +3187,45 @@ func TestParser_ParseStatement(t *testing.T) {
 			OffsetExpr:  &sql.NumberLit{ValuePos: pos(25), Value: "2"},
 		})
 
+		AssertParseStatement(t, `DELETE FROM tbl1 WHERE id IN (SELECT tbl1_id FROM tbl2 WHERE foo = 'bar')`, &sql.DeleteStatement{
+			Delete: pos(0),
+			From:   pos(7),
+			Table: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(12), Name: "tbl1"},
+			},
+			Where: pos(17),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(23), Name: "id"},
+				OpPos: pos(26),
+				Op:    sql.IN,
+				Y: &sql.ExprList{
+					Lparen: pos(29),
+					Exprs: []sql.Expr{sql.SelectExpr{
+						SelectStatement: &sql.SelectStatement{
+							Select: pos(30),
+							Columns: []*sql.ResultColumn{
+								{
+									Expr: &sql.Ident{NamePos: pos(37), Name: "tbl1_id"},
+								},
+							},
+							From: pos(45),
+							Source: &sql.QualifiedTableName{
+								Name: &sql.Ident{NamePos: pos(50), Name: "tbl2"},
+							},
+							Where: pos(55),
+							WhereExpr: &sql.BinaryExpr{
+								X:     &sql.Ident{NamePos: pos(61), Name: "foo"},
+								OpPos: pos(65),
+								Op:    sql.EQ,
+								Y:     &sql.StringLit{ValuePos: pos(67), Value: "bar"},
+							},
+						},
+					}},
+					Rparen: pos(72),
+				},
+			},
+		})
+
 		AssertParseStatementError(t, `DELETE`, `1:6: expected FROM, found 'EOF'`)
 		AssertParseStatementError(t, `DELETE FROM`, `1:11: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `DELETE FROM tbl WHERE`, `1:21: expected expression, found 'EOF'`)
