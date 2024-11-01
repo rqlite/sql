@@ -215,6 +215,7 @@ func (*Range) expr()        {}
 func (*StringLit) expr()    {}
 func (*TimestampLit) expr() {}
 func (*UnaryExpr) expr()    {}
+func (SelectExpr) expr()    {}
 
 // CloneExpr returns a deep copy expr.
 func CloneExpr(expr Expr) Expr {
@@ -3487,6 +3488,16 @@ func (expr *ParenExpr) Clone() *ParenExpr {
 // String returns the string representation of the expression.
 func (expr *ParenExpr) String() string {
 	return fmt.Sprintf("(%s)", expr.X.String())
+}
+
+// SelectExpr represents a SELECT statement inside an expression.
+type SelectExpr struct {
+	*SelectStatement
+}
+
+// Clone returns a deep copy of expr.
+func (expr SelectExpr) Clone() SelectExpr {
+	return SelectExpr{expr.SelectStatement.Clone()}
 }
 
 type Window struct {

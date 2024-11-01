@@ -2322,6 +2322,10 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 	case EXISTS:
 		p.unscan()
 		return p.parseExists(Pos{})
+	case SELECT:
+		p.unscan()
+		selectStmt, err := p.parseSelectStatement(false, nil)
+		return SelectExpr{selectStmt}, err
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "expression")
 	}
