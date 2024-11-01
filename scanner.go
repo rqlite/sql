@@ -292,6 +292,12 @@ func (s *Scanner) scanNumber() (Pos, Token, string) {
 		}
 	}
 
+	// If we just have a dot in the buffer with no digits by this point,
+	// this can't be a number, so we can stop and return DOT
+	if s.buf.String() == "." {
+		return pos, DOT, "."
+	}
+
 	// Read exponent with optional +/- sign.
 	if ch := s.peek(); ch == 'e' || ch == 'E' {
 		tok = FLOAT
@@ -319,11 +325,7 @@ func (s *Scanner) scanNumber() (Pos, Token, string) {
 		}
 	}
 
-	lit := s.buf.String()
-	if lit == "." {
-		return pos, DOT, lit
-	}
-	return pos, tok, lit
+	return pos, tok, s.buf.String()
 }
 
 func (s *Scanner) read() (rune, Pos) {

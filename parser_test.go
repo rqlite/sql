@@ -2202,6 +2202,42 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT * FROM foo WHERE foo.elem = 0`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Star: pos(7),
+				},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{
+					NamePos: pos(14),
+					Name:    "foo",
+				},
+			},
+			Where: pos(18),
+			WhereExpr: &sql.BinaryExpr{
+				X: &sql.QualifiedRef{
+					Table: &sql.Ident{
+						NamePos: pos(24),
+						Name:    "foo",
+					},
+					Dot: pos(27),
+					Column: &sql.Ident{
+						NamePos: pos(28),
+						Name:    "elem",
+					},
+				},
+				OpPos: pos(33),
+				Op:    sql.EQ,
+				Y: &sql.NumberLit{
+					ValuePos: pos(35),
+					Value:    "0",
+				},
+			},
+		})
+
 		AssertParseStatementError(t, `WITH `, `1:5: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `WITH cte`, `1:8: expected AS, found 'EOF'`)
 		AssertParseStatementError(t, `WITH cte (`, `1:10: expected column name, found 'EOF'`)
