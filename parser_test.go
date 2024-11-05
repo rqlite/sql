@@ -439,6 +439,55 @@ func TestParser_ParseStatement(t *testing.T) {
 			Rparen: pos(66),
 		})
 
+		AssertParseStatement(t, "CREATE TABLE t (c1 CHARACTER VARYING, c2 UUID, c3 TIMESTAMP)", &sql.CreateTableStatement{
+			Create: pos(0),
+			Table: pos(7),
+			Name: &sql.Ident{
+				NamePos: pos(13),
+				Name: "t",
+			},
+			Lparen: pos(15),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{
+						NamePos: pos(16),
+						Name: "c1",
+					},
+					Type: &sql.Type{
+						Name: &sql.Ident{
+							NamePos: pos(19),
+							Name: "CHARACTER VARYING",
+						},
+					},
+				},
+				{
+					Name: &sql.Ident{
+						NamePos: pos(38),
+						Name: "c2",
+					},
+					Type: &sql.Type{
+						Name: &sql.Ident{
+							NamePos: pos(41),
+							Name: "UUID",
+						},
+					},
+				},
+				{
+					Name: &sql.Ident{
+						NamePos: pos(47),
+						Name: "c3",
+					},
+					Type: &sql.Type{
+						Name: &sql.Ident{
+							NamePos: pos(50),
+							Name: "TIMESTAMP",
+						},
+					},
+				},
+			},
+			Rparen: pos(59),
+		})
+
 		AssertParseStatementError(t, `CREATE TABLE IF`, `1:15: expected NOT, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE IF NOT`, `1:19: expected EXISTS, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1`, `1:22: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
@@ -3985,6 +4034,16 @@ func TestParser_ParseExpr(t *testing.T) {
 			Type:   &sql.Type{Name: &sql.Ident{NamePos: pos(11), Name: "INTEGER"}},
 			Rparen: pos(18),
 		})
+		
+		AssertParseExpr(t, `CAST (20 AS SOME TYPE)`, &sql.CastExpr{
+			Cast:   pos(0),
+			Lparen: pos(5),
+			X:      &sql.NumberLit{ValuePos: pos(6), Value: "20"},
+			As:     pos(9),
+			Type:   &sql.Type{Name: &sql.Ident{NamePos: pos(12), Name: "SOME TYPE"}},
+			Rparen: pos(21),
+		})
+		
 		AssertParseExprError(t, `CAST`, `1:4: expected left paren, found 'EOF'`)
 		AssertParseExprError(t, `CAST (`, `1:6: expected expression, found 'EOF'`)
 		AssertParseExprError(t, `CAST (1`, `1:7: expected AS, found 'EOF'`)
