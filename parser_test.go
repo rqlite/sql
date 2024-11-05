@@ -2238,6 +2238,73 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT rowid FROM foo`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Ident{
+						NamePos: pos(7),
+						Name:    "rowid",
+					},
+				},
+			},
+			From: pos(13),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{
+					NamePos: pos(18),
+					Name:    "foo",
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT CURRENT_TIMESTAMP FROM foo`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Ident{
+						NamePos: pos(7),
+						Name:    "CURRENT_TIMESTAMP",
+					},
+				},
+			},
+			From: pos(25),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{
+					NamePos: pos(30),
+					Name:    "foo",
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT max(rowid) FROM foo`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Call{
+						Name: &sql.Ident{
+							NamePos: pos(7),
+							Name:    "max",
+						},
+						Lparen: pos(10),
+						Rparen: pos(16),
+						Args: []sql.Expr{
+							&sql.Ident{
+								NamePos: pos(11),
+								Name:    "rowid",
+							},
+						},
+					},
+				},
+			},
+			From: pos(18),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{
+					NamePos: pos(23),
+					Name:    "foo",
+				},
+			},
+		})
+
 		AssertParseStatementError(t, `WITH `, `1:5: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `WITH cte`, `1:8: expected AS, found 'EOF'`)
 		AssertParseStatementError(t, `WITH cte (`, `1:10: expected column name, found 'EOF'`)
