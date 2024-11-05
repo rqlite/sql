@@ -2238,6 +2238,44 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT rowid FROM foo`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Ident{
+						NamePos: pos(7),
+						Name:    "rowid",
+					},
+				},
+			},
+			From: pos(13),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{
+					NamePos: pos(18),
+					Name:    "foo",
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT CURRENT_TIMESTAMP FROM foo`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Ident{
+						NamePos: pos(7),
+						Name:    "CURRENT_TIMESTAMP",
+					},
+				},
+			},
+			From: pos(25),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{
+					NamePos: pos(30),
+					Name:    "foo",
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT max(rowid) FROM foo`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
