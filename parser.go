@@ -1236,7 +1236,7 @@ func (p *Parser) parseType() (_ *Type, err error) {
 			typ.Name.Name += " " + typeName.Name
 		}
 	}
-	
+
 	if typ.Name == nil {
 		return &typ, p.errorExpected(p.pos, p.tok, "type name")
 	}
