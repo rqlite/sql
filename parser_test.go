@@ -360,6 +360,28 @@ func TestParser_ParseStatement(t *testing.T) {
 			Strict:  pos(44),
 		})
 
+		// Leading VARYING
+		AssertParseStatement(t, `CREATE TABLE tbl (c1 CHARACTER VARYING)`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				Name:    "tbl",
+				NamePos: pos(13),
+			},
+			Lparen: pos(17),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{NamePos: pos(18), Name: "c1"},
+					Type: &sql.Type{
+						Name: &sql.Ident{NamePos: pos(21), Name: "CHARACTER"},
+					},
+				},
+			},
+			Rparen: pos(30),
+		})
+
+		// Trailing VARYING
+
 		AssertParseStatementError(t, `CREATE TABLE`, `1:12: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl `, `1:17: expected AS or left paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (`, `1:18: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
