@@ -515,6 +515,21 @@ func isIdentToken(tok Token) bool {
 	return tok == IDENT || tok == QIDENT
 }
 
+// isExprIdentToken returns true if tok can be used as an identifier in an expression.
+// It includes IDENT, QIDENT, and certain keywords.
+func isExprIdentToken(tok Token) bool {
+	switch tok {
+	case IDENT, QIDENT:
+		return true
+	// List keywords that can be used as identifiers in expressions
+	case ROWID, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP:
+		return true
+	// Add any other non-reserved keywords here
+	default:
+		return false
+	}
+}
+
 const (
 	LowestPrec  = 0 // non-operators
 	UnaryPrec   = 13

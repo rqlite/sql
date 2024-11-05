@@ -2270,8 +2270,8 @@ func (p *Parser) ParseExpr() (expr Expr, err error) {
 
 func (p *Parser) parseOperand() (expr Expr, err error) {
 	pos, tok, lit := p.scan()
-	switch tok {
-	case IDENT, QIDENT:
+	switch {
+	case isExprIdentToken(tok):
 		ident := &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}
 		if p.peek() == DOT {
 			return p.parseQualifiedRef(ident)
@@ -2279,37 +2279,37 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 			return p.parseCall(ident)
 		}
 		return ident, nil
-	case STRING:
+	case tok == STRING:
 		return &StringLit{ValuePos: pos, Value: lit}, nil
-	case BLOB:
+	case tok == BLOB:
 		return &BlobLit{ValuePos: pos, Value: lit}, nil
-	case FLOAT, INTEGER:
+	case tok == FLOAT, tok == INTEGER:
 		return &NumberLit{ValuePos: pos, Value: lit}, nil
-	case NULL:
+	case tok == NULL:
 		return &NullLit{Pos: pos}, nil
-	case TRUE, FALSE:
+	case tok == TRUE, tok == FALSE:
 		return &BoolLit{ValuePos: pos, Value: tok == TRUE}, nil
-	case BIND:
+	case tok == BIND:
 		return &BindExpr{NamePos: pos, Name: lit}, nil
-	case PLUS, MINUS:
+	case tok == PLUS, tok == MINUS:
 		expr, err = p.parseOperand()
 		if err != nil {
 			return nil, err
 		}
 		return &UnaryExpr{OpPos: pos, Op: tok, X: expr}, nil
-	case LP:
+	case tok == LP:
 		p.unscan()
 		return p.parseParenExpr()
-	case CAST:
+	case tok == CAST:
 		p.unscan()
 		return p.parseCastExpr()
-	case CASE:
+	case tok == CASE:
 		p.unscan()
 		return p.parseCaseExpr()
-	case RAISE:
+	case tok == RAISE:
 		p.unscan()
 		return p.parseRaise()
-	case NOT:
+	case tok == NOT:
 		if p.peek() == EXISTS {
 			return p.parseExists(pos)
 		}
@@ -2319,10 +2319,10 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 			return nil, err
 		}
 		return &UnaryExpr{OpPos: pos, Op: tok, X: expr}, nil
-	case EXISTS:
+	case tok == EXISTS:
 		p.unscan()
 		return p.parseExists(Pos{})
-	case SELECT:
+	case tok == SELECT:
 		p.unscan()
 		selectStmt, err := p.parseSelectStatement(false, nil)
 		return SelectExpr{selectStmt}, err
