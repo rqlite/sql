@@ -974,13 +974,11 @@ func walkIdent(v Visitor, x *Ident) (*Ident, error) {
 }
 
 func walkIdentList(v Visitor, a []*Ident) ([]*Ident, error) {
-	if a != nil {
-		for i, x := range a {
-			if rn, err := walk(v, x); err != nil {
-				return nil, err
-			} else {
-				a[i] = rn.(*Ident)
-			}
+	for i, x := range a {
+		if rn, err := walk(v, x); err != nil {
+			return nil, err
+		} else {
+			a[i] = rn.(*Ident)
 		}
 	}
 	return a, nil
@@ -998,52 +996,44 @@ func walkExpr(v Visitor, x Expr) (Expr, error) {
 }
 
 func walkExprList(v Visitor, a []Expr) ([]Expr, error) {
-	if a != nil {
-		for i, x := range a {
-			if rn, err := walk(v, x); err != nil {
-				return nil, err
-			} else {
-				a[i] = rn.(Expr)
-			}
+	for i, x := range a {
+		if rn, err := walk(v, x); err != nil {
+			return nil, err
+		} else {
+			a[i] = rn.(Expr)
 		}
 	}
 	return a, nil
 }
 
 func walkConstraintList(v Visitor, a []Constraint) ([]Constraint, error) {
-	if a != nil {
-		for i, x := range a {
-			if rn, err := walk(v, x); err != nil {
-				return nil, err
-			} else {
-				a[i] = rn.(Constraint)
-			}
+	for i, x := range a {
+		if rn, err := walk(v, x); err != nil {
+			return nil, err
+		} else {
+			a[i] = rn.(Constraint)
 		}
 	}
 	return a, nil
 }
 
 func walkIndexedColumnList(v Visitor, a []*IndexedColumn) ([]*IndexedColumn, error) {
-	if a != nil {
-		for i, x := range a {
-			if rn, err := walk(v, x); err != nil {
-				return nil, err
-			} else {
-				a[i] = rn.(*IndexedColumn)
-			}
+	for i, x := range a {
+		if rn, err := walk(v, x); err != nil {
+			return nil, err
+		} else {
+			a[i] = rn.(*IndexedColumn)
 		}
 	}
 	return a, nil
 }
 
 func walkColumnDefinitionList(v Visitor, a []*ColumnDefinition) ([]*ColumnDefinition, error) {
-	if a != nil {
-		for i, x := range a {
-			if rn, err := walk(v, x); err != nil {
-				return nil, err
-			} else {
-				a[i] = rn.(*ColumnDefinition)
-			}
+	for i, x := range a {
+		if rn, err := walk(v, x); err != nil {
+			return nil, err
+		} else {
+			a[i] = rn.(*ColumnDefinition)
 		}
 	}
 	return a, nil
