@@ -315,6 +315,31 @@ func (p *Parser) parseCreateTableStatement(createPos Pos) (_ *CreateTableStateme
 			return &stmt, p.errorExpected(p.pos, p.tok, "right paren")
 		}
 		stmt.Rparen, _, _ = p.scan()
+
+		if p.peek() == STRICT || p.peek() == WITHOUT {
+			for {
+				switch p.peek() {
+				case STRICT:
+					stmt.Strict, _, _ = p.scan()
+
+				case WITHOUT:
+					stmt.Without, _, _ = p.scan()
+					if p.peek() != ROWID {
+						return &stmt, p.errorExpected(p.pos, p.tok, "ROWID")
+					}
+					stmt.Rowid, _, _ = p.scan()
+
+				default:
+					return &stmt, p.errorExpected(p.pos, p.tok, "STRICT or WITHOUT ROWID")
+				}
+
+				if p.peek() != COMMA {
+					break
+				}
+				p.scan()
+			}
+		}
+
 		return &stmt, nil
 	case AS:
 		stmt.As, _, _ = p.scan()
@@ -330,8 +355,7 @@ func (p *Parser) parseCreateTableStatement(createPos Pos) (_ *CreateTableStateme
 func (p *Parser) parseColumnDefinitions() (_ []*ColumnDefinition, err error) {
 	var columns []*ColumnDefinition
 	for {
-		switch {
-		case isIdentToken(p.peek()):
+		if tok := p.peek(); isIdentToken(tok) || isBareToken(tok) {
 			col, err := p.parseColumnDefinition()
 			columns = append(columns, col)
 			if err != nil {
@@ -340,9 +364,9 @@ func (p *Parser) parseColumnDefinitions() (_ []*ColumnDefinition, err error) {
 			if p.peek() == COMMA {
 				p.scan()
 			}
-		case p.peek() == RP || isConstraintStartToken(p.peek(), true):
+		} else if tok == RP || isConstraintStartToken(tok, true) {
 			return columns, nil
-		default:
+		} else {
 			return columns, p.errorExpected(p.pos, p.tok, "column name, CONSTRAINT, or right paren")
 		}
 	}
@@ -352,8 +376,12 @@ func (p *Parser) parseColumnDefinition() (_ *ColumnDefinition, err error) {
 	var col ColumnDefinition
 	if col.Name, err = p.parseIdent("column name"); err != nil {
 		return &col, err
-	} else if col.Type, err = p.parseType(); err != nil {
-		return &col, err
+	}
+
+	if tok := p.peek(); tok == IDENT {
+		if col.Type, err = p.parseType(); err != nil {
+			return &col, err
+		}
 	}
 
 	if col.Constraints, err = p.parseColumnConstraints(); err != nil {
@@ -441,6 +469,10 @@ func (p *Parser) parseConstraint(isTable bool) (_ Constraint, err error) {
 		return p.parseCheckConstraint(constraintPos, name)
 	case DEFAULT:
 		return p.parseDefaultConstraint(constraintPos, name)
+	case GENERATED, AS:
+		return p.parseGeneratedConstraint(constraintPos, name)
+	case COLLATE:
+		return p.parseCollateConstraint(constraintPos, name)
 	default:
 		assert(p.peek() == REFERENCES)
 		return p.parseForeignKeyConstraint(constraintPos, name, isTable)
@@ -524,7 +556,7 @@ func (p *Parser) parseUniqueConstraint(constraintPos Pos, name *Ident, isTable b
 		cons.Lparen, _, _ = p.scan()
 
 		for {
-			col, err := p.parseIdent("column name")
+			col, err := p.parseIndexedColumn()
 			if err != nil {
 				return &cons, err
 			}
@@ -575,7 +607,16 @@ func (p *Parser) parseDefaultConstraint(constraintPos Pos, name *Ident) (_ *Defa
 	cons.Constraint = constraintPos
 	cons.Name = name
 	cons.Default, _, _ = p.scan()
-	if isLiteralToken(p.peek()) {
+
+	// This parses a double-quoted identifier as a string value even though
+	// SQLite docs say that it shouldn't if DQS is disabled. For that reason,
+	// we are including it only on the DEFAULT value parsing.
+	//
+	// See: https://github.com/rqlite/sql/issues/18
+	if p.peek() == QIDENT {
+		pos, _, lit := p.scan()
+		cons.Expr = &StringLit{ValuePos: pos, Value: lit}
+	} else if isLiteralToken(p.peek()) {
 		cons.Expr = p.mustParseLiteral()
 	} else if p.peek() == PLUS || p.peek() == MINUS {
 		if cons.Expr, err = p.parseSignedNumber("signed number"); err != nil {
@@ -596,6 +637,72 @@ func (p *Parser) parseDefaultConstraint(constraintPos Pos, name *Ident) (_ *Defa
 		}
 		cons.Rparen, _, _ = p.scan()
 	}
+	return &cons, nil
+}
+
+func (p *Parser) parseGeneratedConstraint(constraintPos Pos, name *Ident) (_ *GeneratedConstraint, err error) {
+	assert(p.peek() == GENERATED || p.peek() == AS)
+
+	var cons GeneratedConstraint
+	cons.Constraint = constraintPos
+	cons.Name = name
+
+	if p.peek() == GENERATED {
+		cons.Generated, _, _ = p.scan()
+
+		if p.peek() != ALWAYS {
+			return &cons, p.errorExpected(p.pos, p.tok, "ALWAYS")
+		}
+		cons.Always, _, _ = p.scan()
+	}
+
+	if p.peek() != AS {
+		return &cons, p.errorExpected(p.pos, p.tok, "AS")
+	}
+	cons.As, _, _ = p.scan()
+
+	if p.peek() != LP {
+		return &cons, p.errorExpected(p.pos, p.tok, "left paren")
+	}
+	cons.Lparen, _, _ = p.scan()
+
+	if cons.Expr, err = p.ParseExpr(); err != nil {
+		return &cons, err
+	}
+
+	if p.peek() != RP {
+		return &cons, p.errorExpected(p.pos, p.tok, "right paren")
+	}
+	cons.Rparen, _, _ = p.scan()
+
+	switch p.peek() {
+	case STORED:
+		cons.Stored, _, _ = p.scan()
+	case VIRTUAL:
+		cons.Virtual, _, _ = p.scan()
+	}
+
+	return &cons, nil
+}
+
+func (p *Parser) parseCollateConstraint(constraintPos Pos, name *Ident) (_ *CollateConstraint, err error) {
+	assert(p.peek() == COLLATE)
+
+	var cons CollateConstraint
+	cons.Constraint = constraintPos
+	cons.Name = name
+
+	if p.peek() != COLLATE {
+		return &cons, p.errorExpected(p.pos, p.tok, "COLLATE")
+	}
+	cons.Collate, _, _ = p.scan()
+
+	collation, err := p.parseIdent("collation name")
+	if err != nil {
+		return &cons, err
+	}
+	cons.Collation = collation
+
 	return &cons, nil
 }
 
@@ -1109,14 +1216,29 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 	case IDENT, QIDENT:
 		return &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}, nil
 	default:
+		if isBareToken(tok) {
+			return &Ident{Name: lit, NamePos: pos}, nil
+		}
 		return nil, p.errorExpected(pos, tok, desc)
 	}
 }
 
 func (p *Parser) parseType() (_ *Type, err error) {
 	var typ Type
-	if typ.Name, err = p.parseIdent("type name"); err != nil {
-		return &typ, err
+	for p.peek() == IDENT {
+		typeName, err := p.parseIdent("type name")
+		if err != nil {
+			return &typ, err
+		}
+		if typ.Name == nil {
+			typ.Name = typeName
+		} else {
+			typ.Name.Name += " " + typeName.Name
+		}
+	}
+
+	if typ.Name == nil {
+		return &typ, p.errorExpected(p.pos, p.tok, "type name")
 	}
 
 	// Optionally parse precision & scale.
@@ -1262,6 +1384,13 @@ func (p *Parser) parseInsertStatement(withClause *WithClause) (_ *InsertStatemen
 		}
 	}
 
+	// Parse optional RETURNING clause.
+	if p.peek() == RETURNING {
+		if stmt.ReturningClause, err = p.parseReturningClause(); err != nil {
+			return &stmt, err
+		}
+	}
+
 	return &stmt, nil
 }
 
@@ -1350,11 +1479,42 @@ func (p *Parser) parseUpsertClause() (_ *UpsertClause, err error) {
 	return &clause, nil
 }
 
+func (p *Parser) parseReturningClause() (_ *ReturningClause, err error) {
+	assert(p.peek() == RETURNING)
+
+	var clause ReturningClause
+
+	clause.Returning, _, _ = p.scan()
+	// Parse result columns.
+	for {
+		col, err := p.parseResultColumn()
+		if err != nil {
+			return &clause, err
+		}
+		clause.Columns = append(clause.Columns, col)
+
+		if p.peek() != COMMA {
+			break
+		}
+		p.scan()
+	}
+
+	return &clause, nil
+}
+
 func (p *Parser) parseIndexedColumn() (_ *IndexedColumn, err error) {
 	var col IndexedColumn
 	if col.X, err = p.ParseExpr(); err != nil {
 		return &col, err
 	}
+
+	if p.peek() == COLLATE {
+		col.Collate, _, _ = p.scan()
+		if col.Collation, err = p.parseIdent("collation name"); err != nil {
+			return &col, err
+		}
+	}
+
 	if p.peek() == ASC {
 		col.Asc, _, _ = p.scan()
 	} else if p.peek() == DESC {
@@ -1416,6 +1576,13 @@ func (p *Parser) parseUpdateStatement(withClause *WithClause) (_ *UpdateStatemen
 	if p.peek() == WHERE {
 		stmt.Where, _, _ = p.scan()
 		if stmt.WhereExpr, err = p.ParseExpr(); err != nil {
+			return &stmt, err
+		}
+	}
+
+	// Parse optional RETURNING clause.
+	if p.peek() == RETURNING {
+		if stmt.ReturningClause, err = p.parseReturningClause(); err != nil {
 			return &stmt, err
 		}
 	}
@@ -1489,6 +1656,13 @@ func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatemen
 			if stmt.OffsetExpr, err = p.ParseExpr(); err != nil {
 				return &stmt, err
 			}
+		}
+	}
+
+	// Parse optional RETURNING clause.
+	if p.peek() == RETURNING {
+		if stmt.ReturningClause, err = p.parseReturningClause(); err != nil {
+			return &stmt, err
 		}
 	}
 
@@ -2108,8 +2282,8 @@ func (p *Parser) ParseExpr() (expr Expr, err error) {
 
 func (p *Parser) parseOperand() (expr Expr, err error) {
 	pos, tok, lit := p.scan()
-	switch tok {
-	case IDENT, QIDENT:
+	switch {
+	case isExprIdentToken(tok):
 		ident := &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}
 		if p.peek() == DOT {
 			return p.parseQualifiedRef(ident)
@@ -2117,39 +2291,53 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 			return p.parseCall(ident)
 		}
 		return ident, nil
-	case STRING:
+	case tok == STRING:
 		return &StringLit{ValuePos: pos, Value: lit}, nil
-	case BLOB:
+	case tok == BLOB:
 		return &BlobLit{ValuePos: pos, Value: lit}, nil
-	case FLOAT, INTEGER:
+	case tok == FLOAT, tok == INTEGER:
 		return &NumberLit{ValuePos: pos, Value: lit}, nil
-	case NULL:
+	case tok == NULL:
 		return &NullLit{Pos: pos}, nil
-	case TRUE, FALSE:
+	case tok == TRUE, tok == FALSE:
 		return &BoolLit{ValuePos: pos, Value: tok == TRUE}, nil
-	case BIND:
+	case tok == BIND:
 		return &BindExpr{NamePos: pos, Name: lit}, nil
-	case PLUS, MINUS:
+	case tok == PLUS, tok == MINUS:
 		expr, err = p.parseOperand()
 		if err != nil {
 			return nil, err
 		}
 		return &UnaryExpr{OpPos: pos, Op: tok, X: expr}, nil
-	case LP:
+	case tok == LP:
 		p.unscan()
 		return p.parseParenExpr()
-	case CAST:
+	case tok == CAST:
 		p.unscan()
 		return p.parseCastExpr()
-	case CASE:
+	case tok == CASE:
 		p.unscan()
 		return p.parseCaseExpr()
-	case RAISE:
+	case tok == RAISE:
 		p.unscan()
 		return p.parseRaise()
-	case NOT, EXISTS:
+	case tok == NOT:
+		if p.peek() == EXISTS {
+			return p.parseExists(pos)
+		}
+
+		expr, err = p.parseOperand()
+		if err != nil {
+			return nil, err
+		}
+		return &UnaryExpr{OpPos: pos, Op: tok, X: expr}, nil
+	case tok == EXISTS:
 		p.unscan()
-		return p.parseExists()
+		return p.parseExists(Pos{})
+	case tok == SELECT:
+		p.unscan()
+		selectStmt, err := p.parseSelectStatement(false, nil)
+		return SelectExpr{selectStmt}, err
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "expression")
 	}
@@ -2203,7 +2391,6 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 			x = &BinaryExpr{X: x, OpPos: pos, Op: op, Y: y}
 		}
 	}
-
 }
 
 func (p *Parser) parseExprList() (_ *ExprList, err error) {
@@ -2667,14 +2854,11 @@ func (p *Parser) parseCaseExpr() (_ *CaseExpr, err error) {
 	return &expr, nil
 }
 
-func (p *Parser) parseExists() (_ *Exists, err error) {
-	assert(p.peek() == NOT || p.peek() == EXISTS)
+func (p *Parser) parseExists(notPos Pos) (_ *Exists, err error) {
+	assert(p.peek() == EXISTS)
 
 	var expr Exists
-
-	if p.peek() == NOT {
-		expr.Not, _, _ = p.scan()
-	}
+	expr.Not = notPos
 
 	if p.peek() != EXISTS {
 		return &expr, p.errorExpected(p.pos, p.tok, "EXISTS")
@@ -2841,8 +3025,13 @@ func (p *Parser) scan() (Pos, Token, string) {
 		return p.pos, p.tok, p.lit
 	}
 
-	p.pos, p.tok, p.lit = p.s.Scan()
-	return p.pos, p.tok, p.lit
+	// Continue scanning until we find a non-comment token.
+	for {
+		if pos, tok, lit := p.s.Scan(); tok != COMMENT {
+			p.pos, p.tok, p.lit = pos, tok, lit
+			return p.pos, p.tok, p.lit
+		}
+	}
 }
 
 // scanBinaryOp performs a scan but combines multi-word operations into a single token.
@@ -2891,6 +3080,14 @@ func (p *Parser) peek() Token {
 	return p.tok
 }
 
+func (p *Parser) peekScan() (Pos, Token, string) {
+	if !p.full {
+		p.scan()
+		p.unscan()
+	}
+	return p.pos, p.tok, p.lit
+}
+
 func (p *Parser) unscan() {
 	assert(!p.full)
 	p.full = true
@@ -2929,7 +3126,7 @@ func isConstraintStartToken(tok Token, isTable bool) bool {
 		return true // table & column
 	case FOREIGN:
 		return isTable // table only
-	case NOT, DEFAULT, REFERENCES:
+	case NOT, DEFAULT, REFERENCES, GENERATED, AS, COLLATE:
 		return !isTable // column only
 	default:
 		return false
@@ -2941,6 +3138,17 @@ func isLiteralToken(tok Token) bool {
 	switch tok {
 	case FLOAT, INTEGER, STRING, BLOB, TRUE, FALSE, NULL,
 		CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP:
+		return true
+	default:
+		return false
+	}
+}
+
+func isTypeName(s string) bool {
+	switch s {
+	case "BIGINT", "BLOB", "BOOLEAN", "CHARACTER", "CLOB", "DATE", "DATETIME",
+		"DECIMAL", "DOUBLE", "FLOAT", "INT", "INTEGER", "MEDIUMINT", "NCHAR",
+		"NUMERIC", "NVARCHAR", "REAL", "SMALLINT", "TEXT", "TINYINT", "VARCHAR":
 		return true
 	default:
 		return false

@@ -126,8 +126,11 @@ func TestCreateTableStatement_String(t *testing.T) {
 				Name: &sql.Ident{Name: "baz"},
 				Type: &sql.Type{Name: &sql.Ident{Name: "TEXT"}},
 			},
+			{
+				Name: &sql.Ident{Name: "no_type"},
+			},
 		},
-	}, `CREATE TABLE IF NOT EXISTS "foo" ("bar" INTEGER, "baz" TEXT)`)
+	}, `CREATE TABLE IF NOT EXISTS "foo" ("bar" INTEGER, "baz" TEXT, "no_type")`)
 
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name: &sql.Ident{Name: "foo"},
@@ -213,9 +216,9 @@ func TestCreateTableStatement_String(t *testing.T) {
 			},
 			&sql.UniqueConstraint{
 				Name: &sql.Ident{Name: "uniq"},
-				Columns: []*sql.Ident{
-					{Name: "x"},
-					{Name: "y"},
+				Columns: []*sql.IndexedColumn{
+					{X: &sql.Ident{Name: "x"}},
+					{X: &sql.Ident{Name: "y"}},
 				},
 			},
 			&sql.CheckConstraint{
@@ -479,6 +482,21 @@ func TestInsertStatement_String(t *testing.T) {
 			{Exprs: []sql.Expr{&sql.NullLit{}, &sql.NullLit{}}},
 		},
 	}, `INSERT INTO "tbl" ("x", "y") VALUES (NULL, NULL), (NULL, NULL)`)
+
+	AssertStatementStringer(t, &sql.InsertStatement{
+		Table: &sql.Ident{Name: "tbl"},
+		Columns: []*sql.Ident{
+			{Name: "x"},
+			{Name: "y"},
+		},
+		ValueLists: []*sql.ExprList{
+			{Exprs: []sql.Expr{&sql.NumberLit{Value: "1"}, &sql.NumberLit{Value: "2"}}},
+		},
+		ReturningClause: &sql.ReturningClause{
+			Returning: pos(31),
+			Columns:   []*sql.ResultColumn{{Star: pos(41)}},
+		},
+	}, `INSERT INTO "tbl" ("x", "y") VALUES (1, 2) RETURNING *`)
 
 	AssertStatementStringer(t, &sql.InsertStatement{
 		WithClause: &sql.WithClause{
@@ -846,6 +864,7 @@ func TestParenExpr_String(t *testing.T) {
 func TestUnaryExpr_String(t *testing.T) {
 	AssertExprStringer(t, &sql.UnaryExpr{Op: sql.PLUS, X: &sql.NumberLit{Value: "100"}}, `+100`)
 	AssertExprStringer(t, &sql.UnaryExpr{Op: sql.MINUS, X: &sql.NumberLit{Value: "100"}}, `-100`)
+	AssertExprStringer(t, &sql.UnaryExpr{Op: sql.NOT, X: &sql.NumberLit{Value: "100"}}, `NOT 100`)
 	AssertNodeStringerPanic(t, &sql.UnaryExpr{X: &sql.NumberLit{Value: "100"}}, `sql.UnaryExpr.String(): invalid op ILLEGAL`)
 }
 
@@ -882,6 +901,8 @@ func TestBinaryExpr_String(t *testing.T) {
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.NOTREGEXP, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 NOT REGEXP 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.AND, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 AND 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.OR, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 OR 2`)
+	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.JSON_EXTRACT_JSON, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 -> 2`)
+	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.JSON_EXTRACT_SQL, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 ->> 2`)
 	AssertNodeStringerPanic(t, &sql.BinaryExpr{}, `sql.BinaryExpr.String(): invalid op ILLEGAL`)
 }
 

@@ -60,6 +60,10 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 			}
 			return pos, BITNOT, "!"
 		case '=':
+			if s.peek() == '=' {
+				s.read()
+				return pos, EQ, "=="
+			}
 			return pos, EQ, "="
 		case '<':
 			if s.peek() == '=' {
@@ -68,6 +72,9 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 			} else if s.peek() == '<' {
 				s.read()
 				return pos, LSHIFT, "<<"
+			} else if s.peek() == '>' {
+				s.read()
+				return pos, NE, "<>"
 			}
 			return pos, LT, "<"
 		case '>':
@@ -90,10 +97,25 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 		case '+':
 			return pos, PLUS, "+"
 		case '-':
+			if s.peek() == '>' {
+				s.read()
+				if s.peek() == '>' {
+					s.read()
+					return pos, JSON_EXTRACT_SQL, "->>"
+				}
+				return pos, JSON_EXTRACT_JSON, "->"
+			} else if s.peek() == '-' {
+				s.read()
+				return pos, COMMENT, s.scanSingleLineComment()
+			}
 			return pos, MINUS, "-"
 		case '*':
 			return pos, STAR, "*"
 		case '/':
+			if s.peek() == '*' {
+				s.read()
+				return pos, COMMENT, s.scanMultiLineComment()
+			}
 			return pos, SLASH, "/"
 		case '%':
 			return pos, REM, "%"
@@ -155,6 +177,37 @@ func (s *Scanner) scanString() (Pos, Token, string) {
 				continue
 			}
 			return pos, STRING, s.buf.String()
+		}
+		s.buf.WriteRune(ch)
+	}
+}
+
+func (s *Scanner) scanSingleLineComment() string {
+	s.buf.Reset()
+	s.buf.WriteString("--")
+
+	for {
+		ch, _ := s.read()
+		switch ch {
+		case -1, '\n':
+			return s.buf.String()
+		default:
+			s.buf.WriteRune(ch)
+		}
+	}
+}
+
+func (s *Scanner) scanMultiLineComment() string {
+	s.buf.Reset()
+	s.buf.WriteString("/*")
+	for {
+		ch, _ := s.read()
+		if ch == -1 {
+			return s.buf.String()
+		} else if ch == '*' && s.peek() == '/' {
+			s.read()
+			s.buf.WriteString("*/")
+			return s.buf.String()
 		}
 		s.buf.WriteRune(ch)
 	}
@@ -239,6 +292,12 @@ func (s *Scanner) scanNumber() (Pos, Token, string) {
 		}
 	}
 
+	// If we just have a dot in the buffer with no digits by this point,
+	// this can't be a number, so we can stop and return DOT
+	if s.buf.String() == "." {
+		return pos, DOT, "."
+	}
+
 	// Read exponent with optional +/- sign.
 	if ch := s.peek(); ch == 'e' || ch == 'E' {
 		tok = FLOAT
@@ -266,11 +325,7 @@ func (s *Scanner) scanNumber() (Pos, Token, string) {
 		}
 	}
 
-	lit := s.buf.String()
-	if lit == "." {
-		return pos, DOT, lit
-	}
-	return pos, tok, lit
+	return pos, tok, s.buf.String()
 }
 
 func (s *Scanner) read() (rune, Pos) {

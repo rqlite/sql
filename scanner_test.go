@@ -26,6 +26,31 @@ func TestScanner_Scan(t *testing.T) {
 		})
 	})
 
+	t.Run("COMMENT", func(t *testing.T) {
+		t.Run("SingleLine", func(t *testing.T) {
+			t.Run("Newline", func(t *testing.T) {
+				AssertScan(t, "-- foo bar\n--baz", sql.COMMENT, `-- foo bar`)
+			})
+			t.Run("EOF", func(t *testing.T) {
+				AssertScan(t, "-- foo bar", sql.COMMENT, `-- foo bar`)
+			})
+			t.Run("NoContent", func(t *testing.T) {
+				AssertScan(t, "--", sql.COMMENT, `--`)
+			})
+		})
+		t.Run("MultiLine", func(t *testing.T) {
+			t.Run("Newline", func(t *testing.T) {
+				AssertScan(t, "/* foo bar */", sql.COMMENT, `/* foo bar */`)
+			})
+			t.Run("EOF", func(t *testing.T) {
+				AssertScan(t, "/* foo bar", sql.COMMENT, `/* foo bar`)
+			})
+			t.Run("NoContent", func(t *testing.T) {
+				AssertScan(t, "/**/", sql.COMMENT, `/**/`)
+			})
+		})
+	})
+
 	t.Run("KEYWORD", func(t *testing.T) {
 		AssertScan(t, `BEGIN`, sql.BEGIN, `BEGIN`)
 	})
@@ -66,6 +91,7 @@ func TestScanner_Scan(t *testing.T) {
 		AssertScan(t, `123.E45`, sql.FLOAT, `123.E45`)
 		AssertScan(t, `123E+4`, sql.FLOAT, `123E+4`)
 		AssertScan(t, `123E-4`, sql.FLOAT, `123E-4`)
+		AssertScan(t, `.0E-2`, sql.FLOAT, `.0E-2`)
 		AssertScan(t, `123E`, sql.ILLEGAL, `123E`)
 		AssertScan(t, `123E+`, sql.ILLEGAL, `123E+`)
 		AssertScan(t, `123E-`, sql.ILLEGAL, `123E-`)
@@ -96,12 +122,14 @@ func TestScanner_Scan(t *testing.T) {
 	})
 	t.Run("NE", func(t *testing.T) {
 		AssertScan(t, "!=", sql.NE, "!=")
+		AssertScan(t, "<>", sql.NE, "<>")
 	})
 	t.Run("BITNOT", func(t *testing.T) {
 		AssertScan(t, "!", sql.BITNOT, "!")
 	})
 	t.Run("EQ", func(t *testing.T) {
 		AssertScan(t, "=", sql.EQ, "=")
+		AssertScan(t, "==", sql.EQ, "==")
 	})
 	t.Run("LE", func(t *testing.T) {
 		AssertScan(t, "<=", sql.LE, "<=")
@@ -147,6 +175,13 @@ func TestScanner_Scan(t *testing.T) {
 	})
 	t.Run("DOT", func(t *testing.T) {
 		AssertScan(t, ".", sql.DOT, ".")
+		AssertScan(t, `.E2`, sql.DOT, `.`)
+	})
+	t.Run("JSON_EXTRACT_JSON", func(t *testing.T) {
+		AssertScan(t, "->", sql.JSON_EXTRACT_JSON, "->")
+	})
+	t.Run("JSON_EXTRACT_SQL", func(t *testing.T) {
+		AssertScan(t, "->>", sql.JSON_EXTRACT_SQL, "->>")
 	})
 	t.Run("ILLEGAL", func(t *testing.T) {
 		AssertScan(t, "^", sql.ILLEGAL, "^")

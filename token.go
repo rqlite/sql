@@ -6,16 +6,22 @@ import (
 	"strings"
 )
 
-var keywords map[string]Token
+var (
+	keywords      = make(map[string]Token)
+	bareTokensMap = make(map[Token]struct{})
+)
 
 func init() {
-	keywords = make(map[string]Token)
 	for i := keyword_beg + 1; i < keyword_end; i++ {
 		keywords[tokens[i]] = i
 	}
 	keywords[tokens[NULL]] = NULL
 	keywords[tokens[TRUE]] = TRUE
 	keywords[tokens[FALSE]] = FALSE
+
+	for _, tok := range bareTokens {
+		bareTokensMap[tok] = struct{}{}
+	}
 }
 
 // Token is the set of lexical tokens of the Go programming language.
@@ -65,6 +71,9 @@ const (
 	REM    // %
 	CONCAT // ||
 	DOT    // .
+
+	JSON_EXTRACT_JSON // ->
+	JSON_EXTRACT_SQL  // ->>
 	operator_end
 
 	keyword_beg
@@ -76,6 +85,7 @@ const (
 	AGG_FUNCTION
 	ALL
 	ALTER
+	ALWAYS
 	ANALYZE
 	AND
 	AS
@@ -91,6 +101,7 @@ const (
 	CASE
 	CAST
 	CHECK
+	COLLATE
 	COLUMN
 	COLUMNKW
 	COMMIT
@@ -130,6 +141,7 @@ const (
 	FOREIGN
 	FROM
 	FUNCTION
+	GENERATED
 	GLOB
 	GROUP
 	GROUPS
@@ -195,14 +207,18 @@ const (
 	RENAME
 	REPLACE
 	RESTRICT
+	RETURNING
 	ROLLBACK
 	ROW
+	ROWID
 	ROWS
 	SAVEPOINT
 	SELECT
 	SELECT_COLUMN
 	SET
 	SPAN
+	STORED
+	STRICT
 	TABLE
 	TEMP
 	THEN
@@ -281,6 +297,7 @@ var tokens = [...]string{
 	AGG_FUNCTION:      "AGG_FUNCTION",
 	ALL:               "ALL",
 	ALTER:             "ALTER",
+	ALWAYS:            "ALWAYS",
 	ANALYZE:           "ANALYZE",
 	AND:               "AND",
 	AS:                "AS",
@@ -296,6 +313,7 @@ var tokens = [...]string{
 	CASE:              "CASE",
 	CAST:              "CAST",
 	CHECK:             "CHECK",
+	COLLATE:           "COLLATE",
 	COLUMN:            "COLUMN",
 	COLUMNKW:          "COLUMNKW",
 	COMMIT:            "COMMIT",
@@ -335,6 +353,7 @@ var tokens = [...]string{
 	FOREIGN:           "FOREIGN",
 	FROM:              "FROM",
 	FUNCTION:          "FUNCTION",
+	GENERATED:         "GENERATED",
 	GLOB:              "GLOB",
 	GROUP:             "GROUP",
 	GROUPS:            "GROUPS",
@@ -400,14 +419,18 @@ var tokens = [...]string{
 	RENAME:            "RENAME",
 	REPLACE:           "REPLACE",
 	RESTRICT:          "RESTRICT",
+	RETURNING:         "RETURNING",
 	ROLLBACK:          "ROLLBACK",
 	ROW:               "ROW",
+	ROWID:             "ROWID",
 	ROWS:              "ROWS",
 	SAVEPOINT:         "SAVEPOINT",
 	SELECT:            "SELECT",
 	SELECT_COLUMN:     "SELECT_COLUMN",
 	SET:               "SET",
 	SPAN:              "SPAN",
+	STORED:            "STORED",
+	STRICT:            "STRICT",
 	TABLE:             "TABLE",
 	TEMP:              "TEMP",
 	THEN:              "THEN",
@@ -434,6 +457,20 @@ var tokens = [...]string{
 	WITHOUT:           "WITHOUT",
 }
 
+// A list of keywords that can be used as unquoted identifiers.
+var bareTokens = [...]Token{
+	ABORT, ACTION, AFTER, ALWAYS, ANALYZE, ASC, ATTACH, BEFORE, BEGIN, BY,
+	CASCADE, CAST, COLUMN, CONFLICT, CROSS, CURRENT, CURRENT_DATE,
+	CURRENT_TIME, CURRENT_TIMESTAMP, DATABASE, DEFERRED, DESC, DETACH, DO,
+	EACH, END, EXCLUDE, EXCLUSIVE, EXPLAIN, FAIL, FILTER, FIRST, FOLLOWING,
+	FOR, GENERATED, GLOB, GROUPS, IF, IGNORE, IMMEDIATE, INDEXED, INITIALLY,
+	INNER, INSTEAD, KEY, LAST, LEFT, LIKE, MATCH, NATURAL, NO, NULLS, OF,
+	OFFSET, OTHERS, OUTER, OVER, PARTITION, PLAN, PRAGMA, PRECEDING, QUERY,
+	RAISE, RANGE, RECURSIVE, REGEXP, REINDEX, RELEASE, RENAME, REPLACE,
+	RESTRICT, ROLLBACK, ROW, ROWS, SAVEPOINT, TEMP, TIES, TRIGGER,
+	UNBOUNDED, VACUUM, VIEW, VIRTUAL, WINDOW, WITH, WITHOUT,
+}
+
 func (tok Token) String() string {
 	s := ""
 	if 0 <= tok && tok < Token(len(tokens)) {
@@ -452,6 +489,12 @@ func Lookup(ident string) Token {
 	return IDENT
 }
 
+// isBareToken returns true if keyword token can be used as an identifier.
+func isBareToken(tok Token) bool {
+	_, ok := bareTokensMap[tok]
+	return ok
+}
+
 func (tok Token) IsLiteral() bool {
 	return tok > literal_beg && tok < literal_end
 }
@@ -460,7 +503,8 @@ func (tok Token) IsBinaryOp() bool {
 	switch tok {
 	case PLUS, MINUS, STAR, SLASH, REM, CONCAT, NOT, BETWEEN,
 		LSHIFT, RSHIFT, BITAND, BITOR, LT, LE, GT, GE, EQ, NE,
-		IS, IN, LIKE, GLOB, MATCH, REGEXP, AND, OR:
+		IS, IN, LIKE, GLOB, MATCH, REGEXP, AND, OR,
+		JSON_EXTRACT_JSON, JSON_EXTRACT_SQL:
 		return true
 	default:
 		return false
@@ -469,6 +513,21 @@ func (tok Token) IsBinaryOp() bool {
 
 func isIdentToken(tok Token) bool {
 	return tok == IDENT || tok == QIDENT
+}
+
+// isExprIdentToken returns true if tok can be used as an identifier in an expression.
+// It includes IDENT, QIDENT, and certain keywords.
+func isExprIdentToken(tok Token) bool {
+	switch tok {
+	case IDENT, QIDENT:
+		return true
+	// List keywords that can be used as identifiers in expressions
+	case ROWID, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP:
+		return true
+	// Add any other non-reserved keywords here
+	default:
+		return false
+	}
 }
 
 const (
@@ -497,7 +556,7 @@ func (op Token) Precedence() int {
 		return 8
 	case STAR, SLASH, REM:
 		return 9
-	case CONCAT:
+	case CONCAT, JSON_EXTRACT_JSON, JSON_EXTRACT_SQL:
 		return 10
 	case BITNOT:
 		return 11

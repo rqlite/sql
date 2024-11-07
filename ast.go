@@ -24,6 +24,7 @@ func (*CaseBlock) node()              {}
 func (*CaseExpr) node()               {}
 func (*CastExpr) node()               {}
 func (*CheckConstraint) node()        {}
+func (*CollateConstraint) node()      {}
 func (*ColumnDefinition) node()       {}
 func (*CommitStatement) node()        {}
 func (*CreateIndexStatement) node()   {}
@@ -43,6 +44,7 @@ func (*FilterClause) node()           {}
 func (*ForeignKeyArg) node()          {}
 func (*ForeignKeyConstraint) node()   {}
 func (*FrameSpec) node()              {}
+func (*GeneratedConstraint) node()    {}
 func (*Ident) node()                  {}
 func (*IndexedColumn) node()          {}
 func (*InsertStatement) node()        {}
@@ -63,6 +65,7 @@ func (*Raise) node()                  {}
 func (*Range) node()                  {}
 func (*ReleaseStatement) node()       {}
 func (*ResultColumn) node()           {}
+func (*ReturningClause) node()        {}
 func (*RollbackStatement) node()      {}
 func (*SavepointStatement) node()     {}
 func (*SelectStatement) node()        {}
@@ -205,6 +208,7 @@ func (*Range) expr()        {}
 func (*StringLit) expr()    {}
 func (*TimestampLit) expr() {}
 func (*UnaryExpr) expr()    {}
+func (SelectExpr) expr()    {}
 
 // CloneExpr returns a deep copy expr.
 func CloneExpr(expr Expr) Expr {
@@ -627,6 +631,10 @@ type CreateTableStatement struct {
 	Constraints []Constraint        // table constraints
 	Rparen      Pos                 // position of right paren of column list
 
+	Without Pos // position of WITHOUT keyword (optional)
+	Rowid   Pos // position of ROWID keyword (optional)
+	Strict  Pos // position of STRICT keyword (optional)
+
 	As     Pos              // position of AS keyword (optional)
 	Select *SelectStatement // select stmt to build from
 }
@@ -708,8 +716,10 @@ func cloneColumnDefinitions(a []*ColumnDefinition) []*ColumnDefinition {
 func (c *ColumnDefinition) String() string {
 	var buf bytes.Buffer
 	buf.WriteString(c.Name.String())
-	buf.WriteString(" ")
-	buf.WriteString(c.Type.String())
+	if c.Type != nil {
+		buf.WriteString(" ")
+		buf.WriteString(c.Type.String())
+	}
 	for i := range c.Constraints {
 		buf.WriteString(" ")
 		buf.WriteString(c.Constraints[i].String())
@@ -727,6 +737,8 @@ func (*NotNullConstraint) constraint()    {}
 func (*UniqueConstraint) constraint()     {}
 func (*CheckConstraint) constraint()      {}
 func (*DefaultConstraint) constraint()    {}
+func (*GeneratedConstraint) constraint()  {}
+func (*CollateConstraint) constraint()    {}
 func (*ForeignKeyConstraint) constraint() {}
 
 // CloneConstraint returns a deep copy cons.
@@ -745,6 +757,10 @@ func CloneConstraint(cons Constraint) Constraint {
 	case *CheckConstraint:
 		return cons.Clone()
 	case *DefaultConstraint:
+		return cons.Clone()
+	case *GeneratedConstraint:
+		return cons.Clone()
+	case *CollateConstraint:
 		return cons.Clone()
 	case *ForeignKeyConstraint:
 		return cons.Clone()
@@ -852,9 +868,9 @@ type UniqueConstraint struct {
 	Name       *Ident // constraint name
 	Unique     Pos    // position of UNIQUE keyword
 
-	Lparen  Pos      // position of left paren (table only)
-	Columns []*Ident // indexed columns (table only)
-	Rparen  Pos      // position of right paren (table only)
+	Lparen  Pos              // position of left paren (table only)
+	Columns []*IndexedColumn // indexed columns (table only)
+	Rparen  Pos              // position of right paren (table only)
 }
 
 // Clone returns a deep copy of c.
@@ -864,7 +880,11 @@ func (c *UniqueConstraint) Clone() *UniqueConstraint {
 	}
 	other := *c
 	other.Name = c.Name.Clone()
-	other.Columns = cloneIdents(c.Columns)
+	other.Columns = make([]*IndexedColumn, len(c.Columns))
+	for i := range c.Columns {
+		other.Columns[i] = c.Columns[i].Clone()
+	}
+
 	return &other
 }
 
@@ -966,6 +986,88 @@ func (c *DefaultConstraint) String() string {
 	} else {
 		buf.WriteString(c.Expr.String())
 	}
+	return buf.String()
+}
+
+type GeneratedConstraint struct {
+	Constraint Pos    // position of CONSTRAINT keyword
+	Name       *Ident // constraint name
+	Generated  Pos    // position of GENERATED keyword
+	Always     Pos    // position of ALWAYS keyword
+	As         Pos    // position of AS keyword
+	Lparen     Pos    // position of left paren
+	Expr       Expr   // default expression
+	Rparen     Pos    // position of right paren
+	Stored     Pos    // position of STORED keyword
+	Virtual    Pos    // position of VIRTUAL keyword
+}
+
+// Clone returns a deep copy of c.
+func (c *GeneratedConstraint) Clone() *GeneratedConstraint {
+	if c == nil {
+		return c
+	}
+	other := *c
+	other.Name = c.Name.Clone()
+	other.Expr = CloneExpr(c.Expr)
+	return &other
+}
+
+// String returns the string representation of the constraint.
+func (c *GeneratedConstraint) String() string {
+	var buf bytes.Buffer
+	if c.Name != nil {
+		buf.WriteString("CONSTRAINT ")
+		buf.WriteString(c.Name.String())
+		buf.WriteString(" ")
+	}
+
+	if c.Generated.IsValid() {
+		buf.WriteString("GENERATED ALWAYS ")
+	}
+
+	buf.WriteString("AS (")
+	buf.WriteString(c.Expr.String())
+	buf.WriteString(")")
+
+	if c.Stored.IsValid() {
+		buf.WriteString(" STORED")
+	} else if c.Virtual.IsValid() {
+		buf.WriteString(" VIRTUAL")
+	}
+
+	return buf.String()
+}
+
+type CollateConstraint struct {
+	Constraint Pos    // position of CONSTRAINT keyword
+	Name       *Ident // constraint name
+	Collate    Pos    // position of COLLATE keyword
+	Collation  *Ident // collation name
+}
+
+// Clone returns a deep copy of c.
+func (c *CollateConstraint) Clone() *CollateConstraint {
+	if c == nil {
+		return c
+	}
+	other := *c
+	other.Name = c.Name.Clone()
+	other.Collation = c.Collation.Clone()
+	return &other
+}
+
+// String returns the string representation of the constraint.
+func (c *CollateConstraint) String() string {
+	var buf bytes.Buffer
+	if c.Name != nil {
+		buf.WriteString("CONSTRAINT ")
+		buf.WriteString(c.Name.String())
+		buf.WriteString(" ")
+	}
+
+	buf.WriteString("COLLATE ")
+	buf.WriteString(c.Collation.String())
 	return buf.String()
 }
 
@@ -1422,6 +1524,8 @@ func (expr *UnaryExpr) String() string {
 		return "+" + expr.X.String()
 	case MINUS:
 		return "-" + expr.X.String()
+	case NOT:
+		return "NOT " + expr.X.String()
 	default:
 		panic(fmt.Sprintf("sql.UnaryExpr.String(): invalid op %s", expr.Op))
 	}
@@ -1484,6 +1588,10 @@ func (expr *BinaryExpr) String() string {
 		return expr.X.String() + " = " + expr.Y.String()
 	case NE:
 		return expr.X.String() + " != " + expr.Y.String()
+	case JSON_EXTRACT_JSON:
+		return expr.X.String() + " -> " + expr.Y.String()
+	case JSON_EXTRACT_SQL:
+		return expr.X.String() + " ->> " + expr.Y.String()
 	case IS:
 		return expr.X.String() + " IS " + expr.Y.String()
 	case ISNOT:
@@ -2391,7 +2499,8 @@ type InsertStatement struct {
 	Default       Pos // position of DEFAULT keyword
 	DefaultValues Pos // position of VALUES keyword after DEFAULT
 
-	UpsertClause *UpsertClause // optional upsert clause
+	UpsertClause    *UpsertClause    // optional upsert clause
+	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
 // Clone returns a deep copy of s.
@@ -2407,6 +2516,7 @@ func (s *InsertStatement) Clone() *InsertStatement {
 	other.ValueLists = cloneExprLists(s.ValueLists)
 	other.Select = s.Select.Clone()
 	other.UpsertClause = s.UpsertClause.Clone()
+	other.ReturningClause = s.ReturningClause.Clone()
 	return &other
 }
 
@@ -2474,6 +2584,9 @@ func (s *InsertStatement) String() string {
 
 	if s.UpsertClause != nil {
 		fmt.Fprintf(&buf, " %s", s.UpsertClause.String())
+	}
+	if s.ReturningClause != nil {
+		fmt.Fprintf(&buf, " %s", s.ReturningClause.String())
 	}
 
 	return buf.String()
@@ -2568,6 +2681,8 @@ type UpdateStatement struct {
 	Assignments []*Assignment // list of column assignments
 	Where       Pos           // position of WHERE keyword
 	WhereExpr   Expr          // conditional expression
+
+	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
 // Clone returns a deep copy of s.
@@ -2621,6 +2736,33 @@ func (s *UpdateStatement) String() string {
 	return buf.String()
 }
 
+type ReturningClause struct {
+	Returning Pos             // position of RETURNING keyword
+	Columns   []*ResultColumn // list of result columns in the SELECT clause
+}
+
+// Clone returns a deep copy of c.
+func (c *ReturningClause) Clone() *ReturningClause {
+	if c == nil {
+		return nil
+	}
+	other := *c
+	return &other
+}
+
+// String returns the string representation of the clause.
+func (c *ReturningClause) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("RETURNING ")
+	for i, col := range c.Columns {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(col.String())
+	}
+	return buf.String()
+}
+
 type DeleteStatement struct {
 	WithClause *WithClause         // clause containing CTEs
 	Delete     Pos                 // position of UPDATE keyword
@@ -2639,6 +2781,8 @@ type DeleteStatement struct {
 	Offset      Pos  // position of OFFSET keyword
 	OffsetComma Pos  // position of COMMA (instead of OFFSET)
 	OffsetExpr  Expr // offset expression
+
+	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
 // Clone returns a deep copy of s.
@@ -2744,9 +2888,11 @@ func (a *Assignment) String() string {
 }
 
 type IndexedColumn struct {
-	X    Expr // column expression
-	Asc  Pos  // position of optional ASC keyword
-	Desc Pos  // position of optional DESC keyword
+	X         Expr   // column expression
+	Collate   Pos    // position of COLLATE keyword
+	Collation *Ident // collation name
+	Asc       Pos    // position of optional ASC keyword
+	Desc      Pos    // position of optional DESC keyword
 }
 
 // Clone returns a deep copy of c.
@@ -2756,6 +2902,7 @@ func (c *IndexedColumn) Clone() *IndexedColumn {
 	}
 	other := *c
 	other.X = CloneExpr(c.X)
+	other.Collation = c.Collation.Clone()
 	return &other
 }
 
@@ -2772,12 +2919,21 @@ func cloneIndexedColumns(a []*IndexedColumn) []*IndexedColumn {
 
 // String returns the string representation of the column.
 func (c *IndexedColumn) String() string {
-	if c.Asc.IsValid() {
-		return fmt.Sprintf("%s ASC", c.X.String())
-	} else if c.Desc.IsValid() {
-		return fmt.Sprintf("%s DESC", c.X.String())
+	var buf bytes.Buffer
+	buf.WriteString(c.X.String())
+
+	if c.Collate.IsValid() {
+		buf.WriteString(" COLLATE ")
+		buf.WriteString(c.Collation.String())
 	}
-	return c.X.String()
+
+	if c.Asc.IsValid() {
+		buf.WriteString(" ASC")
+	} else if c.Desc.IsValid() {
+		buf.WriteString(" DESC")
+	}
+
+	return buf.String()
 }
 
 type SelectStatement struct {
@@ -3302,6 +3458,16 @@ func (expr *ParenExpr) Clone() *ParenExpr {
 // String returns the string representation of the expression.
 func (expr *ParenExpr) String() string {
 	return fmt.Sprintf("(%s)", expr.X.String())
+}
+
+// SelectExpr represents a SELECT statement inside an expression.
+type SelectExpr struct {
+	*SelectStatement
+}
+
+// Clone returns a deep copy of expr.
+func (expr SelectExpr) Clone() SelectExpr {
+	return SelectExpr{expr.SelectStatement.Clone()}
 }
 
 type Window struct {
