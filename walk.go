@@ -4,8 +4,8 @@ package sql
 // If the result visitor w is not nil, Walk visits each of the children
 // of node with the visitor w, followed by a call of w.Visit(nil).
 type Visitor interface {
-	Visit(n Node) (w Visitor, err error)
-	VisitEnd(n Node) error
+	Visit(n Node) (w Visitor, node Node, err error)
+	VisitEnd(n Node) (Node, error)
 }
 
 // Walk traverses an AST in depth-first order: It starts by calling
@@ -19,7 +19,7 @@ func Walk(v Visitor, n Node) error {
 
 func walk(v Visitor, n Node) (err error) {
 	// Visit the node itself
-	if v, err = v.Visit(n); err != nil {
+	if v, _, err = v.Visit(n); err != nil {
 		return err
 	} else if v == nil {
 		return nil
@@ -648,33 +648,34 @@ func walk(v Visitor, n Node) (err error) {
 	}
 
 	// Revisit original node after its children have been processed.
-	return v.VisitEnd(n)
+	_, err = v.VisitEnd(n)
+	return err
 }
 
 // VisitFunc represents a function type that implements Visitor.
 // Only executes on node entry.
-type VisitFunc func(Node) error
+type VisitFunc func(Node) (Node, error)
 
 // Visit executes fn. Walk visits node children if fn returns true.
-func (fn VisitFunc) Visit(node Node) (Visitor, error) {
-	if err := fn(node); err != nil {
-		return nil, err
+func (fn VisitFunc) Visit(node Node) (Visitor, Node, error) {
+	if _, err := fn(node); err != nil {
+		return nil, nil, err
 	}
-	return fn, nil
+	return fn, nil, nil
 }
 
 // VisitEnd is a no-op.
-func (fn VisitFunc) VisitEnd(node Node) error { return nil }
+func (fn VisitFunc) VisitEnd(node Node) (Node, error) { return nil, nil }
 
 // VisitEndFunc represents a function type that implements Visitor.
 // Only executes on node exit.
-type VisitEndFunc func(Node) error
+type VisitEndFunc func(Node) (Node, error)
 
 // Visit is a no-op.
-func (fn VisitEndFunc) Visit(node Node) (Visitor, error) { return fn, nil }
+func (fn VisitEndFunc) Visit(node Node) (Visitor, Node, error) { return fn, nil, nil }
 
 // VisitEnd executes fn.
-func (fn VisitEndFunc) VisitEnd(node Node) error { return fn(node) }
+func (fn VisitEndFunc) VisitEnd(node Node) (Node, error) { return fn(node) }
 
 func walkIdent(v Visitor, x *Ident) error {
 	if x != nil {
