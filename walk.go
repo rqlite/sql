@@ -25,6 +25,9 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		return retNode, nil
 	}
 
+	// Node might have been modified so use the new node.
+	n = retNode
+
 	// Visit node's children.
 	switch nn := n.(type) {
 	case *Assignment:
