@@ -4,8 +4,8 @@ package sql
 // If the result visitor w is not nil, Walk visits each of the children
 // of node with the visitor w, followed by a call of w.Visit(nil).
 type Visitor interface {
-	Visit(node Node) (w Visitor, err error)
-	VisitEnd(node Node) error
+	Visit(n Node) (w Visitor, err error)
+	VisitEnd(n Node) error
 }
 
 // Walk traverses an AST in depth-first order: It starts by calling
