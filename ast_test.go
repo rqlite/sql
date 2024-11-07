@@ -1157,7 +1157,7 @@ func StripPos(root sql.Node) sql.Node {
 				field.Set(zero)
 			}
 		}
-		return nil, nil
+		return node, nil
 	}), root)
 	return root
 }
