@@ -378,7 +378,7 @@ func (p *Parser) parseColumnDefinition() (_ *ColumnDefinition, err error) {
 		return &col, err
 	}
 
-	if _, tok, lit := p.peekScan(); tok == IDENT && isTypeName(lit) {
+	if tok := p.peek(); tok == IDENT {
 		if col.Type, err = p.parseType(); err != nil {
 			return &col, err
 		}
@@ -1225,8 +1225,20 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 
 func (p *Parser) parseType() (_ *Type, err error) {
 	var typ Type
-	if typ.Name, err = p.parseIdent("type name"); err != nil {
-		return &typ, err
+	for p.peek() == IDENT {
+		typeName, err := p.parseIdent("type name")
+		if err != nil {
+			return &typ, err
+		}
+		if typ.Name == nil {
+			typ.Name = typeName
+		} else {
+			typ.Name.Name += " " + typeName.Name
+		}
+	}
+
+	if typ.Name == nil {
+		return &typ, p.errorExpected(p.pos, p.tok, "type name")
 	}
 
 	// Optionally parse precision & scale.
