@@ -1,11 +1,10 @@
-package sql_test
+package sql
 
 import (
 	"regexp"
 	"strings"
 	"testing"
-
-	"github.com/rqlite/sql"
+	"time"
 )
 
 func Test_Rewriter_Random(t *testing.T) {
@@ -70,10 +69,10 @@ func Test_Rewriter_Random(t *testing.T) {
 			modified:    false,
 		},
 	} {
-		rw := sql.NewRewriter()
+		rw := NewRewriter()
 		rw.RewriteRand = tt.rewriteRand
 
-		s, err := sql.NewParser(strings.NewReader(tt.in)).ParseStatement()
+		s, err := NewParser(strings.NewReader(tt.in)).ParseStatement()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -86,6 +85,95 @@ func Test_Rewriter_Random(t *testing.T) {
 		match := regexp.MustCompile(tt.exp)
 		rendered := s.String()
 		if !match.MatchString(rendered) {
+			t.Fatalf("test %d failed, exp: '%s', got: '%s'", i, tt.exp, rendered)
+		}
+
+		if tt.modified != f {
+			t.Fatalf("test %d modified wrong, exp %t, got %t", i, tt.modified, f)
+		}
+	}
+}
+
+func Test_Rewriter_Time(t *testing.T) {
+	for i, tt := range []struct {
+		in          string
+		exp         string
+		rewriteTime bool
+		modified    bool
+	}{
+		{
+			in:          `INSERT INTO foo(col1) VALUES (time('now'))`,
+			exp:         `INSERT INTO "foo" ("col1") VALUES (time('now'))`,
+			rewriteTime: false,
+			modified:    false,
+		},
+		{
+			in:          `INSERT INTO foo(col1) VALUES (time('now'))`,
+			exp:         `INSERT INTO "foo" ("col1") VALUES (time(2440422.500000))`,
+			rewriteTime: true,
+			modified:    true,
+		},
+		{
+			in:          `INSERT INTO foo(col1) VALUES (date('now'))`,
+			exp:         `INSERT INTO "foo" ("col1") VALUES (date(2440422.500000))`,
+			rewriteTime: true,
+			modified:    true,
+		},
+		{
+			in:          `INSERT INTO foo(col1) VALUES (datetime('now'))`,
+			exp:         `INSERT INTO "foo" ("col1") VALUES (datetime(2440422.500000))`,
+			rewriteTime: true,
+			modified:    true,
+		},
+		{
+			in:          `INSERT INTO foo(col1) VALUES (julianday('now'))`,
+			exp:         `INSERT INTO "foo" ("col1") VALUES (julianday(2440422.500000))`,
+			rewriteTime: true,
+			modified:    true,
+		},
+		{
+			in:          `INSERT INTO foo(col1) VALUES (unixepoch('now'))`,
+			exp:         `INSERT INTO "foo" ("col1") VALUES (unixepoch(2440422.500000))`,
+			rewriteTime: true,
+			modified:    true,
+		},
+		{
+			in:          `INSERT INTO foo(col1) VALUES (strftime('abc', 'now'))`,
+			exp:         `INSERT INTO "foo" ("col1") VALUES (strftime('abc', 2440422.500000))`,
+			rewriteTime: true,
+			modified:    true,
+		},
+		{
+			in:          `INSERT INTO foo(col1) VALUES (timediff('abc', 'now'))`,
+			exp:         `INSERT INTO "foo" ("col1") VALUES (timediff('abc', 2440422.500000))`,
+			rewriteTime: true,
+			modified:    true,
+		},
+		{
+			in:          `INSERT INTO foo(col1) VALUES (timediff('now', 'now'))`,
+			exp:         `INSERT INTO "foo" ("col1") VALUES (timediff(2440422.500000, 2440422.500000))`,
+			rewriteTime: true,
+			modified:    true,
+		},
+	} {
+		rw := NewRewriter()
+		rw.RewriteTime = tt.rewriteTime
+		rw.nowFn = func() time.Time {
+			return time.Date(1969, 7, 20, 0, 0, 0, 0, time.UTC)
+		}
+
+		s, err := NewParser(strings.NewReader(tt.in)).ParseStatement()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		s, f, err := rw.Do(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rendered := s.String()
+		if rendered != tt.exp {
 			t.Fatalf("test %d failed, exp: '%s', got: '%s'", i, tt.exp, rendered)
 		}
 

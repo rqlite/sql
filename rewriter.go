@@ -70,7 +70,7 @@ func (rw *Rewriter) Visit(node Node) (w Visitor, n Node, err error) {
 		} else if rw.RewriteTime && len(n.Args) > 1 &&
 			strings.EqualFold(n.Name.Name, "strftime") {
 			if isNow(n.Args[1]) {
-				n.Args[0] = jd
+				n.Args[1] = jd
 			}
 			rw.modified = true
 		} else if rw.RewriteTime && len(n.Args) > 1 &&
