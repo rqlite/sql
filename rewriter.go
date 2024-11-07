@@ -17,7 +17,8 @@ type Rewriter struct {
 	randFn func() int64
 	nowFn  func() time.Time
 
-	modified bool
+	orderedBy bool
+	modified  bool
 }
 
 // NewRewriter returns a new Rewriter. This object is not thread
@@ -48,6 +49,10 @@ func (rw *Rewriter) Visit(node Node) (w Visitor, n Node, err error) {
 	retNode := node
 
 	switch n := retNode.(type) {
+	case *OrderingTerm:
+		// NO random() rewriting past this point.
+		rw.orderedBy = true
+		return rw, node, nil
 	case *Call:
 		// If used, ensure the value is same for the duration of the statement
 		jd := julianDayAsNumberLit(rw.nowFn())
@@ -77,7 +82,7 @@ func (rw *Rewriter) Visit(node Node) (w Visitor, n Node, err error) {
 				n.Args[1] = jd
 			}
 			rw.modified = true
-		} else if rw.RewriteRand && strings.EqualFold(n.Name.Name, "random") {
+		} else if !rw.orderedBy && rw.RewriteRand && strings.EqualFold(n.Name.Name, "random") {
 			retNode = &NumberLit{Value: strconv.Itoa(int(rw.randFn()))}
 			rw.modified = true
 		}
@@ -86,6 +91,10 @@ func (rw *Rewriter) Visit(node Node) (w Visitor, n Node, err error) {
 }
 
 func (rw *Rewriter) VisitEnd(node Node) (Node, error) {
+	switch node.(type) {
+	case *OrderingTerm:
+		rw.orderedBy = false
+	}
 	return node, nil
 }
 
