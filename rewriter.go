@@ -45,34 +45,31 @@ func (rw *Rewriter) Visit(node Node) (w Visitor, n Node, err error) {
 
 	switch n := retNode.(type) {
 	case *Call:
+		// If used, ensure the value is same for the duration of the statement
+		jd := julianDayAsNumberLit(rw.nowFn())
+
 		if rw.RewriteTime && len(n.Args) > 0 &&
 			(strings.EqualFold(n.Name.Name, "date") ||
 				strings.EqualFold(n.Name.Name, "time") ||
 				strings.EqualFold(n.Name.Name, "datetime") ||
 				strings.EqualFold(n.Name.Name, "julianday") ||
 				strings.EqualFold(n.Name.Name, "unixepoch")) {
-			arg, ok := n.Args[0].(*StringLit)
-			if ok && strings.EqualFold(arg.Value, "now") {
-				n.Args[0] = julianDayAsNumberLit(rw.nowFn())
+			if isNow(n.Args[0]) {
+				n.Args[0] = jd
 			}
 			rw.modified = true
 		} else if rw.RewriteTime && len(n.Args) > 1 &&
 			strings.EqualFold(n.Name.Name, "strftime") {
-			arg, ok := n.Args[1].(*StringLit)
-			if ok && strings.EqualFold(arg.Value, "now") {
-				n.Args[1] = julianDayAsNumberLit(rw.nowFn())
+			if isNow(n.Args[1]) {
+				n.Args[0] = jd
 			}
 			rw.modified = true
 		} else if rw.RewriteTime && len(n.Args) > 1 &&
 			strings.EqualFold(n.Name.Name, "timediff") {
-			jd := julianDayAsNumberLit(rw.nowFn())
-
-			arg, ok := n.Args[0].(*StringLit)
-			if ok && strings.EqualFold(arg.Value, "now") {
+			if isNow(n.Args[0]) {
 				n.Args[0] = jd
 			}
-			arg, ok = n.Args[1].(*StringLit)
-			if ok && strings.EqualFold(arg.Value, "now") {
+			if isNow(n.Args[1]) {
 				n.Args[1] = jd
 			}
 		} else if rw.RewriteRand && strings.EqualFold(n.Name.Name, "random") {
@@ -85,6 +82,13 @@ func (rw *Rewriter) Visit(node Node) (w Visitor, n Node, err error) {
 
 func (rw *Rewriter) VisitEnd(node Node) (Node, error) {
 	return node, nil
+}
+
+func isNow(e Expr) bool {
+	if e, ok := e.(*StringLit); ok {
+		return strings.EqualFold(e.Value, "now")
+	}
+	return false
 }
 
 func julianDayAsNumberLit(t time.Time) *NumberLit {
