@@ -13,642 +13,642 @@ type Visitor interface {
 // v.Visit(node) is not nil, Walk is invoked recursively with visitor
 // w for each of the non-nil children of node, followed by a call of
 // w.Visit(nil).
-func Walk(v Visitor, node Node) error {
-	return walk(v, node)
+func Walk(v Visitor, n Node) error {
+	return walk(v, n)
 }
 
-func walk(v Visitor, node Node) (err error) {
+func walk(v Visitor, n Node) (err error) {
 	// Visit the node itself
-	if v, err = v.Visit(node); err != nil {
+	if v, err = v.Visit(n); err != nil {
 		return err
 	} else if v == nil {
 		return nil
 	}
 
 	// Visit node's children.
-	switch n := node.(type) {
+	switch nn := n.(type) {
 	case *Assignment:
-		if err := walkIdentList(v, n.Columns); err != nil {
+		if err := walkIdentList(v, nn.Columns); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.Expr); err != nil {
+		if err := walkExpr(v, nn.Expr); err != nil {
 			return err
 		}
 
 	case *ExplainStatement:
-		if n.Stmt != nil {
-			if err := walk(v, n.Stmt); err != nil {
+		if nn.Stmt != nil {
+			if err := walk(v, nn.Stmt); err != nil {
 				return err
 			}
 		}
 
 	case *RollbackStatement:
-		if err := walkIdent(v, n.SavepointName); err != nil {
+		if err := walkIdent(v, nn.SavepointName); err != nil {
 			return err
 		}
 
 	case *SavepointStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
 
 	case *ReleaseStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
 
 	case *CreateTableStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkColumnDefinitionList(v, n.Columns); err != nil {
+		if err := walkColumnDefinitionList(v, nn.Columns); err != nil {
 			return err
 		}
-		if err := walkConstraintList(v, n.Constraints); err != nil {
+		if err := walkConstraintList(v, nn.Constraints); err != nil {
 			return err
 		}
-		if n.Select != nil {
-			if err := walk(v, n.Select); err != nil {
+		if nn.Select != nil {
+			if err := walk(v, nn.Select); err != nil {
 				return err
 			}
 		}
 
 	case *AlterTableStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.NewName); err != nil {
+		if err := walkIdent(v, nn.NewName); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.ColumnName); err != nil {
+		if err := walkIdent(v, nn.ColumnName); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.NewColumnName); err != nil {
+		if err := walkIdent(v, nn.NewColumnName); err != nil {
 			return err
 		}
-		if n.ColumnDef != nil {
-			if err := walk(v, n.ColumnDef); err != nil {
+		if nn.ColumnDef != nil {
+			if err := walk(v, nn.ColumnDef); err != nil {
 				return err
 			}
 		}
 
 	case *AnalyzeStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
 
 	case *CreateViewStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkIdentList(v, n.Columns); err != nil {
+		if err := walkIdentList(v, nn.Columns); err != nil {
 			return err
 		}
-		if n.Select != nil {
-			if err := walk(v, n.Select); err != nil {
+		if nn.Select != nil {
+			if err := walk(v, nn.Select); err != nil {
 				return err
 			}
 		}
 
 	case *DropTableStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
 
 	case *DropViewStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
 
 	case *DropIndexStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
 
 	case *DropTriggerStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
 
 	case *CreateIndexStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.Table); err != nil {
+		if err := walkIdent(v, nn.Table); err != nil {
 			return err
 		}
-		if err := walkIndexedColumnList(v, n.Columns); err != nil {
+		if err := walkIndexedColumnList(v, nn.Columns); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.WhereExpr); err != nil {
+		if err := walkExpr(v, nn.WhereExpr); err != nil {
 			return err
 		}
 
 	case *CreateTriggerStatement:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkIdentList(v, n.UpdateOfColumns); err != nil {
+		if err := walkIdentList(v, nn.UpdateOfColumns); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.Table); err != nil {
+		if err := walkIdent(v, nn.Table); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.WhenExpr); err != nil {
+		if err := walkExpr(v, nn.WhenExpr); err != nil {
 			return err
 		}
-		for _, x := range n.Body {
+		for _, x := range nn.Body {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
 
 	case *SelectStatement:
-		if n.WithClause != nil {
-			if err := walk(v, n.WithClause); err != nil {
+		if nn.WithClause != nil {
+			if err := walk(v, nn.WithClause); err != nil {
 				return err
 			}
 		}
-		for _, x := range n.ValueLists {
+		for _, x := range nn.ValueLists {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		for _, x := range n.Columns {
+		for _, x := range nn.Columns {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if n.Source != nil {
-			if err := walk(v, n.Source); err != nil {
+		if nn.Source != nil {
+			if err := walk(v, nn.Source); err != nil {
 				return err
 			}
 		}
-		if err := walkExpr(v, n.WhereExpr); err != nil {
+		if err := walkExpr(v, nn.WhereExpr); err != nil {
 			return err
 		}
-		if err := walkExprList(v, n.GroupByExprs); err != nil {
+		if err := walkExprList(v, nn.GroupByExprs); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.HavingExpr); err != nil {
+		if err := walkExpr(v, nn.HavingExpr); err != nil {
 			return err
 		}
-		for _, x := range n.Windows {
+		for _, x := range nn.Windows {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if n.Compound != nil {
-			if err := walk(v, n.Compound); err != nil {
+		if nn.Compound != nil {
+			if err := walk(v, nn.Compound); err != nil {
 				return err
 			}
 		}
-		for _, x := range n.OrderingTerms {
+		for _, x := range nn.OrderingTerms {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if err := walkExpr(v, n.LimitExpr); err != nil {
+		if err := walkExpr(v, nn.LimitExpr); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.OffsetExpr); err != nil {
+		if err := walkExpr(v, nn.OffsetExpr); err != nil {
 			return err
 		}
 
 	case *InsertStatement:
-		if n.WithClause != nil {
-			if err := walk(v, n.WithClause); err != nil {
+		if nn.WithClause != nil {
+			if err := walk(v, nn.WithClause); err != nil {
 				return err
 			}
 		}
-		if err := walkIdent(v, n.Table); err != nil {
+		if err := walkIdent(v, nn.Table); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.Alias); err != nil {
+		if err := walkIdent(v, nn.Alias); err != nil {
 			return err
 		}
-		if err := walkIdentList(v, n.Columns); err != nil {
+		if err := walkIdentList(v, nn.Columns); err != nil {
 			return err
 		}
-		for _, x := range n.ValueLists {
+		for _, x := range nn.ValueLists {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if n.Select != nil {
-			if err := walk(v, n.Select); err != nil {
+		if nn.Select != nil {
+			if err := walk(v, nn.Select); err != nil {
 				return err
 			}
 		}
-		if n.UpsertClause != nil {
-			if err := walk(v, n.UpsertClause); err != nil {
+		if nn.UpsertClause != nil {
+			if err := walk(v, nn.UpsertClause); err != nil {
 				return err
 			}
 		}
-		if n.ReturningClause != nil {
-			if err := walk(v, n.ReturningClause); err != nil {
+		if nn.ReturningClause != nil {
+			if err := walk(v, nn.ReturningClause); err != nil {
 				return err
 			}
 		}
 
 	case *UpdateStatement:
-		if n.WithClause != nil {
-			if err := walk(v, n.WithClause); err != nil {
+		if nn.WithClause != nil {
+			if err := walk(v, nn.WithClause); err != nil {
 				return err
 			}
 		}
-		if n.Table != nil {
-			if err := walk(v, n.Table); err != nil {
+		if nn.Table != nil {
+			if err := walk(v, nn.Table); err != nil {
 				return err
 			}
 		}
-		for _, x := range n.Assignments {
+		for _, x := range nn.Assignments {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if err := walkExpr(v, n.WhereExpr); err != nil {
+		if err := walkExpr(v, nn.WhereExpr); err != nil {
 			return err
 		}
-		if n.ReturningClause != nil {
-			if err := walk(v, n.ReturningClause); err != nil {
+		if nn.ReturningClause != nil {
+			if err := walk(v, nn.ReturningClause); err != nil {
 				return err
 			}
 		}
 
 	case *UpsertClause:
-		if err := walkIndexedColumnList(v, n.Columns); err != nil {
+		if err := walkIndexedColumnList(v, nn.Columns); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.WhereExpr); err != nil {
+		if err := walkExpr(v, nn.WhereExpr); err != nil {
 			return err
 		}
-		for _, x := range n.Assignments {
+		for _, x := range nn.Assignments {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if err := walkExpr(v, n.UpdateWhereExpr); err != nil {
+		if err := walkExpr(v, nn.UpdateWhereExpr); err != nil {
 			return err
 		}
 
 	case *ReturningClause:
-		for _, x := range n.Columns {
+		for _, x := range nn.Columns {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
 
 	case *DeleteStatement:
-		if n.WithClause != nil {
-			if err := walk(v, n.WithClause); err != nil {
+		if nn.WithClause != nil {
+			if err := walk(v, nn.WithClause); err != nil {
 				return err
 			}
 		}
-		if n.Table != nil {
-			if err := walk(v, n.Table); err != nil {
+		if nn.Table != nil {
+			if err := walk(v, nn.Table); err != nil {
 				return err
 			}
 		}
-		if err := walkExpr(v, n.WhereExpr); err != nil {
+		if err := walkExpr(v, nn.WhereExpr); err != nil {
 			return err
 		}
-		for _, x := range n.OrderingTerms {
+		for _, x := range nn.OrderingTerms {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if err := walkExpr(v, n.LimitExpr); err != nil {
+		if err := walkExpr(v, nn.LimitExpr); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.OffsetExpr); err != nil {
+		if err := walkExpr(v, nn.OffsetExpr); err != nil {
 			return err
 		}
-		if n.ReturningClause != nil {
-			if err := walk(v, n.ReturningClause); err != nil {
+		if nn.ReturningClause != nil {
+			if err := walk(v, nn.ReturningClause); err != nil {
 				return err
 			}
 		}
 
 	case *PrimaryKeyConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkIdentList(v, n.Columns); err != nil {
+		if err := walkIdentList(v, nn.Columns); err != nil {
 			return err
 		}
 
 	case *NotNullConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
 
 	case *UniqueConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkIndexedColumnList(v, n.Columns); err != nil {
+		if err := walkIndexedColumnList(v, nn.Columns); err != nil {
 			return err
 		}
 
 	case *CheckConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.Expr); err != nil {
+		if err := walkExpr(v, nn.Expr); err != nil {
 			return err
 		}
 
 	case *DefaultConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.Expr); err != nil {
+		if err := walkExpr(v, nn.Expr); err != nil {
 			return err
 		}
 
 	case *GeneratedConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.Expr); err != nil {
+		if err := walkExpr(v, nn.Expr); err != nil {
 			return err
 		}
 
 	case *ForeignKeyConstraint:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkIdentList(v, n.Columns); err != nil {
+		if err := walkIdentList(v, nn.Columns); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.ForeignTable); err != nil {
+		if err := walkIdent(v, nn.ForeignTable); err != nil {
 			return err
 		}
-		if err := walkIdentList(v, n.ForeignColumns); err != nil {
+		if err := walkIdentList(v, nn.ForeignColumns); err != nil {
 			return err
 		}
-		for _, x := range n.Args {
+		for _, x := range nn.Args {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
 
 	case *ParenExpr:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
 
 	case *UnaryExpr:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
 
 	case *BinaryExpr:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.Y); err != nil {
+		if err := walkExpr(v, nn.Y); err != nil {
 			return err
 		}
 
 	case *CastExpr:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
-		if n.Type != nil {
-			if err := walk(v, n.Type); err != nil {
+		if nn.Type != nil {
+			if err := walk(v, nn.Type); err != nil {
 				return err
 			}
 		}
 
 	case *CaseBlock:
-		if err := walkExpr(v, n.Condition); err != nil {
+		if err := walkExpr(v, nn.Condition); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.Body); err != nil {
+		if err := walkExpr(v, nn.Body); err != nil {
 			return err
 		}
 
 	case *CaseExpr:
-		if err := walkExpr(v, n.Operand); err != nil {
+		if err := walkExpr(v, nn.Operand); err != nil {
 			return err
 		}
-		for _, x := range n.Blocks {
+		for _, x := range nn.Blocks {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if err := walkExpr(v, n.ElseExpr); err != nil {
+		if err := walkExpr(v, nn.ElseExpr); err != nil {
 			return err
 		}
 
 	case *ExprList:
-		if err := walkExprList(v, n.Exprs); err != nil {
+		if err := walkExprList(v, nn.Exprs); err != nil {
 			return err
 		}
 
 	case *QualifiedRef:
-		if err := walkIdent(v, n.Table); err != nil {
+		if err := walkIdent(v, nn.Table); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.Column); err != nil {
+		if err := walkIdent(v, nn.Column); err != nil {
 			return err
 		}
 
 	case *Call:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkExprList(v, n.Args); err != nil {
+		if err := walkExprList(v, nn.Args); err != nil {
 			return err
 		}
-		if n.Filter != nil {
-			if err := walk(v, n.Filter); err != nil {
+		if nn.Filter != nil {
+			if err := walk(v, nn.Filter); err != nil {
 				return err
 			}
 		}
-		if n.Over != nil {
-			if err := walk(v, n.Over); err != nil {
+		if nn.Over != nil {
+			if err := walk(v, nn.Over); err != nil {
 				return err
 			}
 		}
 
 	case *FilterClause:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
 
 	case *OverClause:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if n.Definition != nil {
-			if err := walk(v, n.Definition); err != nil {
+		if nn.Definition != nil {
+			if err := walk(v, nn.Definition); err != nil {
 				return err
 			}
 		}
 
 	case *OrderingTerm:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
 
 	case *FrameSpec:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.Y); err != nil {
+		if err := walkExpr(v, nn.Y); err != nil {
 			return err
 		}
 
 	case *Range:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
-		if err := walkExpr(v, n.Y); err != nil {
+		if err := walkExpr(v, nn.Y); err != nil {
 			return err
 		}
 
 	case *Raise:
-		if n.Error != nil {
-			if err := walk(v, n.Error); err != nil {
+		if nn.Error != nil {
+			if err := walk(v, nn.Error); err != nil {
 				return err
 			}
 		}
 
 	case *Exists:
-		if n.Select != nil {
-			if err := walk(v, n.Select); err != nil {
+		if nn.Select != nil {
+			if err := walk(v, nn.Select); err != nil {
 				return err
 			}
 		}
 
 	case *ParenSource:
-		if n.X != nil {
-			if err := walk(v, n.X); err != nil {
+		if nn.X != nil {
+			if err := walk(v, nn.X); err != nil {
 				return err
 			}
 		}
-		if err := walkIdent(v, n.Alias); err != nil {
+		if err := walkIdent(v, nn.Alias); err != nil {
 			return err
 		}
 
 	case *QualifiedTableName:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.Alias); err != nil {
+		if err := walkIdent(v, nn.Alias); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.Index); err != nil {
+		if err := walkIdent(v, nn.Index); err != nil {
 			return err
 		}
 
 	case *JoinClause:
-		if n.X != nil {
-			if err := walk(v, n.X); err != nil {
+		if nn.X != nil {
+			if err := walk(v, nn.X); err != nil {
 				return err
 			}
 		}
-		if n.Operator != nil {
-			if err := walk(v, n.Operator); err != nil {
+		if nn.Operator != nil {
+			if err := walk(v, nn.Operator); err != nil {
 				return err
 			}
 		}
-		if n.Y != nil {
-			if err := walk(v, n.Y); err != nil {
+		if nn.Y != nil {
+			if err := walk(v, nn.Y); err != nil {
 				return err
 			}
 		}
-		if n.Constraint != nil {
-			if err := walk(v, n.Constraint); err != nil {
+		if nn.Constraint != nil {
+			if err := walk(v, nn.Constraint); err != nil {
 				return err
 			}
 		}
 
 	case *OnConstraint:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
 
 	case *UsingConstraint:
-		if err := walkIdentList(v, n.Columns); err != nil {
+		if err := walkIdentList(v, nn.Columns); err != nil {
 			return err
 		}
 
 	case *ColumnDefinition:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if n.Type != nil {
-			if err := walk(v, n.Type); err != nil {
+		if nn.Type != nil {
+			if err := walk(v, nn.Type); err != nil {
 				return err
 			}
 		}
-		if err := walkConstraintList(v, n.Constraints); err != nil {
+		if err := walkConstraintList(v, nn.Constraints); err != nil {
 			return err
 		}
 
 	case *ResultColumn:
-		if err := walkExpr(v, n.Expr); err != nil {
+		if err := walkExpr(v, nn.Expr); err != nil {
 			return err
 		}
-		if err := walkIdent(v, n.Alias); err != nil {
+		if err := walkIdent(v, nn.Alias); err != nil {
 			return err
 		}
 
 	case *IndexedColumn:
-		if err := walkExpr(v, n.X); err != nil {
+		if err := walkExpr(v, nn.X); err != nil {
 			return err
 		}
 
 	case *Window:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if n.Definition != nil {
-			if err := walk(v, n.Definition); err != nil {
+		if nn.Definition != nil {
+			if err := walk(v, nn.Definition); err != nil {
 				return err
 			}
 		}
 
 	case *WindowDefinition:
-		if err := walkIdent(v, n.Base); err != nil {
+		if err := walkIdent(v, nn.Base); err != nil {
 			return err
 		}
-		if err := walkExprList(v, n.Partitions); err != nil {
+		if err := walkExprList(v, nn.Partitions); err != nil {
 			return err
 		}
-		for _, x := range n.OrderingTerms {
+		for _, x := range nn.OrderingTerms {
 			if err := walk(v, x); err != nil {
 				return err
 			}
 		}
-		if n.Frame != nil {
-			if err := walk(v, n.Frame); err != nil {
+		if nn.Frame != nil {
+			if err := walk(v, nn.Frame); err != nil {
 				return err
 			}
 		}
 
 	case *Type:
-		if err := walkIdent(v, n.Name); err != nil {
+		if err := walkIdent(v, nn.Name); err != nil {
 			return err
 		}
-		if n.Precision != nil {
-			if err := walk(v, n.Precision); err != nil {
+		if nn.Precision != nil {
+			if err := walk(v, nn.Precision); err != nil {
 				return err
 			}
 		}
-		if n.Scale != nil {
-			if err := walk(v, n.Scale); err != nil {
+		if nn.Scale != nil {
+			if err := walk(v, nn.Scale); err != nil {
 				return err
 			}
 		}
 	}
 
 	// Revisit original node after its children have been processed.
-	return v.VisitEnd(node)
+	return v.VisitEnd(n)
 }
 
 // VisitFunc represents a function type that implements Visitor.
