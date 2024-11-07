@@ -287,23 +287,23 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			} else {
 				nn.Compound = rn.(*SelectStatement)
 			}
-			for i, x := range nn.OrderingTerms {
-				if rn, err := walk(v, x); err != nil {
-					return nil, err
-				} else {
-					nn.OrderingTerms[i] = rn.(*OrderingTerm)
-				}
-			}
-			if expr, err := walkExpr(v, nn.LimitExpr); err != nil {
+		}
+		for i, x := range nn.OrderingTerms {
+			if rn, err := walk(v, x); err != nil {
 				return nil, err
 			} else {
-				nn.LimitExpr = expr
+				nn.OrderingTerms[i] = rn.(*OrderingTerm)
 			}
-			if expr, err := walkExpr(v, nn.OffsetExpr); err != nil {
-				return nil, err
-			} else {
-				nn.OffsetExpr = expr
-			}
+		}
+		if expr, err := walkExpr(v, nn.LimitExpr); err != nil {
+			return nil, err
+		} else {
+			nn.LimitExpr = expr
+		}
+		if expr, err := walkExpr(v, nn.OffsetExpr); err != nil {
+			return nil, err
+		} else {
+			nn.OffsetExpr = expr
 		}
 
 	case *InsertStatement:
