@@ -1086,15 +1086,6 @@ func TestCall_String(t *testing.T) {
 	})
 }
 
-func TestCallEval_String(t *testing.T) {
-	fn := func() uint64 {
-		return 1234
-	}
-	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "random"}, Eval: true, RandFn: fn}, `1234`)
-	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "RaNDOM"}, Eval: true, RandFn: fn}, `1234`)
-	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}, Eval: true, RandFn: fn}, `foo()`)
-}
-
 func TestRaise_String(t *testing.T) {
 	AssertExprStringer(t, &sql.Raise{Rollback: pos(0), Error: &sql.StringLit{Value: "err"}}, `RAISE(ROLLBACK, 'err')`)
 	AssertExprStringer(t, &sql.Raise{Abort: pos(0), Error: &sql.StringLit{Value: "err"}}, `RAISE(ABORT, 'err')`)
@@ -1159,14 +1150,14 @@ func AssertNodeStringerPanic(tb testing.TB, node sql.Node, msg string) {
 func StripPos(root sql.Node) sql.Node {
 	zero := reflect.ValueOf(sql.Pos{})
 
-	_ = sql.Walk(sql.VisitFunc(func(node sql.Node) error {
+	_, _ = sql.Walk(sql.VisitFunc(func(node sql.Node) (sql.Node, error) {
 		value := reflect.Indirect(reflect.ValueOf(node))
 		for i := 0; i < value.NumField(); i++ {
 			if field := value.Field(i); field.Type() == zero.Type() {
 				field.Set(zero)
 			}
 		}
-		return nil
+		return node, nil
 	}), root)
 	return root
 }
