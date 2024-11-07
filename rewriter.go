@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Rewriter rewrites SQL statements.
 type Rewriter struct {
 	RewriteRand bool
 	RewriteTime bool
@@ -19,6 +20,8 @@ type Rewriter struct {
 	modified bool
 }
 
+// NewRewriter returns a new Rewriter. This object is not thread
+// safe, and should not be shared between goroutines.
 func NewRewriter() *Rewriter {
 	return &Rewriter{
 		RewriteRand: true,
@@ -31,6 +34,7 @@ func NewRewriter() *Rewriter {
 	}
 }
 
+// Do rewrites the provided statement. If the statement is rewritten, the second return value is true.
 func (rw *Rewriter) Do(stmt Statement) (Statement, bool, error) {
 	rw.modified = false
 	node, err := Walk(rw, stmt)
@@ -72,6 +76,7 @@ func (rw *Rewriter) Visit(node Node) (w Visitor, n Node, err error) {
 			if isNow(n.Args[1]) {
 				n.Args[1] = jd
 			}
+			rw.modified = true
 		} else if rw.RewriteRand && strings.EqualFold(n.Name.Name, "random") {
 			retNode = &NumberLit{Value: strconv.Itoa(int(rw.randFn()))}
 			rw.modified = true
