@@ -2341,6 +2341,35 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT rowid FROM foo ORDER BY rowid`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Ident{
+						NamePos: pos(7),
+						Name:    "rowid",
+					},
+				},
+			},
+			From: pos(13),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{
+					NamePos: pos(18),
+					Name:    "foo",
+				},
+			},
+			Order:   pos(22),
+			OrderBy: pos(28),
+			OrderingTerms: []*sql.OrderingTerm{
+				{
+					X: &sql.Ident{
+						NamePos: pos(31),
+						Name:    "rowid",
+					},
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT CURRENT_TIMESTAMP FROM foo`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
