@@ -3198,6 +3198,55 @@ func (n *QualifiedTableName) String() string {
 	return buf.String()
 }
 
+type QualifiedTableFunctionName struct {
+	Name   *Ident // table function name
+	Lparen Pos    // position of left paren
+	Args   []Expr // argument list
+	Rparen Pos    // position of right paren
+	As     Pos    // position of AS keyword
+	Alias  *Ident // optional table alias
+}
+
+// TableName returns the name used to identify n.
+// Returns the alias, if one is specified. Otherwise returns the name.
+func (n *QualifiedTableFunctionName) TableName() string {
+	if s := IdentName(n.Alias); s != "" {
+		return s
+	}
+	return IdentName(n.Name)
+}
+
+// Clone returns a deep copy of n.
+func (n *QualifiedTableFunctionName) Clone() *QualifiedTableFunctionName {
+	if n == nil {
+		return nil
+	}
+	other := *n
+	other.Name = n.Name.Clone()
+	other.Args = cloneExprs(n.Args)
+	other.Alias = n.Alias.Clone()
+	return &other
+}
+
+// String returns the string representation of the table name.
+func (n *QualifiedTableFunctionName) String() string {
+	var buf bytes.Buffer
+	buf.WriteString(n.Name.String())
+	buf.WriteString("(")
+	for i, arg := range n.Args {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(arg.String())
+	}
+	buf.WriteString(")")
+	if n.Alias != nil {
+		fmt.Fprintf(&buf, " AS %s", n.Alias.String())
+	}
+
+	return buf.String()
+}
+
 type ParenSource struct {
 	Lparen Pos    // position of left paren
 	X      Source // nested source
