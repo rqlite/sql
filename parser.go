@@ -2153,6 +2153,9 @@ func (p *Parser) parseQualifiedTable() (_ Source, err error) {
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
 	ident, _ := p.parseIdent("table name")
+	if p.peek() == LP {
+		return p.parseQualifiedTableFunctionName(ident)
+	}
 	return p.parseQualifiedTableName(ident)
 }
 
@@ -2193,20 +2196,35 @@ func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, e
 	return &tbl, nil
 }
 
-func (p *Parser) parseQualifiedTableFunctionName() (_ *QualifiedTableFunctionName, err error) {
-	var tbl QualifiedTableFunctionName
+func (p *Parser) parseQualifiedTableFunctionName(ident *Ident) (_ *QualifiedTableFunctionName, err error) {
+	assert(p.peek() == LP)
 
-	if !isIdentToken(p.peek()) {
-		return &tbl, p.errorExpected(p.pos, p.tok, "table function name")
+	var tbl QualifiedTableFunctionName
+	tbl.Name = ident
+
+	tbl.Lparen, _, _ = p.scan()
+	for {
+		expr, err := p.ParseExpr()
+		if err != nil {
+			return &tbl, err
+		}
+		tbl.Args = append(tbl.Args, expr)
+
+		if p.peek() == RP {
+			break
+		} else if p.peek() != COMMA {
+			return &tbl, p.errorExpected(p.pos, p.tok, "comma or right paren")
+		}
+		p.scan()
 	}
-	tbl.Name, _ = p.parseIdent("table function name")
+	tbl.Rparen, _, _ = p.scan()
 
 	// Parse optional table alias ("AS alias" or just "alias").
 	if tok := p.peek(); tok == AS || isIdentToken(tok) {
 		if p.peek() == AS {
 			tbl.As, _, _ = p.scan()
 		}
-		if tbl.Alias, err = p.parseIdent("table alias"); err != nil {
+		if tbl.Alias, err = p.parseIdent("table function alias"); err != nil {
 			return &tbl, err
 		}
 	}
