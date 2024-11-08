@@ -1549,7 +1549,11 @@ func (p *Parser) parseUpdateStatement(withClause *WithClause) (_ *UpdateStatemen
 		}
 	}
 
-	if stmt.Table, err = p.parseQualifiedTableName(); err != nil {
+	if !isIdentToken(p.peek()) {
+		return nil, p.errorExpected(p.pos, p.tok, "table name")
+	}
+	ident, _ := p.parseIdent("table name")
+	if stmt.Table, err = p.parseQualifiedTableName(ident); err != nil {
 		return &stmt, err
 	}
 
@@ -1602,7 +1606,11 @@ func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatemen
 		return &stmt, p.errorExpected(p.pos, p.tok, "FROM")
 	}
 	stmt.From, _, _ = p.scan()
-	if stmt.Table, err = p.parseQualifiedTableName(); err != nil {
+	if !isIdentToken(p.peek()) {
+		return nil, p.errorExpected(p.pos, p.tok, "table name")
+	}
+	ident, _ := p.parseIdent("table name")
+	if stmt.Table, err = p.parseQualifiedTableName(ident); err != nil {
 		return &stmt, err
 	}
 
@@ -2007,13 +2015,13 @@ func (p *Parser) parseSource() (source Source, err error) {
 	}
 }
 
-// parseUnarySource parses a quailfied table name or subquery but not a JOIN.
+// parseUnarySource parses a qualified table name, table function name, or subquery but not a JOIN.
 func (p *Parser) parseUnarySource() (source Source, err error) {
 	switch p.peek() {
 	case LP:
 		return p.parseParenSource()
 	case IDENT, QIDENT:
-		return p.parseQualifiedTableName()
+		return p.parseQualifiedTable()
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "table name or left paren")
 	}
@@ -2140,13 +2148,20 @@ func (p *Parser) parseParenSource() (_ *ParenSource, err error) {
 	return &source, nil
 }
 
-func (p *Parser) parseQualifiedTableName() (_ *QualifiedTableName, err error) {
-	var tbl QualifiedTableName
-
+func (p *Parser) parseQualifiedTable() (_ Source, err error) {
 	if !isIdentToken(p.peek()) {
-		return &tbl, p.errorExpected(p.pos, p.tok, "table name")
+		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
-	tbl.Name, _ = p.parseIdent("table name")
+	ident, _ := p.parseIdent("table name")
+	if p.peek() == LP {
+		return p.parseQualifiedTableFunctionName(ident)
+	}
+	return p.parseQualifiedTableName(ident)
+}
+
+func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, err error) {
+	var tbl QualifiedTableName
+	tbl.Name = ident
 
 	// Parse optional table alias ("AS alias" or just "alias").
 	if tok := p.peek(); tok == AS || isIdentToken(tok) {
@@ -2176,6 +2191,42 @@ func (p *Parser) parseQualifiedTableName() (_ *QualifiedTableName, err error) {
 			return &tbl, p.errorExpected(p.pos, p.tok, "INDEXED")
 		}
 		tbl.NotIndexed, _, _ = p.scan()
+	}
+
+	return &tbl, nil
+}
+
+func (p *Parser) parseQualifiedTableFunctionName(ident *Ident) (_ *QualifiedTableFunctionName, err error) {
+	assert(p.peek() == LP)
+
+	var tbl QualifiedTableFunctionName
+	tbl.Name = ident
+
+	tbl.Lparen, _, _ = p.scan()
+	for {
+		expr, err := p.ParseExpr()
+		if err != nil {
+			return &tbl, err
+		}
+		tbl.Args = append(tbl.Args, expr)
+
+		if p.peek() == RP {
+			break
+		} else if p.peek() != COMMA {
+			return &tbl, p.errorExpected(p.pos, p.tok, "comma or right paren")
+		}
+		p.scan()
+	}
+	tbl.Rparen, _, _ = p.scan()
+
+	// Parse optional table alias ("AS alias" or just "alias").
+	if tok := p.peek(); tok == AS || isIdentToken(tok) {
+		if p.peek() == AS {
+			tbl.As, _, _ = p.scan()
+		}
+		if tbl.Alias, err = p.parseIdent("table function alias"); err != nil {
+			return &tbl, err
+		}
 	}
 
 	return &tbl, nil

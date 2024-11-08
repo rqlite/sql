@@ -784,6 +784,23 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Index = ri
 		}
 
+	case *QualifiedTableFunctionName:
+		if ri, err := walkIdent(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = ri
+		}
+		if exprs, err := walkExprList(v, nn.Args); err != nil {
+			return nil, err
+		} else {
+			nn.Args = exprs
+		}
+		if ri, err := walkIdent(v, nn.Alias); err != nil {
+			return nil, err
+		} else {
+			nn.Alias = ri
+		}
+
 	case *JoinClause:
 		if nn.X != nil {
 			if rn, err := walk(v, nn.X); err != nil {

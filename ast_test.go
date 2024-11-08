@@ -608,6 +608,23 @@ func TestSelectStatement_String(t *testing.T) {
 
 	AssertStatementStringer(t, &sql.SelectStatement{
 		Columns: []*sql.ResultColumn{{Star: pos(0)}},
+		Source: &sql.QualifiedTableFunctionName{
+			Name: &sql.Ident{Name: "generate_series"},
+			Args: []sql.Expr{&sql.NumberLit{Value: "1"}, &sql.NumberLit{Value: "3"}},
+		},
+	}, `SELECT * FROM "generate_series"(1, 3)`)
+
+	AssertStatementStringer(t, &sql.SelectStatement{
+		Columns: []*sql.ResultColumn{{Star: pos(0)}},
+		Source: &sql.QualifiedTableFunctionName{
+			Name:  &sql.Ident{Name: "generate_series"},
+			Args:  []sql.Expr{&sql.NumberLit{Value: "1"}, &sql.NumberLit{Value: "3"}},
+			Alias: &sql.Ident{Name: "x"},
+		},
+	}, `SELECT * FROM "generate_series"(1, 3) AS "x"`)
+
+	AssertStatementStringer(t, &sql.SelectStatement{
+		Columns: []*sql.ResultColumn{{Star: pos(0)}},
 		Source:  &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}},
 		Windows: []*sql.Window{
 			{

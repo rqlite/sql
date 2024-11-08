@@ -11,75 +11,76 @@ type Node interface {
 	fmt.Stringer
 }
 
-func (*AlterTableStatement) node()    {}
-func (*AnalyzeStatement) node()       {}
-func (*Assignment) node()             {}
-func (*BeginStatement) node()         {}
-func (*BinaryExpr) node()             {}
-func (*BindExpr) node()               {}
-func (*BlobLit) node()                {}
-func (*BoolLit) node()                {}
-func (*Call) node()                   {}
-func (*CaseBlock) node()              {}
-func (*CaseExpr) node()               {}
-func (*CastExpr) node()               {}
-func (*CheckConstraint) node()        {}
-func (*CollateConstraint) node()      {}
-func (*ColumnDefinition) node()       {}
-func (*CommitStatement) node()        {}
-func (*CreateIndexStatement) node()   {}
-func (*CreateTableStatement) node()   {}
-func (*CreateTriggerStatement) node() {}
-func (*CreateViewStatement) node()    {}
-func (*DefaultConstraint) node()      {}
-func (*DeleteStatement) node()        {}
-func (*DropIndexStatement) node()     {}
-func (*DropTableStatement) node()     {}
-func (*DropTriggerStatement) node()   {}
-func (*DropViewStatement) node()      {}
-func (*Exists) node()                 {}
-func (*ExplainStatement) node()       {}
-func (*ExprList) node()               {}
-func (*FilterClause) node()           {}
-func (*ForeignKeyArg) node()          {}
-func (*ForeignKeyConstraint) node()   {}
-func (*FrameSpec) node()              {}
-func (*GeneratedConstraint) node()    {}
-func (*Ident) node()                  {}
-func (*IndexedColumn) node()          {}
-func (*InsertStatement) node()        {}
-func (*JoinClause) node()             {}
-func (*JoinOperator) node()           {}
-func (*NotNullConstraint) node()      {}
-func (*NullLit) node()                {}
-func (*NumberLit) node()              {}
-func (*OnConstraint) node()           {}
-func (*OrderingTerm) node()           {}
-func (*OverClause) node()             {}
-func (*ParenExpr) node()              {}
-func (*ParenSource) node()            {}
-func (*PrimaryKeyConstraint) node()   {}
-func (*QualifiedRef) node()           {}
-func (*QualifiedTableName) node()     {}
-func (*Raise) node()                  {}
-func (*Range) node()                  {}
-func (*ReleaseStatement) node()       {}
-func (*ResultColumn) node()           {}
-func (*ReturningClause) node()        {}
-func (*RollbackStatement) node()      {}
-func (*SavepointStatement) node()     {}
-func (*SelectStatement) node()        {}
-func (*StringLit) node()              {}
-func (*TimestampLit) node()           {}
-func (*Type) node()                   {}
-func (*UnaryExpr) node()              {}
-func (*UniqueConstraint) node()       {}
-func (*UpdateStatement) node()        {}
-func (*UpsertClause) node()           {}
-func (*UsingConstraint) node()        {}
-func (*Window) node()                 {}
-func (*WindowDefinition) node()       {}
-func (*WithClause) node()             {}
+func (*AlterTableStatement) node()        {}
+func (*AnalyzeStatement) node()           {}
+func (*Assignment) node()                 {}
+func (*BeginStatement) node()             {}
+func (*BinaryExpr) node()                 {}
+func (*BindExpr) node()                   {}
+func (*BlobLit) node()                    {}
+func (*BoolLit) node()                    {}
+func (*Call) node()                       {}
+func (*CaseBlock) node()                  {}
+func (*CaseExpr) node()                   {}
+func (*CastExpr) node()                   {}
+func (*CheckConstraint) node()            {}
+func (*CollateConstraint) node()          {}
+func (*ColumnDefinition) node()           {}
+func (*CommitStatement) node()            {}
+func (*CreateIndexStatement) node()       {}
+func (*CreateTableStatement) node()       {}
+func (*CreateTriggerStatement) node()     {}
+func (*CreateViewStatement) node()        {}
+func (*DefaultConstraint) node()          {}
+func (*DeleteStatement) node()            {}
+func (*DropIndexStatement) node()         {}
+func (*DropTableStatement) node()         {}
+func (*DropTriggerStatement) node()       {}
+func (*DropViewStatement) node()          {}
+func (*Exists) node()                     {}
+func (*ExplainStatement) node()           {}
+func (*ExprList) node()                   {}
+func (*FilterClause) node()               {}
+func (*ForeignKeyArg) node()              {}
+func (*ForeignKeyConstraint) node()       {}
+func (*FrameSpec) node()                  {}
+func (*GeneratedConstraint) node()        {}
+func (*Ident) node()                      {}
+func (*IndexedColumn) node()              {}
+func (*InsertStatement) node()            {}
+func (*JoinClause) node()                 {}
+func (*JoinOperator) node()               {}
+func (*NotNullConstraint) node()          {}
+func (*NullLit) node()                    {}
+func (*NumberLit) node()                  {}
+func (*OnConstraint) node()               {}
+func (*OrderingTerm) node()               {}
+func (*OverClause) node()                 {}
+func (*ParenExpr) node()                  {}
+func (*ParenSource) node()                {}
+func (*PrimaryKeyConstraint) node()       {}
+func (*QualifiedRef) node()               {}
+func (*QualifiedTableName) node()         {}
+func (*QualifiedTableFunctionName) node() {}
+func (*Raise) node()                      {}
+func (*Range) node()                      {}
+func (*ReleaseStatement) node()           {}
+func (*ResultColumn) node()               {}
+func (*ReturningClause) node()            {}
+func (*RollbackStatement) node()          {}
+func (*SavepointStatement) node()         {}
+func (*SelectStatement) node()            {}
+func (*StringLit) node()                  {}
+func (*TimestampLit) node()               {}
+func (*Type) node()                       {}
+func (*UnaryExpr) node()                  {}
+func (*UniqueConstraint) node()           {}
+func (*UpdateStatement) node()            {}
+func (*UpsertClause) node()               {}
+func (*UsingConstraint) node()            {}
+func (*Window) node()                     {}
+func (*WindowDefinition) node()           {}
+func (*WithClause) node()                 {}
 
 type Statement interface {
 	Node
@@ -322,10 +323,11 @@ type Source interface {
 	source()
 }
 
-func (*JoinClause) source()         {}
-func (*ParenSource) source()        {}
-func (*QualifiedTableName) source() {}
-func (*SelectStatement) source()    {}
+func (*JoinClause) source()                 {}
+func (*ParenSource) source()                {}
+func (*QualifiedTableName) source()         {}
+func (*QualifiedTableFunctionName) source() {}
+func (*SelectStatement) source()            {}
 
 // CloneSource returns a deep copy src.
 func CloneSource(src Source) Source {
@@ -3195,6 +3197,55 @@ func (n *QualifiedTableName) String() string {
 	} else if n.NotIndexed.IsValid() {
 		buf.WriteString(" NOT INDEXED")
 	}
+	return buf.String()
+}
+
+type QualifiedTableFunctionName struct {
+	Name   *Ident // table function name
+	Lparen Pos    // position of left paren
+	Args   []Expr // argument list
+	Rparen Pos    // position of right paren
+	As     Pos    // position of AS keyword
+	Alias  *Ident // optional table alias
+}
+
+// TableName returns the name used to identify n.
+// Returns the alias, if one is specified. Otherwise returns the name.
+func (n *QualifiedTableFunctionName) TableName() string {
+	if s := IdentName(n.Alias); s != "" {
+		return s
+	}
+	return IdentName(n.Name)
+}
+
+// Clone returns a deep copy of n.
+func (n *QualifiedTableFunctionName) Clone() *QualifiedTableFunctionName {
+	if n == nil {
+		return nil
+	}
+	other := *n
+	other.Name = n.Name.Clone()
+	other.Args = cloneExprs(n.Args)
+	other.Alias = n.Alias.Clone()
+	return &other
+}
+
+// String returns the string representation of the table name.
+func (n *QualifiedTableFunctionName) String() string {
+	var buf bytes.Buffer
+	buf.WriteString(n.Name.String())
+	buf.WriteString("(")
+	for i, arg := range n.Args {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(arg.String())
+	}
+	buf.WriteString(")")
+	if n.Alias != nil {
+		fmt.Fprintf(&buf, " AS %s", n.Alias.String())
+	}
+
 	return buf.String()
 }
 

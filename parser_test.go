@@ -2418,6 +2418,34 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT * FROM generate_series(1,3)`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Star: pos(7),
+				},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableFunctionName{
+				Name: &sql.Ident{
+					NamePos: pos(14),
+					Name:    "generate_series",
+				},
+				Lparen: pos(29),
+				Args: []sql.Expr{
+					&sql.NumberLit{
+						ValuePos: pos(30),
+						Value:    "1",
+					},
+					&sql.NumberLit{
+						ValuePos: pos(32),
+						Value:    "3",
+					},
+				},
+				Rparen: pos(33),
+			},
+		})
+
 		AssertParseStatementError(t, `WITH `, `1:5: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `WITH cte`, `1:8: expected AS, found 'EOF'`)
 		AssertParseStatementError(t, `WITH cte (`, `1:10: expected column name, found 'EOF'`)
