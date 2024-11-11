@@ -3832,6 +3832,47 @@ func TestParser_ParseExpr(t *testing.T) {
 			},
 			Rparen: pos(18),
 		})
+		AssertParseExpr(t, `sum(1, sum(2, 3))`, &sql.Call{
+			Name:   &sql.Ident{NamePos: pos(0), Name: "sum"},
+			Lparen: pos(3),
+			Args: []sql.Expr{
+				&sql.NumberLit{ValuePos: pos(4), Value: "1"},
+				&sql.Call{
+					Name:   &sql.Ident{NamePos: pos(7), Name: "sum"},
+					Lparen: pos(10),
+					Args: []sql.Expr{
+						&sql.NumberLit{ValuePos: pos(11), Value: "2"},
+						&sql.NumberLit{ValuePos: pos(14), Value: "3"},
+					},
+					Rparen: pos(15),
+				},
+			},
+			Rparen: pos(16),
+		})
+		AssertParseExpr(t, `sum(sum(1,2), sum(3, 4))`, &sql.Call{
+			Name:   &sql.Ident{NamePos: pos(0), Name: "sum"},
+			Lparen: pos(3),
+			Args: []sql.Expr{
+				&sql.Call{
+					Name:   &sql.Ident{NamePos: pos(4), Name: "sum"},
+					Lparen: pos(7),
+					Args: []sql.Expr{
+						&sql.NumberLit{ValuePos: pos(8), Value: "1"},
+						&sql.NumberLit{ValuePos: pos(10), Value: "2"},
+					},
+					Rparen: pos(11),
+				}, &sql.Call{
+					Name:   &sql.Ident{NamePos: pos(14), Name: "sum"},
+					Lparen: pos(17),
+					Args: []sql.Expr{
+						&sql.NumberLit{ValuePos: pos(18), Value: "3"},
+						&sql.NumberLit{ValuePos: pos(21), Value: "4"},
+					},
+					Rparen: pos(22),
+				},
+			},
+			Rparen: pos(23),
+		})
 		AssertParseExpr(t, `sum() filter (where true)`, &sql.Call{
 			Name:   &sql.Ident{NamePos: pos(0), Name: "sum"},
 			Lparen: pos(3),
