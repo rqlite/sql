@@ -3344,9 +3344,8 @@ func (op *JoinOperator) Clone() *JoinOperator {
 
 // String returns the string representation of the operator.
 func (op *JoinOperator) String() string {
-	// Add spaces around the operator for better formatting in JoinClause.String
 	if op.Comma.IsValid() {
-		return ", " // Comma is already spaced correctly
+		return ", "
 	}
 
 	var buf bytes.Buffer
@@ -3363,7 +3362,7 @@ func (op *JoinOperator) String() string {
 	} else if op.Cross.IsValid() {
 		buf.WriteString(" CROSS")
 	}
-	buf.WriteString(" JOIN ") // Add leading/trailing space
+	buf.WriteString(" JOIN ")
 
 	return buf.String()
 }
