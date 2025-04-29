@@ -3319,7 +3319,6 @@ func (c *JoinClause) String() string {
 		// If you need to handle NATURAL joins specifically (which don't
 		// use ON/USING explicitly in the output), you might add a check here.
 	}
-
 	return buf.String()
 }
 
