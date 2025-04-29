@@ -775,6 +775,46 @@ func TestSelectStatement_String(t *testing.T) {
 			Y:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "y"}},
 		},
 	}, `SELECT * FROM "x" CROSS JOIN "y"`)
+
+	AssertStatementStringer(t, &sql.SelectStatement{
+		Columns: []*sql.ResultColumn{ // SELECT *
+			{Star: pos(0)},
+		},
+		Source: &sql.JoinClause{ // JOIN table_b ON a.id = b.id
+			X: &sql.QualifiedTableName{ // FROM table_a AS a
+				Name:  &sql.Ident{Name: "table_a"},
+				Alias: &sql.Ident{Name: "a"},
+			},
+			Operator: &sql.JoinOperator{Join: pos(0)},
+			Y: &sql.JoinClause{ // JOIN table_c ON b.id = c.id
+				X: &sql.QualifiedTableName{ // table_b AS b
+					Name:  &sql.Ident{Name: "table_b"},
+					Alias: &sql.Ident{Name: "b"},
+				},
+				Operator: &sql.JoinOperator{Join: pos(0)},
+				Y: &sql.QualifiedTableName{ // table_c AS c
+					Name:  &sql.Ident{Name: "table_c"},
+					Alias: &sql.Ident{Name: "c"},
+				},
+				Constraint: &sql.OnConstraint{ // ON b.id = c.id
+					On: pos(0),
+					X: &sql.BinaryExpr{
+						X:  &sql.QualifiedRef{Table: &sql.Ident{Name: "b"}, Column: &sql.Ident{Name: "id"}},
+						Op: sql.EQ,
+						Y:  &sql.QualifiedRef{Table: &sql.Ident{Name: "c"}, Column: &sql.Ident{Name: "id"}},
+					},
+				},
+			},
+			Constraint: &sql.OnConstraint{ // ON a.id = b.id
+				On: pos(0),
+				X: &sql.BinaryExpr{
+					X:  &sql.QualifiedRef{Table: &sql.Ident{Name: "a"}, Column: &sql.Ident{Name: "id"}},
+					Op: sql.EQ,
+					Y:  &sql.QualifiedRef{Table: &sql.Ident{Name: "b"}, Column: &sql.Ident{Name: "id"}},
+				},
+			},
+		},
+	}, `SELECT * FROM "table_a" AS "a" JOIN "table_b" AS "b" ON "a"."id" = "b"."id" JOIN "table_c" AS "c" ON "b"."id" = "c"."id"`)
 }
 
 func TestUpdateStatement_String(t *testing.T) {
