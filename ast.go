@@ -3298,10 +3298,28 @@ func (c *JoinClause) Clone() *JoinClause {
 // String returns the string representation of the clause.
 func (c *JoinClause) String() string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "%s%s%s", c.X.String(), c.Operator.String(), c.Y.String())
+	// Print LHS source
+	buf.WriteString(c.X.String())
+
+	// Print Join Operator
+	buf.WriteString(c.Operator.String())
+
+	// Print RHS source
+	buf.WriteString(c.Y.String())
+
+	// Print the constraint *associated with this specific join level*
 	if c.Constraint != nil {
-		fmt.Fprintf(&buf, " %s", c.Constraint.String())
+		// Check if the operator isn't just a comma (for old-style joins)
+		// and actually requires an ON/USING clause.
+		if !c.Operator.Comma.IsValid() {
+			buf.WriteString(" ")
+			buf.WriteString(c.Constraint.String())
+		}
+		// Note: Comma joins (implicit cross joins) don't have ON/USING.
+		// If you need to handle NATURAL joins specifically (which don't
+		// use ON/USING explicitly in the output), you might add a check here.
 	}
+
 	return buf.String()
 }
 
@@ -3326,8 +3344,9 @@ func (op *JoinOperator) Clone() *JoinOperator {
 
 // String returns the string representation of the operator.
 func (op *JoinOperator) String() string {
+	// Add spaces around the operator for better formatting in JoinClause.String
 	if op.Comma.IsValid() {
-		return ", "
+		return ", " // Comma is already spaced correctly
 	}
 
 	var buf bytes.Buffer
@@ -3344,7 +3363,7 @@ func (op *JoinOperator) String() string {
 	} else if op.Cross.IsValid() {
 		buf.WriteString(" CROSS")
 	}
-	buf.WriteString(" JOIN ")
+	buf.WriteString(" JOIN ") // Add leading/trailing space
 
 	return buf.String()
 }
