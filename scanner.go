@@ -279,6 +279,16 @@ func (s *Scanner) scanNumber() (Pos, Token, string) {
 		}
 	}
 
+	if s.peek() == 'x' || s.peek() == 'X' {
+		s.read()
+		s.buf.WriteRune('x')
+		for isHex(s.peek()) {
+			ch, _ := s.read()
+			s.buf.WriteRune(ch)
+		}
+		return pos, tok, s.buf.String()
+	}
+
 	// Read decimal and successive digits.
 	if s.peek() == '.' {
 		tok = FLOAT

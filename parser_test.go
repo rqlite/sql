@@ -1691,6 +1691,14 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			},
 		})
+		AssertParseStatement(t, `SELECT 0xe3`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.NumberLit{ValuePos: pos(7), Value: "0xe3"},
+				},
+			},
+		})
 
 		AssertParseStatement(t, `SELECT datetime('now')`, &sql.SelectStatement{
 			Select: pos(0),
