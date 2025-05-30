@@ -2139,7 +2139,6 @@ func (p *Parser) parseParenSource() (_ *ParenSource, err error) {
 	}
 	source.Rparen, _, _ = p.scan()
 
-	// Only parse aliases for nested select statements.
 	if p.peek() == AS || isIdentToken(p.peek()) {
 		if p.peek() == AS {
 			source.As, _, _ = p.scan()
