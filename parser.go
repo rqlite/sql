@@ -3064,10 +3064,11 @@ func (p *Parser) parseAnalyzeStatement() (_ *AnalyzeStatement, err error) {
 
 	var stmt AnalyzeStatement
 	stmt.Analyze, _, _ = p.scan()
-	if stmt.Name, err = p.parseIdent("table or index name"); err != nil {
-		return &stmt, err
+
+	if isIdentToken(p.peek()) {
+		stmt.Name, err = p.parseIdent("table or index name")
 	}
-	return &stmt, nil
+	return &stmt, err
 }
 
 func (p *Parser) scan() (Pos, Token, string) {
