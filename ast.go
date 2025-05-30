@@ -13,6 +13,7 @@ type Node interface {
 
 func (*AlterTableStatement) node()        {}
 func (*AnalyzeStatement) node()           {}
+func (*ReindexStatement) node()           {}
 func (*Assignment) node()                 {}
 func (*BeginStatement) node()             {}
 func (*BinaryExpr) node()                 {}
@@ -89,6 +90,7 @@ type Statement interface {
 
 func (*AlterTableStatement) stmt()    {}
 func (*AnalyzeStatement) stmt()       {}
+func (*ReindexStatement) stmt()       {}
 func (*BeginStatement) stmt()         {}
 func (*CommitStatement) stmt()        {}
 func (*CreateIndexStatement) stmt()   {}
@@ -1244,6 +1246,29 @@ func (s *AnalyzeStatement) String() string {
 		return "ANALYZE"
 	}
 	return fmt.Sprintf("ANALYZE %s", s.Name.String())
+}
+
+type ReindexStatement struct {
+	Reindex Pos  // position of REINDEX keyword
+	Name    Expr // collation, index or table name (or schema.table, schema.index)
+}
+
+// Clone returns a deep copy of s.
+func (s *ReindexStatement) Clone() *ReindexStatement {
+	if s == nil {
+		return nil
+	}
+	other := *s
+	other.Name = CloneExpr(s.Name)
+	return &other
+}
+
+// String returns the string representation of the statement.
+func (s *ReindexStatement) String() string {
+	if s.Name == nil {
+		return "REINDEX"
+	}
+	return fmt.Sprintf("REINDEX %s", s.Name.String())
 }
 
 type AlterTableStatement struct {

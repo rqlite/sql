@@ -3576,6 +3576,23 @@ func TestParser_ParseStatement(t *testing.T) {
 			Name:    &sql.Ident{NamePos: pos(8), Name: "tbl"},
 		})
 	})
+	t.Run("Reindex", func(t *testing.T) {
+		AssertParseStatement(t, `REINDEX`, &sql.ReindexStatement{
+			Reindex: pos(0),
+		})
+		AssertParseStatement(t, `REINDEX tbl`, &sql.ReindexStatement{
+			Reindex: pos(0),
+			Name:    &sql.Ident{NamePos: pos(8), Name: "tbl"},
+		})
+		AssertParseStatement(t, `REINDEX schema.tbl`, &sql.ReindexStatement{
+			Reindex: pos(0),
+			Name: &sql.QualifiedRef{
+				Table:  &sql.Ident{NamePos: pos(8), Name: "schema"},
+				Dot:    pos(14),
+				Column: &sql.Ident{NamePos: pos(15), Name: "tbl"},
+			},
+		})
+	})
 }
 
 func TestParser_ParseExpr(t *testing.T) {
