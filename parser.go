@@ -2022,6 +2022,8 @@ func (p *Parser) parseUnarySource() (source Source, err error) {
 		return p.parseParenSource()
 	case IDENT, QIDENT:
 		return p.parseQualifiedTable()
+	case VALUES:
+		return p.parseSelectStatement(false, nil)
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "table name or left paren")
 	}

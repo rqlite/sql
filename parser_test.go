@@ -1872,6 +1872,30 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT * FROM (VALUES (NULL))`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.ParenSource{
+				Lparen: pos(14),
+				X: &sql.SelectStatement{
+					Values: pos(15),
+					ValueLists: []*sql.ExprList{
+						{
+							Lparen: pos(22),
+							Exprs: []sql.Expr{
+								&sql.NullLit{Pos: pos(23)},
+							},
+							Rparen: pos(27),
+						},
+					},
+				},
+				Rparen: pos(28),
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * FROM foo, bar`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
