@@ -93,6 +93,8 @@ func (p *Parser) parseNonExplainStatement() (Statement, error) {
 	switch p.peek() {
 	case ANALYZE:
 		return p.parseAnalyzeStatement()
+	case REINDEX:
+		return p.parseReindexStatement()
 	case ALTER:
 		return p.parseAlterTableStatement()
 	case BEGIN:
@@ -3068,6 +3070,28 @@ func (p *Parser) parseAnalyzeStatement() (_ *AnalyzeStatement, err error) {
 		return &stmt, err
 	}
 	return &stmt, nil
+}
+
+func (p *Parser) parseReindexStatement() (_ *ReindexStatement, err error) {
+	assert(p.peek() == REINDEX)
+
+	var stmt ReindexStatement
+	stmt.Reindex, _, _ = p.scan()
+
+	// handle case with index, table or collation name
+	if isIdentToken(p.peek()) {
+		ident, err := p.parseIdent("table or index name")
+		if err != nil {
+			return &stmt, err
+		}
+		if p.peek() == DOT {
+			stmt.Name, err = p.parseQualifiedRef(ident)
+		} else {
+			stmt.Name = ident
+		}
+	}
+
+	return &stmt, err
 }
 
 func (p *Parser) scan() (Pos, Token, string) {

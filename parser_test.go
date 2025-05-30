@@ -2710,6 +2710,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			},
 		})
+
 		AssertParseStatement(t, `INSERT OR REPLACE INTO tbl (x) VALUES (1)`, &sql.InsertStatement{
 			Insert:          pos(0),
 			InsertOr:        pos(7),
@@ -3523,6 +3524,23 @@ func TestParser_ParseStatement(t *testing.T) {
 			Name:    &sql.Ident{NamePos: pos(8), Name: "tbl"},
 		})
 		AssertParseStatementError(t, `ANALYZE`, `1:7: expected table or index name, found 'EOF'`)
+	})
+	t.Run("Reindex", func(t *testing.T) {
+		AssertParseStatement(t, `REINDEX`, &sql.ReindexStatement{
+			Reindex: pos(0),
+		})
+		AssertParseStatement(t, `REINDEX tbl`, &sql.ReindexStatement{
+			Reindex: pos(0),
+			Name:    &sql.Ident{NamePos: pos(8), Name: "tbl"},
+		})
+		AssertParseStatement(t, `REINDEX schema.tbl`, &sql.ReindexStatement{
+			Reindex: pos(0),
+			Name: &sql.QualifiedRef{
+				Table:  &sql.Ident{NamePos: pos(8), Name: "schema"},
+				Dot:    pos(14),
+				Column: &sql.Ident{NamePos: pos(15), Name: "tbl"},
+			},
+		})
 	})
 }
 
