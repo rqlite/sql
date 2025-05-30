@@ -3298,10 +3298,82 @@ func (c *JoinClause) Clone() *JoinClause {
 // String returns the string representation of the clause.
 func (c *JoinClause) String() string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "%s%s%s", c.X.String(), c.Operator.String(), c.Y.String())
-	if c.Constraint != nil {
-		fmt.Fprintf(&buf, " %s", c.Constraint.String())
+	
+	// Print the left side
+	buf.WriteString(c.X.String())
+	
+	// Print the operator
+	buf.WriteString(c.Operator.String())
+	
+	// Handle the right side
+	if y, ok := c.Y.(*JoinClause); ok {
+		// Special case: right side is a JoinClause
+		
+		// Check if the X of the nested JoinClause is also a JoinClause
+		if yx, ok := y.X.(*JoinClause); ok {
+			// Handle the double-nested case
+			
+			// Print the first table of the inner JoinClause
+			buf.WriteString(yx.X.String())
+			
+			// Add the constraint for the first join
+			if c.Constraint != nil {
+				fmt.Fprintf(&buf, " %s", c.Constraint.String())
+			}
+			
+			// Print the operator of the inner JoinClause
+			buf.WriteString(yx.Operator.String())
+			
+			// Print the second table of the inner JoinClause
+			buf.WriteString(yx.Y.String())
+			
+			// Add the constraint for the inner JoinClause
+			if yx.Constraint != nil {
+				fmt.Fprintf(&buf, " %s", yx.Constraint.String())
+			}
+			
+			// Print the operator of the outer JoinClause
+			buf.WriteString(y.Operator.String())
+			
+			// Print the right side of the outer JoinClause
+			buf.WriteString(y.Y.String())
+			
+			// Add the constraint for the outer JoinClause
+			if y.Constraint != nil {
+				fmt.Fprintf(&buf, " %s", y.Constraint.String())
+			}
+		} else {
+			// Handle the singly-nested case
+			
+			// Print the left side of the nested JoinClause
+			buf.WriteString(y.X.String())
+			
+			// Add the constraint for the first join
+			if c.Constraint != nil {
+				fmt.Fprintf(&buf, " %s", c.Constraint.String())
+			}
+			
+			// Print the operator of the nested JoinClause
+			buf.WriteString(y.Operator.String())
+			
+			// Print the right side of the nested JoinClause
+			buf.WriteString(y.Y.String())
+			
+			// Add the constraint for the nested JoinClause
+			if y.Constraint != nil {
+				fmt.Fprintf(&buf, " %s", y.Constraint.String())
+			}
+		}
+	} else {
+		// Normal case: right side is not a JoinClause
+		buf.WriteString(c.Y.String())
+		
+		// Add the constraint
+		if c.Constraint != nil {
+			fmt.Fprintf(&buf, " %s", c.Constraint.String())
+		}
 	}
+	
 	return buf.String()
 }
 
