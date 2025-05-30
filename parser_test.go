@@ -1743,6 +1743,31 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT replace(c0, 'a', 1) FROM t;`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Call{
+						Name:   &sql.Ident{NamePos: pos(7), Name: "replace"},
+						Lparen: pos(14),
+						Args: []sql.Expr{
+							&sql.Ident{NamePos: pos(15), Name: "c0"},
+							&sql.StringLit{ValuePos: pos(19), Value: "a"},
+							&sql.NumberLit{ValuePos: pos(24), Value: "1"},
+						},
+						Rparen: pos(25),
+					},
+				},
+			},
+			From: pos(27),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{
+					NamePos: pos(32),
+					Name:    "t",
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * FROM tbl`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
@@ -1869,6 +1894,30 @@ func TestParser_ParseStatement(t *testing.T) {
 				Rparen: pos(23),
 				As:     pos(25),
 				Alias:  &sql.Ident{NamePos: pos(28), Name: "tbl"},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * FROM (VALUES (NULL))`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.ParenSource{
+				Lparen: pos(14),
+				X: &sql.SelectStatement{
+					Values: pos(15),
+					ValueLists: []*sql.ExprList{
+						{
+							Lparen: pos(22),
+							Exprs: []sql.Expr{
+								&sql.NullLit{Pos: pos(23)},
+							},
+							Rparen: pos(27),
+						},
+					},
+				},
+				Rparen: pos(28),
 			},
 		})
 
@@ -3519,11 +3568,13 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("Analyze", func(t *testing.T) {
+		AssertParseStatement(t, `ANALYZE`, &sql.AnalyzeStatement{
+			Analyze: pos(0),
+		})
 		AssertParseStatement(t, `ANALYZE tbl`, &sql.AnalyzeStatement{
 			Analyze: pos(0),
 			Name:    &sql.Ident{NamePos: pos(8), Name: "tbl"},
 		})
-		AssertParseStatementError(t, `ANALYZE`, `1:7: expected table or index name, found 'EOF'`)
 	})
 	t.Run("Reindex", func(t *testing.T) {
 		AssertParseStatement(t, `REINDEX`, &sql.ReindexStatement{

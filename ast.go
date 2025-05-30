@@ -1242,6 +1242,9 @@ func (s *AnalyzeStatement) Clone() *AnalyzeStatement {
 
 // String returns the string representation of the statement.
 func (s *AnalyzeStatement) String() string {
+	if s.Name == nil {
+		return "ANALYZE"
+	}
 	return fmt.Sprintf("ANALYZE %s", s.Name.String())
 }
 
