@@ -1779,6 +1779,19 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT * FROM main.tbl;`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Schema: &sql.Ident{NamePos: pos(14), Name: "main"},
+				Dot:    pos(18),
+				Name:   &sql.Ident{NamePos: pos(19), Name: "tbl"},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT DISTINCT * FROM tbl`, &sql.SelectStatement{
 			Select:   pos(0),
 			Distinct: pos(7),

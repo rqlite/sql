@@ -2165,7 +2165,17 @@ func (p *Parser) parseQualifiedTable() (_ Source, err error) {
 
 func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, err error) {
 	var tbl QualifiedTableName
-	tbl.Name = ident
+
+	if tok := p.peek(); tok == DOT {
+		tbl.Schema = ident
+		tbl.Dot, _, _ = p.scan()
+
+		if tbl.Name, err = p.parseIdent("table name"); err != nil {
+			return &tbl, err
+		}
+	} else {
+		tbl.Name = ident
+	}
 
 	// Parse optional table alias ("AS alias" or just "alias").
 	if tok := p.peek(); tok == AS || isIdentToken(tok) {
@@ -2176,7 +2186,6 @@ func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, e
 			return &tbl, err
 		}
 	}
-
 	// Parse optional "INDEXED BY index-name" or "NOT INDEXED".
 	switch p.peek() {
 	case INDEXED:

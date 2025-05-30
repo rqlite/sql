@@ -3213,6 +3213,8 @@ func (c *ResultColumn) String() string {
 }
 
 type QualifiedTableName struct {
+	Schema     *Ident // schema name
+	Dot        Pos    // position of dot
 	Name       *Ident // table name
 	As         Pos    // position of AS keyword
 	Alias      *Ident // optional table alias
@@ -3238,6 +3240,7 @@ func (n *QualifiedTableName) Clone() *QualifiedTableName {
 		return nil
 	}
 	other := *n
+	other.Schema = n.Schema.Clone()
 	other.Name = n.Name.Clone()
 	other.Alias = n.Alias.Clone()
 	other.Index = n.Index.Clone()
@@ -3247,6 +3250,10 @@ func (n *QualifiedTableName) Clone() *QualifiedTableName {
 // String returns the string representation of the table name.
 func (n *QualifiedTableName) String() string {
 	var buf bytes.Buffer
+	if n.Schema != nil {
+		buf.WriteString(n.Schema.String())
+		buf.WriteString(".")
+	}
 	buf.WriteString(n.Name.String())
 	if n.Alias != nil {
 		fmt.Fprintf(&buf, " AS %s", n.Alias.String())
