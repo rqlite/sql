@@ -2809,39 +2809,39 @@ func (p *Parser) parseFrameSpec() (_ *FrameSpec, err error) {
 
 func (p *Parser) parseParenExpr() (Expr, error) {
 	lparen, _, _ := p.scan()
-	
+
 	// Parse the first expression
 	x, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// If there's no comma after the first expression, treat it as a normal parenthesized expression
 	if p.peek() != COMMA {
 		rparen, _, _ := p.scan()
 		return &ParenExpr{Lparen: lparen, X: x, Rparen: rparen}, nil
 	}
-	
+
 	// If there's a comma, we're dealing with an expression list
 	var list ExprList
 	list.Lparen = lparen
 	list.Exprs = append(list.Exprs, x)
-	
+
 	for p.peek() == COMMA {
 		p.scan() // consume the comma
-		
+
 		expr, err := p.ParseExpr()
 		if err != nil {
 			return &list, err
 		}
 		list.Exprs = append(list.Exprs, expr)
 	}
-	
+
 	if p.peek() != RP {
 		return &list, p.errorExpected(p.pos, p.tok, "right paren")
 	}
 	list.Rparen, _, _ = p.scan()
-	
+
 	return &list, nil
 }
 
