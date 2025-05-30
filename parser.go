@@ -2024,6 +2024,8 @@ func (p *Parser) parseUnarySource() (source Source, err error) {
 		return p.parseParenSource()
 	case IDENT, QIDENT:
 		return p.parseQualifiedTable()
+	case VALUES:
+		return p.parseSelectStatement(false, nil)
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "table name or left paren")
 	}
@@ -3066,8 +3068,12 @@ func (p *Parser) parseAnalyzeStatement() (_ *AnalyzeStatement, err error) {
 
 	var stmt AnalyzeStatement
 	stmt.Analyze, _, _ = p.scan()
-	if stmt.Name, err = p.parseIdent("table or index name"); err != nil {
-		return &stmt, err
+
+	if isIdentToken(p.peek()) {
+		stmt.Name, err = p.parseIdent("table or index name")
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &stmt, nil
 }
