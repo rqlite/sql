@@ -296,8 +296,27 @@ func (p *Parser) parseCreateTableStatement(createPos Pos) (_ *CreateTableStateme
 		stmt.IfNotExists = pos
 	}
 
-	if stmt.Name, err = p.parseIdent("table name"); err != nil {
+	// Parse the first identifier (either schema or table name)
+	firstIdent, err := p.parseIdent("table name")
+	if err != nil {
 		return &stmt, err
+	}
+
+	// Check if it's a schema.table format
+	if p.peek() == DOT {
+		// First identifier is the schema name
+		stmt.Schema = firstIdent
+		
+		// Consume the dot
+		p.scan()
+		
+		// Parse the table name
+		if stmt.Name, err = p.parseIdent("table name"); err != nil {
+			return &stmt, err
+		}
+	} else {
+		// Just a table name without schema
+		stmt.Name = firstIdent
 	}
 
 	// Parse either a column/constraint list or build table from "AS <select>".
