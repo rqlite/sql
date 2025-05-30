@@ -288,7 +288,6 @@ func (s *Scanner) scanNumber() (Pos, Token, string) {
 			// reason: according to spec maximum of 16 significant digits)
 			return pos, tok, s.buf.String()
 		}
-		return pos, tok, s.buf.String()
 	}
 
 	// Read whole number if starting with a digit.
