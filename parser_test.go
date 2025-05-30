@@ -1743,7 +1743,59 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
-		AssertParseStatement(t, `SELECT replace(c0, 'a', 1) FROM t;`, &sql.SelectStatement{
+		AssertParseStatement(t, `SELECT like(NULL, FALSE);`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Call{
+						Name:   &sql.Ident{NamePos: pos(7), Name: "like"},
+						Lparen: pos(11),
+						Args: []sql.Expr{
+							&sql.NullLit{Pos: pos(12)},
+							&sql.BoolLit{ValuePos: pos(18), Value: false},
+						},
+						Rparen: pos(23),
+					},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT glob('*.txt', 'file.txt');`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Call{
+						Name:   &sql.Ident{NamePos: pos(7), Name: "glob"},
+						Lparen: pos(11),
+						Args: []sql.Expr{
+							&sql.StringLit{ValuePos: pos(12), Value: "*.txt"},
+							&sql.StringLit{ValuePos: pos(21), Value: "file.txt"},
+						},
+						Rparen: pos(31),
+					},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT if(TRUE, 'a', 'b');`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Call{
+						Name:   &sql.Ident{NamePos: pos(7), Name: "if"},
+						Lparen: pos(9),
+						Args: []sql.Expr{
+							&sql.BoolLit{ValuePos: pos(10), Value: true},
+							&sql.StringLit{ValuePos: pos(16), Value: "a"},
+							&sql.StringLit{ValuePos: pos(21), Value: "b"},
+						},
+						Rparen: pos(24),
+					},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT replace(c0, 'a', 1);`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
 				{
@@ -1757,13 +1809,6 @@ func TestParser_ParseStatement(t *testing.T) {
 						},
 						Rparen: pos(25),
 					},
-				},
-			},
-			From: pos(27),
-			Source: &sql.QualifiedTableName{
-				Name: &sql.Ident{
-					NamePos: pos(32),
-					Name:    "t",
 				},
 			},
 		})
