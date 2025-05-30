@@ -3085,13 +3085,15 @@ func (p *Parser) parseReindexStatement() (_ *ReindexStatement, err error) {
 			return &stmt, err
 		}
 		if p.peek() == DOT {
-			stmt.Name, err = p.parseQualifiedRef(ident)
+			if stmt.Name, err = p.parseQualifiedRef(ident); err != nil {
+				return &stmt, err
+			}
 		} else {
 			stmt.Name = ident
 		}
 	}
 
-	return &stmt, err
+	return &stmt, nil
 }
 
 func (p *Parser) scan() (Pos, Token, string) {
