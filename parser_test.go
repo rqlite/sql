@@ -3542,11 +3542,13 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("Analyze", func(t *testing.T) {
+		AssertParseStatement(t, `ANALYZE`, &sql.AnalyzeStatement{
+			Analyze: pos(0),
+		})
 		AssertParseStatement(t, `ANALYZE tbl`, &sql.AnalyzeStatement{
 			Analyze: pos(0),
 			Name:    &sql.Ident{NamePos: pos(8), Name: "tbl"},
 		})
-		AssertParseStatementError(t, `ANALYZE`, `1:7: expected table or index name, found 'EOF'`)
 	})
 }
 
