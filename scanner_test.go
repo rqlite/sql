@@ -79,11 +79,18 @@ func TestScanner_Scan(t *testing.T) {
 	})
 
 	t.Run("INTEGER", func(t *testing.T) {
+		AssertScan(t, `012`, sql.INTEGER, `012`)
 		AssertScan(t, `123`, sql.INTEGER, `123`)
+		AssertScan(t, `0xe3`, sql.INTEGER, `0xe3`)
+		// BUG: see comment in scanner
+		// AssertScanError(t, `0x`, sql.ILLEGAL)
+		// AssertScanError(t, `4xe3`, sql.ILLEGAL)
+		// AssertScanError(t, `0x12345678912345678`, sql.ILLEGAL, ``)
 	})
 
 	t.Run("FLOAT", func(t *testing.T) {
 		AssertScan(t, `123.456`, sql.FLOAT, `123.456`)
+		AssertScan(t, `0.01`, sql.FLOAT, `0.01`)
 		AssertScan(t, `.1`, sql.FLOAT, `.1`)
 		AssertScan(t, `123e456`, sql.FLOAT, `123e456`)
 		AssertScan(t, `123E456`, sql.FLOAT, `123E456`)
