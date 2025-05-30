@@ -1989,8 +1989,36 @@ func (c *OverClause) String() string {
 	return fmt.Sprintf("OVER %s", c.Definition.String())
 }
 
+type CollationClause struct {
+	Collate Pos    // position of COLLATE keyword
+	Name    *Ident // collation function (e.g. BINARY, NOCASE, RTRIM or custom)
+
+}
+
+// Clone returns a deep copy of c.
+func (c *CollationClause) Clone() *CollationClause {
+	if c == nil {
+		return nil
+	}
+	other := *c
+	other.Name = c.Name.Clone()
+	return &other
+}
+
+// String returns the string representation of the collation.
+func (c *CollationClause) String() string {
+	var buf bytes.Buffer
+
+	buf.WriteString("COLLATE ")
+	buf.WriteString(c.Name.String())
+
+	return buf.String()
+}
+
 type OrderingTerm struct {
 	X Expr // ordering expression
+
+	Collation *CollationClause
 
 	Asc  Pos // position of ASC keyword
 	Desc Pos // position of DESC keyword
@@ -2026,6 +2054,10 @@ func (t *OrderingTerm) String() string {
 	var buf bytes.Buffer
 	buf.WriteString(t.X.String())
 
+	if t.Collation != nil {
+		buf.WriteString(" ")
+		buf.WriteString(t.Collation.String())
+	}
 	if t.Asc.IsValid() {
 		buf.WriteString(" ASC")
 	} else if t.Desc.IsValid() {

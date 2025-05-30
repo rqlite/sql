@@ -2177,6 +2177,42 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT * ORDER BY c1 COLLATE BINARY;`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			Order:   pos(9),
+			OrderBy: pos(15),
+			OrderingTerms: []*sql.OrderingTerm{
+				{
+					X: &sql.Ident{NamePos: pos(18), Name: "c1"},
+					Collation: &sql.CollationClause{
+						Collate: pos(21),
+						Name:    &sql.Ident{NamePos: pos(29), Name: "BINARY"},
+					},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * ORDER BY c1 COLLATE NOCASE DESC;`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			Order:   pos(9),
+			OrderBy: pos(15),
+			OrderingTerms: []*sql.OrderingTerm{
+				{
+					X: &sql.Ident{NamePos: pos(18), Name: "c1"},
+					Collation: &sql.CollationClause{
+						Collate: pos(21), Name: &sql.Ident{NamePos: pos(29), Name: "NOCASE"},
+					},
+					Desc: pos(36),
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * LIMIT 1`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
