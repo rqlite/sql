@@ -80,6 +80,7 @@ func TestScanner_Scan(t *testing.T) {
 
 	t.Run("INTEGER", func(t *testing.T) {
 		AssertScan(t, `123`, sql.INTEGER, `123`)
+		AssertScan(t, `0xe3`, sql.INTEGER, `0xe3`)
 	})
 
 	t.Run("FLOAT", func(t *testing.T) {
