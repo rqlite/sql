@@ -2674,6 +2674,13 @@ func (p *Parser) parseOrderingTerm() (_ *OrderingTerm, err error) {
 		return &term, err
 	}
 
+	// Parse optional "COLLATE"
+	if p.peek() == COLLATE {
+		if term.Collation, err = p.parseCollationClause(); err != nil {
+			return &term, err
+		}
+	}
+
 	// Parse optional sort direction ("ASC" or "DESC")
 	switch p.peek() {
 	case ASC:
@@ -2696,6 +2703,19 @@ func (p *Parser) parseOrderingTerm() (_ *OrderingTerm, err error) {
 	}
 
 	return &term, nil
+}
+
+func (p *Parser) parseCollationClause() (_ *CollationClause, err error) {
+	assert(p.peek() == COLLATE)
+
+	var clause CollationClause
+	clause.Collate, _, _ = p.scan()
+
+	if clause.Name, err = p.parseIdent("collation name"); err != nil {
+		return &clause, err
+	}
+
+	return &clause, nil
 }
 
 func (p *Parser) parseFrameSpec() (_ *FrameSpec, err error) {
