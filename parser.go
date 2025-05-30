@@ -306,10 +306,10 @@ func (p *Parser) parseCreateTableStatement(createPos Pos) (_ *CreateTableStateme
 	if p.peek() == DOT {
 		// First identifier is the schema name
 		stmt.Schema = firstIdent
-		
+
 		// Consume the dot
 		p.scan()
-		
+
 		// Parse the table name
 		if stmt.Name, err = p.parseIdent("table name"); err != nil {
 			return &stmt, err
