@@ -1933,6 +1933,21 @@ func TestParser_ParseStatement(t *testing.T) {
 				Rparen: pos(28),
 			},
 		})
+		AssertParseStatement(t, `SELECT * FROM ( t ) a`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.ParenSource{
+				Lparen: pos(14),
+				X: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(16), Name: "t"},
+				},
+				Rparen: pos(18),
+				Alias:  &sql.Ident{NamePos: pos(20), Name: "a"},
+			},
+		})
 
 		AssertParseStatement(t, `SELECT * FROM foo, bar`, &sql.SelectStatement{
 			Select: pos(0),
