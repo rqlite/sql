@@ -1307,6 +1307,122 @@ func TestParser_ParseStatement(t *testing.T) {
 		})
 	})
 
+	t.Run("CreateVirtualTable", func(t *testing.T) {
+		AssertParseStatement(t, `CREATE VIRTUAL TABLE vtbl USING mdl`, &sql.CreateVirtualTableStatement{
+			Create:     pos(0),
+			Virtual:    pos(7),
+			Table:      pos(15),
+			Name:       &sql.Ident{NamePos: pos(21), Name: "vtbl"},
+			Using:      pos(26),
+			ModuleName: &sql.Ident{NamePos: pos(32), Name: "mdl"},
+		})
+
+		AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl`, "1:25: expected USING, found 'EOF'")
+		AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING`, "1:31: expected module name, found 'EOF'")
+
+		t.Run("WithSchemaQualifiedTable", func(t *testing.T) {
+			AssertParseStatement(t, `CREATE VIRTUAL TABLE schm.vtbl USING mdl`, &sql.CreateVirtualTableStatement{
+				Create:     pos(0),
+				Virtual:    pos(7),
+				Table:      pos(15),
+				Schema:     &sql.Ident{NamePos: pos(21), Name: "schm"},
+				Dot:        pos(25),
+				Name:       &sql.Ident{NamePos: pos(26), Name: "vtbl"},
+				Using:      pos(31),
+				ModuleName: &sql.Ident{NamePos: pos(37), Name: "mdl"},
+			})
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE schm.`, "1:26: expected table name, found 'EOF'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE schm.vtbl`, "1:30: expected USING, found 'EOF'")
+		})
+
+		t.Run("WithIfNotExists", func(t *testing.T) {
+			AssertParseStatement(t, `CREATE VIRTUAL TABLE IF NOT EXISTS vtbl USING mdl`, &sql.CreateVirtualTableStatement{
+				Create:      pos(0),
+				Virtual:     pos(7),
+				Table:       pos(15),
+				If:          pos(21),
+				IfNot:       pos(24),
+				IfNotExists: pos(28),
+				Name:        &sql.Ident{NamePos: pos(35), Name: "vtbl"},
+				Using:       pos(40),
+				ModuleName:  &sql.Ident{NamePos: pos(46), Name: "mdl"},
+			})
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE IF`, "1:23: expected NOT, found 'EOF'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE IF NOT`, "1:27: expected EXISTS, found 'EOF'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE IF NOT EXIST`, "1:29: expected EXISTS, found EXIST")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE IF NOT EXISTS`, "1:34: expected schema or table name, found 'EOF'")
+		})
+
+		t.Run("WithArguments", func(t *testing.T) {
+			AssertParseStatement(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1)`, &sql.CreateVirtualTableStatement{
+				Create:     pos(0),
+				Virtual:    pos(7),
+				Table:      pos(15),
+				Name:       &sql.Ident{NamePos: pos(21), Name: "vtbl"},
+				Using:      pos(26),
+				ModuleName: &sql.Ident{NamePos: pos(32), Name: "mdl"},
+				Lparen:     pos(35),
+				Arguments: []*sql.ModuleArgument{
+					{Name: &sql.Ident{NamePos: pos(36), Name: "arg1"}},
+				},
+				Rparen: pos(40),
+			})
+			AssertParseStatement(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1,arg2='a',"arg3"=false)`, &sql.CreateVirtualTableStatement{
+				Create:     pos(0),
+				Virtual:    pos(7),
+				Table:      pos(15),
+				Name:       &sql.Ident{NamePos: pos(21), Name: "vtbl"},
+				Using:      pos(26),
+				ModuleName: &sql.Ident{NamePos: pos(32), Name: "mdl"},
+				Lparen:     pos(35),
+				Arguments: []*sql.ModuleArgument{
+					{
+						Name: &sql.Ident{NamePos: pos(36), Name: "arg1"},
+					},
+					{
+						Name:    &sql.Ident{NamePos: pos(41), Name: "arg2"},
+						Assign:  pos(45),
+						Literal: &sql.StringLit{ValuePos: pos(46), Value: "a"},
+					},
+					{
+						Name:    &sql.Ident{NamePos: pos(50), Name: "arg3", Quoted: true},
+						Assign:  pos(56),
+						Literal: &sql.BoolLit{ValuePos: pos(57), Value: false},
+					},
+				},
+				Rparen: pos(62),
+			})
+			AssertParseStatement(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 TEXT)`, &sql.CreateVirtualTableStatement{
+				Create:     pos(0),
+				Virtual:    pos(7),
+				Table:      pos(15),
+				Name:       &sql.Ident{NamePos: pos(21), Name: "vtbl"},
+				Using:      pos(26),
+				ModuleName: &sql.Ident{NamePos: pos(32), Name: "mdl"},
+				Lparen:     pos(35),
+				Arguments: []*sql.ModuleArgument{
+					{
+						Name: &sql.Ident{NamePos: pos(36), Name: "arg1"},
+						Type: &sql.Type{Name: &sql.Ident{NamePos: pos(41), Name: "TEXT"}},
+					},
+				},
+				Rparen: pos(45),
+			})
+
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(`, "1:36: expected module argument name, found 'EOF'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1`, "1:40: expected comma or right paren, found 'EOF'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1=3`, "1:42: expected comma or right paren, found 'EOF'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1=3,`, "1:43: expected module argument name, found 'EOF'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl()`, "1:37: expected module arguments, found ')'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 BLOB`, "1:45: expected comma or right paren, found 'EOF'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 arg2)`, "1:42: expected comma or right paren, found arg2")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 TEXT=value)`, "1:46: expected comma or right paren, found '='")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(=)`, "1:37: expected module argument name, found '='")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(key=)`, "1:41: expected expression, found ')'")
+			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(=value)`, "1:37: expected module argument name, found '='")
+		})
+	})
+
 	t.Run("DropTable", func(t *testing.T) {
 		AssertParseStatement(t, `DROP TABLE vw`, &sql.DropTableStatement{
 			Drop:  pos(0),
