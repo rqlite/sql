@@ -125,7 +125,7 @@ func TestScanner_Scan(t *testing.T) {
 		AssertScan(t, "<>", sql.NE, "<>")
 	})
 	t.Run("BITNOT", func(t *testing.T) {
-		AssertScan(t, "!", sql.BITNOT, "!")
+		AssertScan(t, "~", sql.BITNOT, "~")
 	})
 	t.Run("EQ", func(t *testing.T) {
 		AssertScan(t, "=", sql.EQ, "=")

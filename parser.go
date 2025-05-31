@@ -2367,7 +2367,7 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 		return &BoolLit{ValuePos: pos, Value: tok == TRUE}, nil
 	case tok == BIND:
 		return &BindExpr{NamePos: pos, Name: lit}, nil
-	case tok == PLUS, tok == MINUS:
+	case tok == PLUS, tok == MINUS, tok == BITNOT:
 		expr, err = p.parseOperand()
 		if err != nil {
 			return nil, err

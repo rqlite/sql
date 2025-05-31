@@ -3673,6 +3673,7 @@ func TestParser_ParseExpr(t *testing.T) {
 	t.Run("UnaryExpr", func(t *testing.T) {
 		AssertParseExpr(t, `-123`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.MINUS, X: &sql.NumberLit{ValuePos: pos(1), Value: `123`}})
 		AssertParseExpr(t, `NOT foo`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.NOT, X: &sql.Ident{NamePos: pos(4), Name: "foo"}})
+		AssertParseExpr(t, `~1`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.BITNOT, X: &sql.NumberLit{ValuePos: pos(1), Value: "1"}})
 		AssertParseExprError(t, `-`, `1:1: expected expression, found 'EOF'`)
 	})
 	t.Run("QualifiedRef", func(t *testing.T) {

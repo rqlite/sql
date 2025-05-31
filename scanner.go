@@ -58,7 +58,7 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 				s.read()
 				return pos, NE, "!="
 			}
-			return pos, BITNOT, "!"
+			return pos, ILLEGAL, "!"
 		case '=':
 			if s.peek() == '=' {
 				s.read()
@@ -119,6 +119,8 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 			return pos, SLASH, "/"
 		case '%':
 			return pos, REM, "%"
+		case '~':
+			return pos, BITNOT, "~"
 		default:
 			return pos, ILLEGAL, string(ch)
 		}
