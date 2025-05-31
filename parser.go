@@ -949,8 +949,7 @@ func (p *Parser) parseModuleArgument() (_ *ModuleArgument, err error) {
 		if arg.Literal, err = p.parseOperand(); err != nil {
 			return &arg, err
 		}
-	}
-	if isTypeName(p.lit) {
+	} else if isTypeName(p.lit) {
 		if arg.Type, err = p.parseType(); err != nil {
 			return &arg, err
 		}
