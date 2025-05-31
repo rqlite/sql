@@ -39,6 +39,7 @@ func (*DropTableStatement) node()         {}
 func (*DropTriggerStatement) node()       {}
 func (*DropViewStatement) node()          {}
 func (*Exists) node()                     {}
+func (*Null) node()                       {}
 func (*ExplainStatement) node()           {}
 func (*ExprList) node()                   {}
 func (*FilterClause) node()               {}
@@ -200,6 +201,7 @@ func (*Call) expr()         {}
 func (*CaseExpr) expr()     {}
 func (*CastExpr) expr()     {}
 func (*Exists) expr()       {}
+func (*Null) expr()         {}
 func (*ExprList) expr()     {}
 func (*Ident) expr()        {}
 func (*NullLit) expr()      {}
@@ -1818,6 +1820,29 @@ func (expr *Exists) String() string {
 		return fmt.Sprintf("NOT EXISTS (%s)", expr.Select.String())
 	}
 	return fmt.Sprintf("EXISTS (%s)", expr.Select.String())
+}
+
+type Null struct {
+	X     Expr  // expression being checked for null
+	Op    Token // IS or NOT token
+	OpPos Pos   // position of NOT NULL postfix operation
+}
+
+// Clone returns a deep copy of expr.
+func (expr *Null) Clone() *Null {
+	if expr == nil {
+		return nil
+	}
+	other := *expr
+	return &other
+}
+
+// String returns the string representation of the expression.
+func (expr *Null) String() string {
+	if expr.Op == ISNULL {
+		return "IS NULL"
+	}
+	return "NOT NULL"
 }
 
 type ExprList struct {
