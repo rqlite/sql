@@ -11,104 +11,106 @@ type Node interface {
 	fmt.Stringer
 }
 
-func (*AlterTableStatement) node()        {}
-func (*AnalyzeStatement) node()           {}
-func (*ReindexStatement) node()           {}
-func (*Assignment) node()                 {}
-func (*BeginStatement) node()             {}
-func (*BinaryExpr) node()                 {}
-func (*BindExpr) node()                   {}
-func (*BlobLit) node()                    {}
-func (*BoolLit) node()                    {}
-func (*Call) node()                       {}
-func (*CaseBlock) node()                  {}
-func (*CaseExpr) node()                   {}
-func (*CastExpr) node()                   {}
-func (*CheckConstraint) node()            {}
-func (*CollateConstraint) node()          {}
-func (*ColumnDefinition) node()           {}
-func (*CommitStatement) node()            {}
-func (*CreateIndexStatement) node()       {}
-func (*CreateTableStatement) node()       {}
-func (*CreateTriggerStatement) node()     {}
-func (*CreateViewStatement) node()        {}
-func (*DefaultConstraint) node()          {}
-func (*DeleteStatement) node()            {}
-func (*DropIndexStatement) node()         {}
-func (*DropTableStatement) node()         {}
-func (*DropTriggerStatement) node()       {}
-func (*DropViewStatement) node()          {}
-func (*Exists) node()                     {}
-func (*ExplainStatement) node()           {}
-func (*ExprList) node()                   {}
-func (*FilterClause) node()               {}
-func (*ForeignKeyArg) node()              {}
-func (*ForeignKeyConstraint) node()       {}
-func (*FrameSpec) node()                  {}
-func (*GeneratedConstraint) node()        {}
-func (*Ident) node()                      {}
-func (*IndexedColumn) node()              {}
-func (*InsertStatement) node()            {}
-func (*JoinClause) node()                 {}
-func (*JoinOperator) node()               {}
-func (*NotNullConstraint) node()          {}
-func (*NullLit) node()                    {}
-func (*NumberLit) node()                  {}
-func (*OnConstraint) node()               {}
-func (*OrderingTerm) node()               {}
-func (*OverClause) node()                 {}
-func (*ParenExpr) node()                  {}
-func (*ParenSource) node()                {}
-func (*PrimaryKeyConstraint) node()       {}
-func (*QualifiedRef) node()               {}
-func (*QualifiedTableName) node()         {}
-func (*QualifiedTableFunctionName) node() {}
-func (*Raise) node()                      {}
-func (*Range) node()                      {}
-func (*ReleaseStatement) node()           {}
-func (*ResultColumn) node()               {}
-func (*ReturningClause) node()            {}
-func (*RollbackStatement) node()          {}
-func (*SavepointStatement) node()         {}
-func (*SelectStatement) node()            {}
-func (*StringLit) node()                  {}
-func (*TimestampLit) node()               {}
-func (*Type) node()                       {}
-func (*UnaryExpr) node()                  {}
-func (*UniqueConstraint) node()           {}
-func (*UpdateStatement) node()            {}
-func (*UpsertClause) node()               {}
-func (*UsingConstraint) node()            {}
-func (*Window) node()                     {}
-func (*WindowDefinition) node()           {}
-func (*WithClause) node()                 {}
+func (*AlterTableStatement) node()         {}
+func (*AnalyzeStatement) node()            {}
+func (*ReindexStatement) node()            {}
+func (*Assignment) node()                  {}
+func (*BeginStatement) node()              {}
+func (*BinaryExpr) node()                  {}
+func (*BindExpr) node()                    {}
+func (*BlobLit) node()                     {}
+func (*BoolLit) node()                     {}
+func (*Call) node()                        {}
+func (*CaseBlock) node()                   {}
+func (*CaseExpr) node()                    {}
+func (*CastExpr) node()                    {}
+func (*CheckConstraint) node()             {}
+func (*CollateConstraint) node()           {}
+func (*ColumnDefinition) node()            {}
+func (*CommitStatement) node()             {}
+func (*CreateIndexStatement) node()        {}
+func (*CreateTableStatement) node()        {}
+func (*CreateVirtualTableStatement) node() {}
+func (*CreateTriggerStatement) node()      {}
+func (*CreateViewStatement) node()         {}
+func (*DefaultConstraint) node()           {}
+func (*DeleteStatement) node()             {}
+func (*DropIndexStatement) node()          {}
+func (*DropTableStatement) node()          {}
+func (*DropTriggerStatement) node()        {}
+func (*DropViewStatement) node()           {}
+func (*Exists) node()                      {}
+func (*ExplainStatement) node()            {}
+func (*ExprList) node()                    {}
+func (*FilterClause) node()                {}
+func (*ForeignKeyArg) node()               {}
+func (*ForeignKeyConstraint) node()        {}
+func (*FrameSpec) node()                   {}
+func (*GeneratedConstraint) node()         {}
+func (*Ident) node()                       {}
+func (*IndexedColumn) node()               {}
+func (*InsertStatement) node()             {}
+func (*JoinClause) node()                  {}
+func (*JoinOperator) node()                {}
+func (*NotNullConstraint) node()           {}
+func (*NullLit) node()                     {}
+func (*NumberLit) node()                   {}
+func (*OnConstraint) node()                {}
+func (*OrderingTerm) node()                {}
+func (*OverClause) node()                  {}
+func (*ParenExpr) node()                   {}
+func (*ParenSource) node()                 {}
+func (*PrimaryKeyConstraint) node()        {}
+func (*QualifiedRef) node()                {}
+func (*QualifiedTableName) node()          {}
+func (*QualifiedTableFunctionName) node()  {}
+func (*Raise) node()                       {}
+func (*Range) node()                       {}
+func (*ReleaseStatement) node()            {}
+func (*ResultColumn) node()                {}
+func (*ReturningClause) node()             {}
+func (*RollbackStatement) node()           {}
+func (*SavepointStatement) node()          {}
+func (*SelectStatement) node()             {}
+func (*StringLit) node()                   {}
+func (*TimestampLit) node()                {}
+func (*Type) node()                        {}
+func (*UnaryExpr) node()                   {}
+func (*UniqueConstraint) node()            {}
+func (*UpdateStatement) node()             {}
+func (*UpsertClause) node()                {}
+func (*UsingConstraint) node()             {}
+func (*Window) node()                      {}
+func (*WindowDefinition) node()            {}
+func (*WithClause) node()                  {}
 
 type Statement interface {
 	Node
 	stmt()
 }
 
-func (*AlterTableStatement) stmt()    {}
-func (*AnalyzeStatement) stmt()       {}
-func (*ReindexStatement) stmt()       {}
-func (*BeginStatement) stmt()         {}
-func (*CommitStatement) stmt()        {}
-func (*CreateIndexStatement) stmt()   {}
-func (*CreateTableStatement) stmt()   {}
-func (*CreateTriggerStatement) stmt() {}
-func (*CreateViewStatement) stmt()    {}
-func (*DeleteStatement) stmt()        {}
-func (*DropIndexStatement) stmt()     {}
-func (*DropTableStatement) stmt()     {}
-func (*DropTriggerStatement) stmt()   {}
-func (*DropViewStatement) stmt()      {}
-func (*ExplainStatement) stmt()       {}
-func (*InsertStatement) stmt()        {}
-func (*ReleaseStatement) stmt()       {}
-func (*RollbackStatement) stmt()      {}
-func (*SavepointStatement) stmt()     {}
-func (*SelectStatement) stmt()        {}
-func (*UpdateStatement) stmt()        {}
+func (*AlterTableStatement) stmt()         {}
+func (*AnalyzeStatement) stmt()            {}
+func (*ReindexStatement) stmt()            {}
+func (*BeginStatement) stmt()              {}
+func (*CommitStatement) stmt()             {}
+func (*CreateIndexStatement) stmt()        {}
+func (*CreateTableStatement) stmt()        {}
+func (*CreateVirtualTableStatement) stmt() {}
+func (*CreateTriggerStatement) stmt()      {}
+func (*CreateViewStatement) stmt()         {}
+func (*DeleteStatement) stmt()             {}
+func (*DropIndexStatement) stmt()          {}
+func (*DropTableStatement) stmt()          {}
+func (*DropTriggerStatement) stmt()        {}
+func (*DropViewStatement) stmt()           {}
+func (*ExplainStatement) stmt()            {}
+func (*InsertStatement) stmt()             {}
+func (*ReleaseStatement) stmt()            {}
+func (*RollbackStatement) stmt()           {}
+func (*SavepointStatement) stmt()          {}
+func (*SelectStatement) stmt()             {}
+func (*UpdateStatement) stmt()             {}
 
 // CloneStatement returns a deep copy stmt.
 func CloneStatement(stmt Statement) Statement {
@@ -1223,6 +1225,112 @@ func (c *ForeignKeyArg) String() string {
 		buf.WriteString(" NO ACTION")
 	}
 	return buf.String()
+}
+
+type CreateVirtualTableStatement struct {
+	Create      Pos // position of CREATE keyword
+	Virtual     Pos // position of VIRTUAL keyword
+	Table       Pos // position of TABLE keyword
+	If          Pos // position of IF keyword (optional)
+	IfNot       Pos // position of NOT keyword (optional)
+	IfNotExists Pos // position of EXISTS keyword (optional)
+
+	Schema *Ident // schema name (optional)
+	Dot    Pos    // position of DOT token (optional)
+	Name   *Ident // table name
+
+	Using      Pos    // position of USING
+	ModuleName *Ident // name of an object that implements the virtual table
+
+	Lparen    Pos               // position of left paren of module argument list (optional)
+	Arguments []*ModuleArgument // module argument list (optional)
+	Rparen    Pos               // position of right paren of module argument list (optional)
+
+}
+
+// Clone returns a deep copy of s.
+func (s *CreateVirtualTableStatement) Clone() *CreateVirtualTableStatement {
+	if s == nil {
+		return s
+	}
+	other := *s
+	other.Schema = s.Name.Clone()
+	other.Name = s.Name.Clone()
+	other.ModuleName = s.ModuleName.Clone()
+	other.Arguments = cloneModuleArguments(s.Arguments)
+	return &other
+}
+
+// String returns the string representation of the statement.
+func (s *CreateVirtualTableStatement) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("CREATE VIRTUAL TABLE ")
+	if s.IfNotExists.IsValid() {
+		buf.WriteString("IF NOT EXISTS ")
+	}
+
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Name.String())
+
+	buf.WriteString(" USING ")
+	buf.WriteString(s.ModuleName.String())
+	if s.Lparen.IsValid() {
+		buf.WriteString(" (")
+		for i := range s.Arguments {
+			if i != 0 {
+				buf.WriteString(",")
+			}
+			buf.WriteString(s.Arguments[i].String())
+		}
+		buf.WriteString(")")
+	}
+	return buf.String()
+}
+
+type ModuleArgument struct {
+	Name    *Ident // argument name
+	Assign  Pos    // position of ASSIGN token (optional)
+	Literal Expr   // literal that is assigned to name (optional)
+	Type    *Type  // type of Name, if Assign is set then Type cant be (optional)
+}
+
+func (a *ModuleArgument) Clone() *ModuleArgument {
+	if a == nil {
+		return a
+	}
+	other := *a
+	other.Name = a.Name.Clone()
+	other.Literal = CloneExpr(a.Literal)
+	other.Type = a.Type.Clone()
+	return &other
+}
+
+func (a *ModuleArgument) String() string {
+	var buf bytes.Buffer
+
+	buf.WriteString(a.Name.String())
+	if a.Assign.IsValid() {
+		buf.WriteString("=")
+		buf.WriteString(a.Literal.String())
+	} else if a.Type != nil {
+		buf.WriteString(" ")
+		buf.WriteString(a.Type.String())
+	}
+
+	return buf.String()
+}
+func cloneModuleArguments(a []*ModuleArgument) []*ModuleArgument {
+	if a == nil {
+		return nil
+	}
+	other := make([]*ModuleArgument, len(a))
+	for i := range a {
+		other[i] = a[i].Clone()
+	}
+	return other
 }
 
 type AnalyzeStatement struct {

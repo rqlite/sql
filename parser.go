@@ -245,6 +245,8 @@ func (p *Parser) parseCreateStatement() (Statement, error) {
 	switch p.peek() {
 	case TABLE:
 		return p.parseCreateTableStatement(pos)
+	case VIRTUAL:
+		return p.parseCreateVirtualTableStatement(pos)
 	case VIEW:
 		return p.parseCreateViewStatement(pos)
 	case INDEX, UNIQUE:
@@ -842,6 +844,120 @@ func (p *Parser) parseForeignKeyConstraint(constraintPos Pos, name *Ident, isTab
 	}
 
 	return &cons, nil
+}
+
+func (p *Parser) parseCreateVirtualTableStatement(createPos Pos) (_ *CreateVirtualTableStatement, err error) {
+	assert(p.peek() == VIRTUAL)
+
+	var stmt CreateVirtualTableStatement
+	stmt.Create = createPos
+	stmt.Virtual, _, _ = p.scan()
+	stmt.Table, _, _ = p.scan()
+
+	// Parse optional "IF NOT EXISTS".
+	if p.peek() == IF {
+		stmt.If, _, _ = p.scan()
+
+		pos, tok, _ := p.scan()
+		if tok != NOT {
+			return &stmt, p.errorExpected(pos, tok, "NOT")
+		}
+		stmt.IfNot = pos
+
+		pos, tok, _ = p.scan()
+		if tok != EXISTS {
+			return &stmt, p.errorExpected(pos, tok, "EXISTS")
+		}
+		stmt.IfNotExists = pos
+	}
+
+	ident, err := p.parseIdent("schema or table name")
+	if err != nil {
+		return &stmt, err
+	}
+	if p.peek() == DOT {
+		stmt.Schema = ident
+		stmt.Dot, _, _ = p.scan()
+		if stmt.Name, err = p.parseIdent("table name"); err != nil {
+			return &stmt, err
+		}
+	} else {
+		stmt.Name = ident
+	}
+
+	pos, tok, _ := p.scan()
+	if tok != USING {
+		return &stmt, p.errorExpected(p.pos, p.tok, "USING")
+	}
+	stmt.Using = pos
+
+	if stmt.ModuleName, err = p.parseIdent("module name"); err != nil {
+		return &stmt, err
+	}
+	// Module arguments can be optional
+	if p.peek() != LP {
+		return &stmt, nil
+	}
+	stmt.Lparen, _, _ = p.scan()
+
+	if stmt.Arguments, err = p.parseModuleArguments(); err != nil {
+		return &stmt, err
+	}
+
+	if len(stmt.Arguments) == 0 {
+		return &stmt, p.errorExpected(p.pos, p.tok, "module arguments")
+	}
+
+	if p.peek() != RP {
+		return &stmt, p.errorExpected(p.pos, p.tok, "right paren")
+	}
+	stmt.Rparen, _, _ = p.scan()
+
+	return &stmt, nil
+}
+
+func (p *Parser) parseModuleArguments() (_ []*ModuleArgument, err error) {
+	var args []*ModuleArgument
+
+	for p.peek() != RP {
+		arg, err := p.parseModuleArgument()
+		if err != nil {
+			return args, err
+		}
+		args = append(args, arg)
+
+		if p.peek() == COMMA {
+			p.scan()
+		} else if p.peek() != RP {
+			return args, p.errorExpected(p.pos, p.tok, "comma or right paren")
+		}
+	}
+
+	return args, nil
+}
+
+func (p *Parser) parseModuleArgument() (_ *ModuleArgument, err error) {
+	var arg ModuleArgument
+
+	if arg.Name, err = p.parseIdent("module argument name"); err != nil {
+		return &arg, err
+	}
+
+	if p.peek() == EQ {
+		// Parse literal
+		arg.Assign, _, _ = p.scan()
+		if arg.Literal, err = p.parseOperand(); err != nil {
+			return &arg, err
+		}
+	}
+	if isTypeName(p.lit) {
+		if arg.Type, err = p.parseType(); err != nil {
+			return &arg, err
+		}
+
+	}
+
+	return &arg, nil
 }
 
 func (p *Parser) parseDropTableStatement(dropPos Pos) (_ *DropTableStatement, err error) {
