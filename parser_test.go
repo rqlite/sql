@@ -1780,7 +1780,31 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			},
 		})
+		AssertParseStatement(t, `SELECT 1 NOTNULL`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Null{
+						X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+						OpPos: pos(9),
+						Op:    sql.NOTNULL,
+					},
+				},
+			},
+		})
 		AssertParseStatement(t, `SELECT 1 IS NULL`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Null{
+						X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+						OpPos: pos(9),
+						Op:    sql.ISNULL,
+					},
+				},
+			},
+		})
+		AssertParseStatement(t, `SELECT 1 ISNULL`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
 				{
