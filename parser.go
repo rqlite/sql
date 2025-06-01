@@ -91,6 +91,8 @@ func (p *Parser) parseExplainStatement() (_ *ExplainStatement, err error) {
 // parseStmt parses all statement types.
 func (p *Parser) parseNonExplainStatement() (Statement, error) {
 	switch p.peek() {
+	case PRAGMA:
+		return p.parsePragmaStatement()
 	case ANALYZE:
 		return p.parseAnalyzeStatement()
 	case REINDEX:
@@ -3092,6 +3094,54 @@ func (p *Parser) parseAlterTableStatement() (_ *AlterTableStatement, err error) 
 	}
 }
 
+func (p *Parser) parsePragmaStatement() (_ *PragmaStatement, err error) {
+	assert(p.peek() == PRAGMA)
+
+	var stmt PragmaStatement
+	stmt.Pragma, _, _ = p.scan()
+
+	lit, err := p.parseIdent("schema or table name")
+	if err != nil {
+		return &stmt, err
+	}
+
+	// Handle <schema>.<pragma-name>
+	if p.peek() == DOT {
+		stmt.Schema = lit
+		stmt.Dot, _, _ = p.scan()
+		if lit, err = p.parseIdent("table name"); err != nil {
+			return &stmt, err
+		}
+	}
+
+	switch p.peek() {
+	case EQ:
+		// Parse as binary expression: pragma-name = value
+		opPos, _, _ := p.scan()
+		rhs, err := p.ParseExpr()
+		if err != nil {
+			return &stmt, err
+		}
+		stmt.Expr = &BinaryExpr{
+			X:     lit,
+			OpPos: opPos,
+			Op:    EQ,
+			Y:     rhs,
+		}
+	case LP:
+		// Parse as function call: pragma-name(args)
+		call, err := p.parseCall(lit)
+		if err != nil {
+			return &stmt, err
+		}
+		stmt.Expr = call
+	default:
+		stmt.Expr = lit
+	}
+
+	return &stmt, nil
+}
+
 func (p *Parser) parseAnalyzeStatement() (_ *AnalyzeStatement, err error) {
 	assert(p.peek() == ANALYZE)
 
@@ -3238,7 +3288,7 @@ func isConstraintStartToken(tok Token, isTable bool) bool {
 		return true // table & column
 	case FOREIGN:
 		return isTable // table only
-	case NOT, DEFAULT, REFERENCES, GENERATED, AS, COLLATE:
+	case NOT, DEFAULT, REFERENCES, GENERATED, AS, COLLATE, NULL:
 		return !isTable // column only
 	default:
 		return false

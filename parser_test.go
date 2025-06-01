@@ -13,6 +13,45 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `123`, `1:1: expected statement, found 123`)
 	})
 
+	t.Run("Pragma", func(t *testing.T) {
+		AssertParseStatement(t, `PRAGMA pragma_name`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Expr:   &sql.Ident{NamePos: pos(7), Name: "pragma_name"},
+		})
+		AssertParseStatement(t, `PRAGMA pragma_name=true`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Expr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(7), Name: "pragma_name"},
+				OpPos: pos(18),
+				Op:    sql.EQ,
+				Y:     &sql.BoolLit{ValuePos: pos(19), Value: true},
+			},
+		})
+		AssertParseStatement(t, `PRAGMA pragma_name(N)`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Expr: &sql.Call{
+				Name:   &sql.Ident{NamePos: pos(7), Name: "pragma_name"},
+				Lparen: pos(18),
+				Args: []sql.Expr{
+					&sql.Ident{NamePos: pos(19), Name: "N"},
+				},
+				Rparen: pos(20),
+			},
+		})
+		AssertParseStatement(t, `PRAGMA schema.pragma_name`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Schema: &sql.Ident{NamePos: pos(7), Name: "schema"},
+			Dot:    pos(13),
+			Expr:   &sql.Ident{NamePos: pos(14), Name: "pragma_name"},
+		})
+
+		AssertParseStatementError(t, `PRAGMA schema.`, "1:14: expected table name, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA .name`, "1:8: expected schema or table name, found '.'")
+		AssertParseStatementError(t, `PRAGMA schema.name=`, "1:19: expected expression, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA schema.name(`, "1:19: expected expression, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA schema.name(arg`, "1:22: expected comma or right paren, found 'EOF'")
+	})
+
 	t.Run("Explain", func(t *testing.T) {
 		t.Run("", func(t *testing.T) {
 			AssertParseStatement(t, `EXPLAIN BEGIN`, &sql.ExplainStatement{

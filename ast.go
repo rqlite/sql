@@ -59,6 +59,7 @@ func (*OrderingTerm) node()               {}
 func (*OverClause) node()                 {}
 func (*ParenExpr) node()                  {}
 func (*ParenSource) node()                {}
+func (*PragmaStatement) node()            {}
 func (*PrimaryKeyConstraint) node()       {}
 func (*QualifiedRef) node()               {}
 func (*QualifiedTableName) node()         {}
@@ -103,6 +104,7 @@ func (*DropTableStatement) stmt()     {}
 func (*DropTriggerStatement) stmt()   {}
 func (*DropViewStatement) stmt()      {}
 func (*ExplainStatement) stmt()       {}
+func (*PragmaStatement) stmt()        {}
 func (*InsertStatement) stmt()        {}
 func (*ReleaseStatement) stmt()       {}
 func (*RollbackStatement) stmt()      {}
@@ -3691,6 +3693,37 @@ func (d *WindowDefinition) String() string {
 	}
 
 	buf.WriteString(")")
+
+	return buf.String()
+}
+
+type PragmaStatement struct {
+	Pragma Pos    // position of PRAGMA keyword
+	Schema *Ident // name of schema (optional)
+	Dot    Pos    // position of DOT token (optional)
+	Expr   Expr   // can be Ident, Call or BinaryExpr
+}
+
+func (s *PragmaStatement) Clone() *PragmaStatement {
+	if s == nil {
+		return s
+	}
+
+	other := *s
+	other.Schema = s.Schema.Clone()
+	other.Expr = CloneExpr(s.Expr)
+	return &other
+}
+
+func (s *PragmaStatement) String() string {
+	var buf bytes.Buffer
+
+	buf.WriteString("PRAGMA ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Expr.String())
 
 	return buf.String()
 }
