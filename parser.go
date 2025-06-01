@@ -3288,7 +3288,7 @@ func isConstraintStartToken(tok Token, isTable bool) bool {
 		return true // table & column
 	case FOREIGN:
 		return isTable // table only
-	case NOT, DEFAULT, REFERENCES, GENERATED, AS, COLLATE, NULL:
+	case NOT, DEFAULT, REFERENCES, GENERATED, AS, COLLATE:
 		return !isTable // column only
 	default:
 		return false
