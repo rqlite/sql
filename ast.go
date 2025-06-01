@@ -13,7 +13,6 @@ type Node interface {
 
 func (*AlterTableStatement) node()        {}
 func (*AnalyzeStatement) node()           {}
-func (*ReindexStatement) node()           {}
 func (*Assignment) node()                 {}
 func (*BeginStatement) node()             {}
 func (*BinaryExpr) node()                 {}
@@ -91,7 +90,6 @@ type Statement interface {
 
 func (*AlterTableStatement) stmt()    {}
 func (*AnalyzeStatement) stmt()       {}
-func (*ReindexStatement) stmt()       {}
 func (*BeginStatement) stmt()         {}
 func (*CommitStatement) stmt()        {}
 func (*CreateIndexStatement) stmt()   {}
