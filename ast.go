@@ -13,6 +13,7 @@ type Node interface {
 
 func (*AlterTableStatement) node()        {}
 func (*AnalyzeStatement) node()           {}
+func (*ReindexStatement) node()           {}
 func (*Assignment) node()                 {}
 func (*BeginStatement) node()             {}
 func (*BinaryExpr) node()                 {}
@@ -90,6 +91,7 @@ type Statement interface {
 
 func (*AlterTableStatement) stmt()    {}
 func (*AnalyzeStatement) stmt()       {}
+func (*ReindexStatement) stmt()       {}
 func (*BeginStatement) stmt()         {}
 func (*CommitStatement) stmt()        {}
 func (*CreateIndexStatement) stmt()   {}
@@ -2019,8 +2021,36 @@ func (c *OverClause) String() string {
 	return fmt.Sprintf("OVER %s", c.Definition.String())
 }
 
+type CollationClause struct {
+	Collate Pos    // position of COLLATE keyword
+	Name    *Ident // collation function (e.g. BINARY, NOCASE, RTRIM or custom)
+
+}
+
+// Clone returns a deep copy of c.
+func (c *CollationClause) Clone() *CollationClause {
+	if c == nil {
+		return nil
+	}
+	other := *c
+	other.Name = c.Name.Clone()
+	return &other
+}
+
+// String returns the string representation of the collation.
+func (c *CollationClause) String() string {
+	var buf bytes.Buffer
+
+	buf.WriteString("COLLATE ")
+	buf.WriteString(c.Name.String())
+
+	return buf.String()
+}
+
 type OrderingTerm struct {
 	X Expr // ordering expression
+
+	Collation *CollationClause
 
 	Asc  Pos // position of ASC keyword
 	Desc Pos // position of DESC keyword
@@ -2056,6 +2086,10 @@ func (t *OrderingTerm) String() string {
 	var buf bytes.Buffer
 	buf.WriteString(t.X.String())
 
+	if t.Collation != nil {
+		buf.WriteString(" ")
+		buf.WriteString(t.Collation.String())
+	}
 	if t.Asc.IsValid() {
 		buf.WriteString(" ASC")
 	} else if t.Desc.IsValid() {
@@ -3183,6 +3217,8 @@ func (c *ResultColumn) String() string {
 }
 
 type QualifiedTableName struct {
+	Schema     *Ident // schema name
+	Dot        Pos    // position of dot
 	Name       *Ident // table name
 	As         Pos    // position of AS keyword
 	Alias      *Ident // optional table alias
@@ -3208,6 +3244,7 @@ func (n *QualifiedTableName) Clone() *QualifiedTableName {
 		return nil
 	}
 	other := *n
+	other.Schema = n.Schema.Clone()
 	other.Name = n.Name.Clone()
 	other.Alias = n.Alias.Clone()
 	other.Index = n.Index.Clone()
@@ -3217,6 +3254,10 @@ func (n *QualifiedTableName) Clone() *QualifiedTableName {
 // String returns the string representation of the table name.
 func (n *QualifiedTableName) String() string {
 	var buf bytes.Buffer
+	if n.Schema != nil {
+		buf.WriteString(n.Schema.String())
+		buf.WriteString(".")
+	}
 	buf.WriteString(n.Name.String())
 	if n.Alias != nil {
 		fmt.Fprintf(&buf, " AS %s", n.Alias.String())

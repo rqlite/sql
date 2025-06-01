@@ -1779,6 +1779,19 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT * FROM main.tbl;`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Schema: &sql.Ident{NamePos: pos(14), Name: "main"},
+				Dot:    pos(18),
+				Name:   &sql.Ident{NamePos: pos(19), Name: "tbl"},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT DISTINCT * FROM tbl`, &sql.SelectStatement{
 			Select:   pos(0),
 			Distinct: pos(7),
@@ -2222,6 +2235,42 @@ func TestParser_ParseStatement(t *testing.T) {
 						Lparen: pos(24),
 						Rparen: pos(25),
 					},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * ORDER BY c1 COLLATE BINARY;`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			Order:   pos(9),
+			OrderBy: pos(15),
+			OrderingTerms: []*sql.OrderingTerm{
+				{
+					X: &sql.Ident{NamePos: pos(18), Name: "c1"},
+					Collation: &sql.CollationClause{
+						Collate: pos(21),
+						Name:    &sql.Ident{NamePos: pos(29), Name: "BINARY"},
+					},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * ORDER BY c1 COLLATE NOCASE DESC;`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			Order:   pos(9),
+			OrderBy: pos(15),
+			OrderingTerms: []*sql.OrderingTerm{
+				{
+					X: &sql.Ident{NamePos: pos(18), Name: "c1"},
+					Collation: &sql.CollationClause{
+						Collate: pos(21), Name: &sql.Ident{NamePos: pos(29), Name: "NOCASE"},
+					},
+					Desc: pos(36),
 				},
 			},
 		})
