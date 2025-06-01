@@ -1816,6 +1816,23 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			},
 		})
+		AssertParseStatement(t, `SELECT 1 IS NULL AND false`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.BinaryExpr{
+						X: &sql.Null{
+							X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+							OpPos: pos(9),
+							Op:    sql.ISNULL,
+						},
+						OpPos: pos(17),
+						Op:    sql.AND,
+						Y:     &sql.BoolLit{ValuePos: pos(21), Value: false},
+					},
+				},
+			},
+		})
 
 		AssertParseStatement(t, `SELECT * FROM tbl`, &sql.SelectStatement{
 			Select: pos(0),

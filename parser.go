@@ -2424,8 +2424,9 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 
 		switch op {
 		case NOTNULL, ISNULL:
-			return &Null{X: x, OpPos: pos, Op: op}, nil
+			x = &Null{X: x, OpPos: pos, Op: op}
 		case IN, NOTIN:
+
 			y, err := p.parseExprList()
 			if err != nil {
 				return x, err
