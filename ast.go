@@ -147,6 +147,8 @@ func CloneStatement(stmt Statement) Statement {
 		return stmt.Clone()
 	case *InsertStatement:
 		return stmt.Clone()
+	case *ReindexStatement:
+		return stmt.Clone()
 	case *ReleaseStatement:
 		return stmt.Clone()
 	case *RollbackStatement:
