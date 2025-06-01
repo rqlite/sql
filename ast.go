@@ -147,6 +147,8 @@ func CloneStatement(stmt Statement) Statement {
 		return stmt.Clone()
 	case *ExplainStatement:
 		return stmt.Clone()
+	case *PragmaStatement:
+		return stmt.Clone()
 	case *InsertStatement:
 		return stmt.Clone()
 	case *ReleaseStatement:
