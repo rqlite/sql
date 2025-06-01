@@ -238,6 +238,8 @@ func CloneExpr(expr Expr) Expr {
 		return expr.Clone()
 	case *Exists:
 		return expr.Clone()
+	case *Null:
+		return expr.Clone()
 	case *ExprList:
 		return expr.Clone()
 	case *Ident:
