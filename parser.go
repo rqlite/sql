@@ -298,7 +298,12 @@ func (p *Parser) parseCreateTableStatement(createPos Pos) (_ *CreateTableStateme
 		stmt.IfNotExists = pos
 	}
 
-	if stmt.Name, err = p.parseIdent("table name"); err != nil {
+	// Parse table name.
+	ident, err := p.parseIdent("table name")
+	if err != nil {
+		return &stmt, err
+	}
+	if stmt.Name, err = p.parseQualifiedTableName(ident); err != nil {
 		return &stmt, err
 	}
 
@@ -860,7 +865,12 @@ func (p *Parser) parseDropTableStatement(dropPos Pos) (_ *DropTableStatement, er
 		stmt.IfExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("table name"); err != nil {
+	// Parse table name.
+	ident, err := p.parseIdent("table name")
+	if err != nil {
+		return &stmt, err
+	}
+	if stmt.Name, err = p.parseQualifiedTableName(ident); err != nil {
 		return &stmt, err
 	}
 
@@ -889,7 +899,12 @@ func (p *Parser) parseCreateViewStatement(createPos Pos) (_ *CreateViewStatement
 		stmt.IfNotExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("view name"); err != nil {
+	// Parse view name.
+	ident, err := p.parseIdent("view name")
+	if err != nil {
+		return &stmt, err
+	}
+	if stmt.Name, err = p.parseQualifiedTableName(ident); err != nil {
 		return &stmt, err
 	}
 
@@ -940,7 +955,12 @@ func (p *Parser) parseDropViewStatement(dropPos Pos) (_ *DropViewStatement, err 
 		stmt.IfExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("view name"); err != nil {
+	// Parse view name.
+	ident, err := p.parseIdent("view name")
+	if err != nil {
+		return &stmt, err
+	}
+	if stmt.Name, err = p.parseQualifiedTableName(ident); err != nil {
 		return &stmt, err
 	}
 

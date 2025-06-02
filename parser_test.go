@@ -205,13 +205,26 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("CreateTable", func(t *testing.T) {
+		AssertParseStatement(t, `CREATE TABLE foo.bar (x INTEGER)`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.QualifiedTableName{Schema: &sql.Ident{Name: "foo", NamePos: pos(13)}, Name: &sql.Ident{Name: "bar", NamePos: pos(17)}, Dot: pos(16)},
+			Lparen: pos(21),
+			Columns: []*sql.ColumnDefinition{
+				{Name: &sql.Ident{Name: "x", NamePos: pos(22)}, Type: &sql.Type{Name: &sql.Ident{Name: "INTEGER", NamePos: pos(24)}}},
+			},
+			Rparen: pos(31),
+		})
 		AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT, col2 DECIMAL(10,5))`, &sql.CreateTableStatement{
 			Create: pos(0),
 			Table:  pos(7),
-			Name: &sql.Ident{
-				Name:    "tbl",
-				NamePos: pos(13),
-			},
+			Name:   &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl", NamePos: pos(13)}},
+			}},
+			}},
+			}},
+			}},
+			}},
+			}},
 			Lparen: pos(17),
 			Columns: []*sql.ColumnDefinition{
 				{
@@ -503,7 +516,8 @@ func TestParser_ParseStatement(t *testing.T) {
 			Name: &sql.Ident{
 				Name:    "tbl",
 				NamePos: pos(13),
-			},
+			}},
+			}},
 			As: pos(17),
 			Select: &sql.SelectStatement{
 				Select: pos(20),
@@ -1308,17 +1322,22 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("DropTable", func(t *testing.T) {
+		AssertParseStatement(t, `DROP TABLE foo.bar`, &sql.DropTableStatement{
+			Drop:  pos(0),
+			Table: pos(5),
+			Name:  &sql.QualifiedTableName{Schema: &sql.Ident{Name: "foo", NamePos: pos(11)}, Name: &sql.Ident{Name: "bar", NamePos: pos(15)}, Dot: pos(14)},
+		})
 		AssertParseStatement(t, `DROP TABLE vw`, &sql.DropTableStatement{
 			Drop:  pos(0),
 			Table: pos(5),
-			Name:  &sql.Ident{NamePos: pos(11), Name: "vw"},
+			Name:  &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(11), Name: "vw"}},
 		})
 		AssertParseStatement(t, `DROP TABLE IF EXISTS vw`, &sql.DropTableStatement{
 			Drop:     pos(0),
 			Table:    pos(5),
 			If:       pos(11),
 			IfExists: pos(14),
-			Name:     &sql.Ident{NamePos: pos(21), Name: "vw"},
+			Name:     &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(21), Name: "vw"}},
 		})
 		AssertParseStatementError(t, `DROP TABLE`, `1:10: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `DROP TABLE IF`, `1:13: expected EXISTS, found 'EOF'`)
@@ -1326,10 +1345,29 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("CreateView", func(t *testing.T) {
+		AssertParseStatement(t, `CREATE VIEW foo.bar (col1, col2) AS SELECT x, y`, &sql.CreateViewStatement{
+			Create: pos(0),
+			View:   pos(7),
+			Name:   &sql.QualifiedTableName{Schema: &sql.Ident{Name: "foo", NamePos: pos(12)}, Name: &sql.Ident{Name: "bar", NamePos: pos(16)}, Dot: pos(15)},
+			Lparen: pos(20),
+			Columns: []*sql.Ident{
+				{NamePos: pos(21), Name: "col1"},
+				{NamePos: pos(27), Name: "col2"},
+			},
+			Rparen: pos(31),
+			As:     pos(33),
+			Select: &sql.SelectStatement{
+				Select: pos(36),
+				Columns: []*sql.ResultColumn{
+					{Expr: &sql.Ident{NamePos: pos(43), Name: "x"}},
+					{Expr: &sql.Ident{NamePos: pos(46), Name: "y"}},
+				},
+			},
+		})
 		AssertParseStatement(t, `CREATE VIEW vw (col1, col2) AS SELECT x, y`, &sql.CreateViewStatement{
 			Create: pos(0),
 			View:   pos(7),
-			Name:   &sql.Ident{NamePos: pos(12), Name: "vw"},
+			Name:   &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(12), Name: "vw"}},
 			Lparen: pos(15),
 			Columns: []*sql.Ident{
 				{NamePos: pos(16), Name: "col1"},
@@ -1348,7 +1386,7 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatement(t, `CREATE VIEW vw AS SELECT x`, &sql.CreateViewStatement{
 			Create: pos(0),
 			View:   pos(7),
-			Name:   &sql.Ident{NamePos: pos(12), Name: "vw"},
+			Name:   &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(12), Name: "vw"}},
 			As:     pos(15),
 			Select: &sql.SelectStatement{
 				Select: pos(18),
@@ -1363,7 +1401,7 @@ func TestParser_ParseStatement(t *testing.T) {
 			If:          pos(12),
 			IfNot:       pos(15),
 			IfNotExists: pos(19),
-			Name:        &sql.Ident{NamePos: pos(26), Name: "vw"},
+			Name:        &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(26), Name: "vw"}},
 			As:          pos(29),
 			Select: &sql.SelectStatement{
 				Select: pos(32),
@@ -1383,17 +1421,22 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("DropView", func(t *testing.T) {
+		AssertParseStatement(t, `DROP VIEW foo.bar`, &sql.DropViewStatement{
+			Drop: pos(0),
+			View: pos(5),
+			Name: &sql.QualifiedTableName{Schema: &sql.Ident{Name: "foo", NamePos: pos(10)}, Name: &sql.Ident{Name: "bar", NamePos: pos(14)}, Dot: pos(13)},
+		})
 		AssertParseStatement(t, `DROP VIEW vw`, &sql.DropViewStatement{
 			Drop: pos(0),
 			View: pos(5),
-			Name: &sql.Ident{NamePos: pos(10), Name: "vw"},
+			Name: &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(10), Name: "vw"}},
 		})
 		AssertParseStatement(t, `DROP VIEW IF EXISTS vw`, &sql.DropViewStatement{
 			Drop:     pos(0),
 			View:     pos(5),
 			If:       pos(10),
 			IfExists: pos(13),
-			Name:     &sql.Ident{NamePos: pos(20), Name: "vw"},
+			Name:     &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(20), Name: "vw"}},
 		})
 		AssertParseStatementError(t, `DROP`, `1:1: expected TABLE, VIEW, INDEX, or TRIGGER`)
 		AssertParseStatementError(t, `DROP VIEW`, `1:9: expected view name, found 'EOF'`)
