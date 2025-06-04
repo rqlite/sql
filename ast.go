@@ -260,6 +260,8 @@ func CloneExpr(expr Expr) Expr {
 		return expr.Clone()
 	case *UnaryExpr:
 		return expr.Clone()
+	case SelectExpr:
+		return expr.Clone()
 	default:
 		panic(fmt.Sprintf("invalid expr type: %T", expr))
 	}
