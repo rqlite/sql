@@ -61,7 +61,7 @@ const (
 	GE     // >=
 	BITAND // &
 	BITOR  // |
-	BITNOT // !
+	BITNOT // ~
 	LSHIFT // <<
 	RSHIFT // >>
 	PLUS   // +
@@ -278,7 +278,7 @@ var tokens = [...]string{
 	GE:     ">=",
 	BITAND: "&",
 	BITOR:  "|",
-	BITNOT: "!",
+	BITNOT: "~",
 	LSHIFT: "<<",
 	RSHIFT: ">>",
 	PLUS:   "+",
