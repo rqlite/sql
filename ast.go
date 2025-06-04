@@ -259,7 +259,7 @@ func CloneExpr(expr Expr) Expr {
 	case *UnaryExpr:
 		return expr.Clone()
 	case SelectExpr:
-		return SelectExpr{expr.SelectStatement.Clone()}
+		return expr.Clone()
 	default:
 		panic(fmt.Sprintf("invalid expr type: %T", expr))
 	}
