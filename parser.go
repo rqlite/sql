@@ -2428,7 +2428,10 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 		}
 
 		switch op {
+		case NOTNULL, ISNULL:
+			x = &Null{X: x, OpPos: pos, Op: op}
 		case IN, NOTIN:
+
 			y, err := p.parseExprList()
 			if err != nil {
 				return x, err
@@ -3159,6 +3162,9 @@ func (p *Parser) scanBinaryOp() (Pos, Token, error) {
 		if p.peek() == NOT {
 			p.scan()
 			return pos, ISNOT, nil
+		} else if p.peek() == NULL {
+			p.scan()
+			return pos, ISNULL, nil
 		}
 		return pos, IS, nil
 	case NOT:
@@ -3181,8 +3187,11 @@ func (p *Parser) scanBinaryOp() (Pos, Token, error) {
 		case BETWEEN:
 			p.scan()
 			return pos, NOTBETWEEN, nil
+		case NULL:
+			p.scan()
+			return pos, NOTNULL, nil
 		default:
-			return pos, tok, p.errorExpected(p.pos, p.tok, "IN, LIKE, GLOB, REGEXP, MATCH, or BETWEEN")
+			return pos, tok, p.errorExpected(p.pos, p.tok, "IN, LIKE, GLOB, REGEXP, MATCH, BETWEEN, IS/NOT NULL")
 		}
 	default:
 		return pos, tok, nil

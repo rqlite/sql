@@ -1793,6 +1793,72 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `SELECT 1 NOT NULL`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Null{
+						X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+						OpPos: pos(9),
+						Op:    sql.NOTNULL,
+					},
+				},
+			},
+		})
+		AssertParseStatement(t, `SELECT 1 NOTNULL`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Null{
+						X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+						OpPos: pos(9),
+						Op:    sql.NOTNULL,
+					},
+				},
+			},
+		})
+		AssertParseStatement(t, `SELECT 1 IS NULL`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Null{
+						X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+						OpPos: pos(9),
+						Op:    sql.ISNULL,
+					},
+				},
+			},
+		})
+		AssertParseStatement(t, `SELECT 1 ISNULL`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Null{
+						X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+						OpPos: pos(9),
+						Op:    sql.ISNULL,
+					},
+				},
+			},
+		})
+		AssertParseStatement(t, `SELECT 1 IS NULL AND false`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.BinaryExpr{
+						X: &sql.Null{
+							X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+							OpPos: pos(9),
+							Op:    sql.ISNULL,
+						},
+						OpPos: pos(17),
+						Op:    sql.AND,
+						Y:     &sql.BoolLit{ValuePos: pos(21), Value: false},
+					},
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * FROM tbl`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
@@ -3900,7 +3966,7 @@ func TestParser_ParseExpr(t *testing.T) {
 			OpPos: pos(2), Op: sql.NOTMATCH,
 			Y: &sql.NumberLit{ValuePos: pos(12), Value: "2"},
 		})
-		AssertParseExprError(t, `1 NOT TABLE`, `1:7: expected IN, LIKE, GLOB, REGEXP, MATCH, or BETWEEN, found 'TABLE'`)
+		AssertParseExprError(t, `1 NOT TABLE`, `1:7: expected IN, LIKE, GLOB, REGEXP, MATCH, BETWEEN, IS/NOT NULL, found 'TABLE'`)
 		AssertParseExpr(t, `1 IN (2, 3)'`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.IN,
