@@ -380,7 +380,7 @@ func (p *Parser) parseColumnDefinition() (_ *ColumnDefinition, err error) {
 		return &col, err
 	}
 
-	if tok := p.peek(); tok == IDENT {
+	if tok := p.peek(); tok == IDENT || tok == NULL {
 		if col.Type, err = p.parseType(); err != nil {
 			return &col, err
 		}
@@ -1217,6 +1217,8 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 	switch tok {
 	case IDENT, QIDENT:
 		return &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}, nil
+	case NULL:
+		return &Ident{Name: lit, NamePos: pos}, nil
 	default:
 		if isBareToken(tok) {
 			return &Ident{Name: lit, NamePos: pos}, nil
@@ -1227,7 +1229,11 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 
 func (p *Parser) parseType() (_ *Type, err error) {
 	var typ Type
-	for p.peek() == IDENT {
+	for {
+		tok := p.peek()
+		if tok != IDENT && tok != NULL {
+			break
+		}
 		typeName, err := p.parseIdent("type name")
 		if err != nil {
 			return &typ, err

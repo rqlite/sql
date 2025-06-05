@@ -488,6 +488,31 @@ func TestParser_ParseStatement(t *testing.T) {
 			Rparen: pos(59),
 		})
 
+		AssertParseStatement(t, "CREATE TABLE t (c1 NULL)", &sql.CreateTableStatement{
+			Create: pos(0),
+			Table:  pos(7),
+			Name: &sql.Ident{
+				NamePos: pos(13),
+				Name:    "t",
+			},
+			Lparen: pos(15),
+			Columns: []*sql.ColumnDefinition{
+				{
+					Name: &sql.Ident{
+						NamePos: pos(16),
+						Name:    "c1",
+					},
+					Type: &sql.Type{
+						Name: &sql.Ident{
+							NamePos: pos(19),
+							Name:    "NULL",
+						},
+					},
+				},
+			},
+			Rparen: pos(23),
+		})
+
 		AssertParseStatementError(t, `CREATE TABLE IF`, `1:15: expected NOT, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE IF NOT`, `1:19: expected EXISTS, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1`, `1:22: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
