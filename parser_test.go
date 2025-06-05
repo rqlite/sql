@@ -45,8 +45,8 @@ func TestParser_ParseStatement(t *testing.T) {
 			Expr:   &sql.Ident{NamePos: pos(14), Name: "pragma_name"},
 		})
 
-		AssertParseStatementError(t, `PRAGMA schema.`, "1:14: expected table name, found 'EOF'")
-		AssertParseStatementError(t, `PRAGMA .name`, "1:8: expected schema or table name, found '.'")
+		AssertParseStatementError(t, `PRAGMA schema.`, "1:14: expected pragma name, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA .name`, "1:8: expected schema name, found '.'")
 		AssertParseStatementError(t, `PRAGMA schema.name=`, "1:19: expected expression, found 'EOF'")
 		AssertParseStatementError(t, `PRAGMA schema.name(`, "1:19: expected expression, found 'EOF'")
 		AssertParseStatementError(t, `PRAGMA schema.name(arg`, "1:22: expected comma or right paren, found 'EOF'")
