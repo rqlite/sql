@@ -3100,7 +3100,7 @@ func (p *Parser) parsePragmaStatement() (_ *PragmaStatement, err error) {
 	var stmt PragmaStatement
 	stmt.Pragma, _, _ = p.scan()
 
-	lit, err := p.parseIdent("schema or table name")
+	lit, err := p.parseIdent("schema name")
 	if err != nil {
 		return &stmt, err
 	}
@@ -3109,7 +3109,7 @@ func (p *Parser) parsePragmaStatement() (_ *PragmaStatement, err error) {
 	if p.peek() == DOT {
 		stmt.Schema = lit
 		stmt.Dot, _, _ = p.scan()
-		if lit, err = p.parseIdent("table name"); err != nil {
+		if lit, err = p.parseIdent("pragma name"); err != nil {
 			return &stmt, err
 		}
 	}
