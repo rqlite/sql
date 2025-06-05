@@ -3706,6 +3706,7 @@ type PragmaStatement struct {
 	Expr   Expr   // can be Ident, Call or BinaryExpr
 }
 
+// Clone returns a deep copy of s.
 func (s *PragmaStatement) Clone() *PragmaStatement {
 	if s == nil {
 		return s
@@ -3717,6 +3718,7 @@ func (s *PragmaStatement) Clone() *PragmaStatement {
 	return &other
 }
 
+// String returns the string representation of the pragma statement.
 func (s *PragmaStatement) String() string {
 	var buf bytes.Buffer
 
