@@ -356,6 +356,8 @@ func CloneSource(src Source) Source {
 		return src.Clone()
 	case *QualifiedTableName:
 		return src.Clone()
+	case *QualifiedTableFunctionName:
+		return src.Clone()
 	case *SelectStatement:
 		return src.Clone()
 	default:
