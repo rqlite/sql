@@ -51,6 +51,7 @@ func (*IndexedColumn) node()               {}
 func (*InsertStatement) node()             {}
 func (*JoinClause) node()                  {}
 func (*JoinOperator) node()                {}
+func (*ModuleArgument) node()              {}
 func (*NotNullConstraint) node()           {}
 func (*Null) node()                        {}
 func (*NullLit) node()                     {}
