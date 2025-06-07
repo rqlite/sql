@@ -775,6 +775,69 @@ func TestSelectStatement_String(t *testing.T) {
 			Y:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "y"}},
 		},
 	}, `SELECT * FROM "x" CROSS JOIN "y"`)
+
+	AssertStatementStringer(t, &sql.SelectStatement{
+		Select: pos(0),
+		Columns: []*sql.ResultColumn{
+			{Star: pos(7)},
+		},
+		From: pos(9),
+		Source: &sql.JoinClause{
+			X: &sql.QualifiedTableName{
+				Name:  &sql.Ident{NamePos: pos(14), Name: "X"},
+				As:    pos(16),
+				Alias: &sql.Ident{NamePos: pos(19), Name: "a"},
+			},
+			Operator: &sql.JoinOperator{Join: pos(21)},
+			Y: &sql.JoinClause{
+				X: &sql.QualifiedTableName{
+					Name:  &sql.Ident{NamePos: pos(26), Name: "Y"},
+					As:    pos(28),
+					Alias: &sql.Ident{NamePos: pos(31), Name: "b"},
+				},
+				Operator: &sql.JoinOperator{Join: pos(48)},
+				Y: &sql.QualifiedTableName{
+					Name:  &sql.Ident{NamePos: pos(53), Name: "Z"},
+					As:    pos(55),
+					Alias: &sql.Ident{NamePos: pos(58), Name: "c"},
+				},
+				Constraint: &sql.OnConstraint{
+					On: pos(60),
+					X: &sql.BinaryExpr{
+						X: &sql.QualifiedRef{
+							Table:  &sql.Ident{NamePos: pos(63), Name: "b"},
+							Dot:    pos(64),
+							Column: &sql.Ident{NamePos: pos(65), Name: "id"},
+						},
+						OpPos: pos(68),
+						Op:    sql.EQ,
+						Y: &sql.QualifiedRef{
+							Table:  &sql.Ident{NamePos: pos(70), Name: "c"},
+							Dot:    pos(71),
+							Column: &sql.Ident{NamePos: pos(72), Name: "id"},
+						},
+					},
+				},
+			},
+			Constraint: &sql.OnConstraint{
+				On: pos(33),
+				X: &sql.BinaryExpr{
+					X: &sql.QualifiedRef{
+						Table:  &sql.Ident{NamePos: pos(36), Name: "a"},
+						Dot:    pos(37),
+						Column: &sql.Ident{NamePos: pos(38), Name: "id"},
+					},
+					OpPos: pos(41),
+					Op:    sql.EQ,
+					Y: &sql.QualifiedRef{
+						Table:  &sql.Ident{NamePos: pos(43), Name: "b"},
+						Dot:    pos(44),
+						Column: &sql.Ident{NamePos: pos(45), Name: "id"},
+					},
+				},
+			},
+		},
+	}, `SELECT * FROM "X" AS "a" JOIN "Y" AS "b" ON "a"."id" = "b"."id" JOIN "Z" AS "c" ON "b"."id" = "c"."id"`)
 }
 
 func TestUpdateStatement_String(t *testing.T) {
