@@ -669,7 +669,7 @@ func (s *CreateTableStatement) Clone() *CreateTableStatement {
 		return s
 	}
 	other := *s
-	other.Schema = cloneIdent(s.Schema)
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	other.Columns = cloneColumnDefinitions(s.Columns)
 	other.Constraints = cloneConstraints(s.Constraints)
@@ -1470,14 +1470,6 @@ func (i *Ident) Clone() *Ident {
 	}
 	other := *i
 	return &other
-}
-
-// cloneIdent returns a deep copy of the ident.
-func cloneIdent(ident *Ident) *Ident {
-	if ident == nil {
-		return nil
-	}
-	return ident.Clone()
 }
 
 func cloneIdents(a []*Ident) []*Ident {
