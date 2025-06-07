@@ -61,7 +61,7 @@ const (
 	GE     // >=
 	BITAND // &
 	BITOR  // |
-	BITNOT // !
+	BITNOT // ~
 	LSHIFT // <<
 	RSHIFT // >>
 	PLUS   // +
@@ -278,7 +278,7 @@ var tokens = [...]string{
 	GE:     ">=",
 	BITAND: "&",
 	BITOR:  "|",
-	BITNOT: "!",
+	BITNOT: "~",
 	LSHIFT: "<<",
 	RSHIFT: ">>",
 	PLUS:   "+",
@@ -524,8 +524,8 @@ func isExprIdentToken(tok Token) bool {
 	// List keywords that can be used as identifiers in expressions
 	case ROWID, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP:
 		return true
-	// replace() core function
-	case REPLACE:
+	// Core functions
+	case REPLACE, LIKE, GLOB, IF:
 		return true
 	// Add any other non-reserved keywords here
 	default:
