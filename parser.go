@@ -2982,14 +2982,42 @@ func (p *Parser) parseFrameSpec() (_ *FrameSpec, err error) {
 	return &spec, nil
 }
 
-func (p *Parser) parseParenExpr() (_ *ParenExpr, err error) {
-	var expr ParenExpr
-	expr.Lparen, _, _ = p.scan()
-	if expr.X, err = p.ParseExpr(); err != nil {
-		return &expr, err
+func (p *Parser) parseParenExpr() (Expr, error) {
+	lparen, _, _ := p.scan()
+
+	// Parse the first expression
+	x, err := p.ParseExpr()
+	if err != nil {
+		return nil, err
 	}
-	expr.Rparen, _, _ = p.scan()
-	return &expr, nil
+
+	// If there's no comma after the first expression, treat it as a normal parenthesized expression
+	if p.peek() != COMMA {
+		rparen, _, _ := p.scan()
+		return &ParenExpr{Lparen: lparen, X: x, Rparen: rparen}, nil
+	}
+
+	// If there's a comma, we're dealing with an expression list
+	var list ExprList
+	list.Lparen = lparen
+	list.Exprs = append(list.Exprs, x)
+
+	for p.peek() == COMMA {
+		p.scan() // consume the comma
+
+		expr, err := p.ParseExpr()
+		if err != nil {
+			return &list, err
+		}
+		list.Exprs = append(list.Exprs, expr)
+	}
+
+	if p.peek() != RP {
+		return &list, p.errorExpected(p.pos, p.tok, "right paren")
+	}
+	list.Rparen, _, _ = p.scan()
+
+	return &list, nil
 }
 
 func (p *Parser) parseCastExpr() (_ *CastExpr, err error) {
