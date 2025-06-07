@@ -647,6 +647,7 @@ type CreateTableStatement struct {
 	If          Pos    // position of IF keyword (optional)
 	IfNot       Pos    // position of NOT keyword (optional)
 	IfNotExists Pos    // position of EXISTS keyword (optional)
+	Schema      *Ident // optional schema name
 	Name        *Ident // table name
 
 	Lparen      Pos                 // position of left paren of column list
@@ -668,6 +669,7 @@ func (s *CreateTableStatement) Clone() *CreateTableStatement {
 		return s
 	}
 	other := *s
+	other.Schema = cloneIdent(s.Schema)
 	other.Name = s.Name.Clone()
 	other.Columns = cloneColumnDefinitions(s.Columns)
 	other.Constraints = cloneConstraints(s.Constraints)
@@ -683,6 +685,10 @@ func (s *CreateTableStatement) String() string {
 		buf.WriteString(" IF NOT EXISTS")
 	}
 	buf.WriteString(" ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
 	buf.WriteString(s.Name.String())
 
 	if s.Select != nil {
@@ -1464,6 +1470,14 @@ func (i *Ident) Clone() *Ident {
 	}
 	other := *i
 	return &other
+}
+
+// cloneIdent returns a deep copy of the ident.
+func cloneIdent(ident *Ident) *Ident {
+	if ident == nil {
+		return nil
+	}
+	return ident.Clone()
 }
 
 func cloneIdents(a []*Ident) []*Ident {

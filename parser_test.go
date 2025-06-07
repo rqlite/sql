@@ -616,6 +616,41 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `CREATE TABLE tbl AS`, `1:19: expected SELECT or VALUES, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl AS WITH`, `1:24: expected table name, found 'EOF'`)
 
+		t.Run("WithSchema", func(t *testing.T) {
+			t.Run("Basic", func(t *testing.T) {
+				AssertParseStatement(t, `CREATE TABLE main.tbl (col1 TEXT PRIMARY KEY, col2 INTEGER)`, &sql.CreateTableStatement{
+					Create: pos(0),
+					Table:  pos(7),
+					Schema: &sql.Ident{Name: "main", NamePos: pos(13)},
+					Name:   &sql.Ident{Name: "tbl", NamePos: pos(18)},
+					Lparen: pos(22),
+					Columns: []*sql.ColumnDefinition{
+						{
+							Name: &sql.Ident{Name: "col1", NamePos: pos(23)},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "TEXT", NamePos: pos(28)},
+							},
+							Constraints: []sql.Constraint{
+								&sql.PrimaryKeyConstraint{
+									Primary: pos(33),
+									Key:     pos(41),
+								},
+							},
+						},
+						{
+							Name: &sql.Ident{Name: "col2", NamePos: pos(46)},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "INTEGER", NamePos: pos(51)},
+							},
+						},
+					},
+					Rparen: pos(58),
+				})
+			})
+
+			AssertParseStatementError(t, `CREATE TABLE main. (col1 TEXT PRIMARY KEY, col2 INTEGER)`, `1:20: expected table name, found '('`)
+		})
+
 		t.Run("WithComment", func(t *testing.T) {
 			t.Run("SingleLine", func(t *testing.T) {
 				AssertParseStatement(t, "CREATE TABLE tbl\n\t-- test one two\n\t(col1 TEXT)", &sql.CreateTableStatement{
