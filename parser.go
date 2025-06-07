@@ -91,8 +91,12 @@ func (p *Parser) parseExplainStatement() (_ *ExplainStatement, err error) {
 // parseStmt parses all statement types.
 func (p *Parser) parseNonExplainStatement() (Statement, error) {
 	switch p.peek() {
+	case PRAGMA:
+		return p.parsePragmaStatement()
 	case ANALYZE:
 		return p.parseAnalyzeStatement()
+	case REINDEX:
+		return p.parseReindexStatement()
 	case ALTER:
 		return p.parseAlterTableStatement()
 	case BEGIN:
@@ -243,6 +247,8 @@ func (p *Parser) parseCreateStatement() (Statement, error) {
 	switch p.peek() {
 	case TABLE:
 		return p.parseCreateTableStatement(pos)
+	case VIRTUAL:
+		return p.parseCreateVirtualTableStatement(pos)
 	case VIEW:
 		return p.parseCreateViewStatement(pos)
 	case INDEX, UNIQUE:
@@ -296,8 +302,27 @@ func (p *Parser) parseCreateTableStatement(createPos Pos) (_ *CreateTableStateme
 		stmt.IfNotExists = pos
 	}
 
-	if stmt.Name, err = p.parseIdent("table name"); err != nil {
+	// Parse the first identifier (either schema or table name)
+	firstIdent, err := p.parseIdent("table name")
+	if err != nil {
 		return &stmt, err
+	}
+
+	// Check if it's a schema.table format
+	if p.peek() == DOT {
+		// First identifier is the schema name
+		stmt.Schema = firstIdent
+
+		// Consume the dot
+		p.scan()
+
+		// Parse the table name
+		if stmt.Name, err = p.parseIdent("table name"); err != nil {
+			return &stmt, err
+		}
+	} else {
+		// Just a table name without schema
+		stmt.Name = firstIdent
 	}
 
 	// Parse either a column/constraint list or build table from "AS <select>".
@@ -378,7 +403,7 @@ func (p *Parser) parseColumnDefinition() (_ *ColumnDefinition, err error) {
 		return &col, err
 	}
 
-	if tok := p.peek(); tok == IDENT {
+	if tok := p.peek(); tok == IDENT || tok == NULL {
 		if col.Type, err = p.parseType(); err != nil {
 			return &col, err
 		}
@@ -842,6 +867,119 @@ func (p *Parser) parseForeignKeyConstraint(constraintPos Pos, name *Ident, isTab
 	return &cons, nil
 }
 
+func (p *Parser) parseCreateVirtualTableStatement(createPos Pos) (_ *CreateVirtualTableStatement, err error) {
+	assert(p.peek() == VIRTUAL)
+
+	var stmt CreateVirtualTableStatement
+	stmt.Create = createPos
+	stmt.Virtual, _, _ = p.scan()
+	stmt.Table, _, _ = p.scan()
+
+	// Parse optional "IF NOT EXISTS".
+	if p.peek() == IF {
+		stmt.If, _, _ = p.scan()
+
+		pos, tok, _ := p.scan()
+		if tok != NOT {
+			return &stmt, p.errorExpected(pos, tok, "NOT")
+		}
+		stmt.IfNot = pos
+
+		pos, tok, _ = p.scan()
+		if tok != EXISTS {
+			return &stmt, p.errorExpected(pos, tok, "EXISTS")
+		}
+		stmt.IfNotExists = pos
+	}
+
+	ident, err := p.parseIdent("schema or table name")
+	if err != nil {
+		return &stmt, err
+	}
+	if p.peek() == DOT {
+		stmt.Schema = ident
+		stmt.Dot, _, _ = p.scan()
+		if stmt.Name, err = p.parseIdent("table name"); err != nil {
+			return &stmt, err
+		}
+	} else {
+		stmt.Name = ident
+	}
+
+	pos, tok, _ := p.scan()
+	if tok != USING {
+		return &stmt, p.errorExpected(p.pos, p.tok, "USING")
+	}
+	stmt.Using = pos
+
+	if stmt.ModuleName, err = p.parseIdent("module name"); err != nil {
+		return &stmt, err
+	}
+	// Module arguments can be optional
+	if p.peek() != LP {
+		return &stmt, nil
+	}
+	stmt.Lparen, _, _ = p.scan()
+
+	if stmt.Arguments, err = p.parseModuleArguments(); err != nil {
+		return &stmt, err
+	}
+
+	if len(stmt.Arguments) == 0 {
+		return &stmt, p.errorExpected(p.pos, p.tok, "module arguments")
+	}
+
+	if p.peek() != RP {
+		return &stmt, p.errorExpected(p.pos, p.tok, "right paren")
+	}
+	stmt.Rparen, _, _ = p.scan()
+
+	return &stmt, nil
+}
+
+func (p *Parser) parseModuleArguments() (_ []*ModuleArgument, err error) {
+	var args []*ModuleArgument
+
+	for p.peek() != RP {
+		arg, err := p.parseModuleArgument()
+		if err != nil {
+			return args, err
+		}
+		args = append(args, arg)
+
+		if p.peek() == COMMA {
+			p.scan()
+		} else if p.peek() != RP {
+			return args, p.errorExpected(p.pos, p.tok, "comma or right paren")
+		}
+	}
+
+	return args, nil
+}
+
+func (p *Parser) parseModuleArgument() (_ *ModuleArgument, err error) {
+	var arg ModuleArgument
+
+	if arg.Name, err = p.parseIdent("module argument name"); err != nil {
+		return &arg, err
+	}
+
+	if p.peek() == EQ {
+		// Parse literal
+		arg.Assign, _, _ = p.scan()
+		if arg.Literal, err = p.parseOperand(); err != nil {
+			return &arg, err
+		}
+	} else if isTypeName(p.lit) {
+		if arg.Type, err = p.parseType(); err != nil {
+			return &arg, err
+		}
+
+	}
+
+	return &arg, nil
+}
+
 func (p *Parser) parseDropTableStatement(dropPos Pos) (_ *DropTableStatement, err error) {
 	assert(p.peek() == TABLE)
 
@@ -1215,6 +1353,8 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 	switch tok {
 	case IDENT, QIDENT:
 		return &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}, nil
+	case NULL:
+		return &Ident{Name: lit, NamePos: pos}, nil
 	default:
 		if isBareToken(tok) {
 			return &Ident{Name: lit, NamePos: pos}, nil
@@ -1225,7 +1365,11 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 
 func (p *Parser) parseType() (_ *Type, err error) {
 	var typ Type
-	for p.peek() == IDENT {
+	for {
+		tok := p.peek()
+		if tok != IDENT && tok != NULL {
+			break
+		}
 		typeName, err := p.parseIdent("type name")
 		if err != nil {
 			return &typ, err
@@ -2022,6 +2166,8 @@ func (p *Parser) parseUnarySource() (source Source, err error) {
 		return p.parseParenSource()
 	case IDENT, QIDENT:
 		return p.parseQualifiedTable()
+	case VALUES:
+		return p.parseSelectStatement(false, nil)
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "table name or left paren")
 	}
@@ -2135,8 +2281,7 @@ func (p *Parser) parseParenSource() (_ *ParenSource, err error) {
 	}
 	source.Rparen, _, _ = p.scan()
 
-	// Only parse aliases for nested select statements.
-	if _, ok := source.X.(*SelectStatement); ok && (p.peek() == AS || isIdentToken(p.peek())) {
+	if p.peek() == AS || isIdentToken(p.peek()) {
 		if p.peek() == AS {
 			source.As, _, _ = p.scan()
 		}
@@ -2161,7 +2306,17 @@ func (p *Parser) parseQualifiedTable() (_ Source, err error) {
 
 func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, err error) {
 	var tbl QualifiedTableName
-	tbl.Name = ident
+
+	if tok := p.peek(); tok == DOT {
+		tbl.Schema = ident
+		tbl.Dot, _, _ = p.scan()
+
+		if tbl.Name, err = p.parseIdent("table name"); err != nil {
+			return &tbl, err
+		}
+	} else {
+		tbl.Name = ident
+	}
 
 	// Parse optional table alias ("AS alias" or just "alias").
 	if tok := p.peek(); tok == AS || isIdentToken(tok) {
@@ -2172,7 +2327,6 @@ func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, e
 			return &tbl, err
 		}
 	}
-
 	// Parse optional "INDEXED BY index-name" or "NOT INDEXED".
 	switch p.peek() {
 	case INDEXED:
@@ -2354,7 +2508,7 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 		return &BoolLit{ValuePos: pos, Value: tok == TRUE}, nil
 	case tok == BIND:
 		return &BindExpr{NamePos: pos, Name: lit}, nil
-	case tok == PLUS, tok == MINUS:
+	case tok == PLUS, tok == MINUS, tok == BITNOT:
 		expr, err = p.parseOperand()
 		if err != nil {
 			return nil, err
@@ -2410,7 +2564,10 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 		}
 
 		switch op {
+		case NOTNULL, ISNULL:
+			x = &Null{X: x, OpPos: pos, Op: op}
 		case IN, NOTIN:
+
 			y, err := p.parseExprList()
 			if err != nil {
 				return x, err
@@ -2670,6 +2827,13 @@ func (p *Parser) parseOrderingTerm() (_ *OrderingTerm, err error) {
 		return &term, err
 	}
 
+	// Parse optional "COLLATE"
+	if p.peek() == COLLATE {
+		if term.Collation, err = p.parseCollationClause(); err != nil {
+			return &term, err
+		}
+	}
+
 	// Parse optional sort direction ("ASC" or "DESC")
 	switch p.peek() {
 	case ASC:
@@ -2692,6 +2856,19 @@ func (p *Parser) parseOrderingTerm() (_ *OrderingTerm, err error) {
 	}
 
 	return &term, nil
+}
+
+func (p *Parser) parseCollationClause() (_ *CollationClause, err error) {
+	assert(p.peek() == COLLATE)
+
+	var clause CollationClause
+	clause.Collate, _, _ = p.scan()
+
+	if clause.Name, err = p.parseIdent("collation name"); err != nil {
+		return &clause, err
+	}
+
+	return &clause, nil
 }
 
 func (p *Parser) parseFrameSpec() (_ *FrameSpec, err error) {
@@ -3059,14 +3236,90 @@ func (p *Parser) parseAlterTableStatement() (_ *AlterTableStatement, err error) 
 	}
 }
 
+func (p *Parser) parsePragmaStatement() (_ *PragmaStatement, err error) {
+	assert(p.peek() == PRAGMA)
+
+	var stmt PragmaStatement
+	stmt.Pragma, _, _ = p.scan()
+
+	lit, err := p.parseIdent("schema name")
+	if err != nil {
+		return &stmt, err
+	}
+
+	// Handle <schema>.<pragma-name>
+	if p.peek() == DOT {
+		stmt.Schema = lit
+		stmt.Dot, _, _ = p.scan()
+		if lit, err = p.parseIdent("pragma name"); err != nil {
+			return &stmt, err
+		}
+	}
+
+	switch p.peek() {
+	case EQ:
+		// Parse as binary expression: pragma-name = value
+		opPos, _, _ := p.scan()
+		rhs, err := p.ParseExpr()
+		if err != nil {
+			return &stmt, err
+		}
+		stmt.Expr = &BinaryExpr{
+			X:     lit,
+			OpPos: opPos,
+			Op:    EQ,
+			Y:     rhs,
+		}
+	case LP:
+		// Parse as function call: pragma-name(args)
+		call, err := p.parseCall(lit)
+		if err != nil {
+			return &stmt, err
+		}
+		stmt.Expr = call
+	default:
+		stmt.Expr = lit
+	}
+
+	return &stmt, nil
+}
+
 func (p *Parser) parseAnalyzeStatement() (_ *AnalyzeStatement, err error) {
 	assert(p.peek() == ANALYZE)
 
 	var stmt AnalyzeStatement
 	stmt.Analyze, _, _ = p.scan()
-	if stmt.Name, err = p.parseIdent("table or index name"); err != nil {
-		return &stmt, err
+
+	if isIdentToken(p.peek()) {
+		stmt.Name, err = p.parseIdent("table or index name")
+		if err != nil {
+			return nil, err
+		}
 	}
+	return &stmt, nil
+}
+
+func (p *Parser) parseReindexStatement() (_ *ReindexStatement, err error) {
+	assert(p.peek() == REINDEX)
+
+	var stmt ReindexStatement
+	stmt.Reindex, _, _ = p.scan()
+
+	// handle case with index, table or collation name
+	if isIdentToken(p.peek()) {
+		ident, err := p.parseIdent("table or index name")
+		if err != nil {
+			return &stmt, err
+		}
+		if p.peek() == DOT {
+			if stmt.Name, err = p.parseQualifiedRef(ident); err != nil {
+				return &stmt, err
+			}
+		} else {
+			stmt.Name = ident
+		}
+	}
+
 	return &stmt, nil
 }
 
@@ -3093,6 +3346,9 @@ func (p *Parser) scanBinaryOp() (Pos, Token, error) {
 		if p.peek() == NOT {
 			p.scan()
 			return pos, ISNOT, nil
+		} else if p.peek() == NULL {
+			p.scan()
+			return pos, ISNULL, nil
 		}
 		return pos, IS, nil
 	case NOT:
@@ -3115,8 +3371,11 @@ func (p *Parser) scanBinaryOp() (Pos, Token, error) {
 		case BETWEEN:
 			p.scan()
 			return pos, NOTBETWEEN, nil
+		case NULL:
+			p.scan()
+			return pos, NOTNULL, nil
 		default:
-			return pos, tok, p.errorExpected(p.pos, p.tok, "IN, LIKE, GLOB, REGEXP, MATCH, or BETWEEN")
+			return pos, tok, p.errorExpected(p.pos, p.tok, "IN, LIKE, GLOB, REGEXP, MATCH, BETWEEN, IS/NOT NULL")
 		}
 	default:
 		return pos, tok, nil

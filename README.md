@@ -1,7 +1,7 @@
 sql
 ===
 
-[![Circle CI](https://circleci.com/gh/rqlite/sql/tree/master.svg?style=svg)](https://circleci.com/gh/rqlite/sql/tree/master)
+[![Circle CI](https://circleci.com/gh/rqlite/sql/tree/master.svg?style=svg)](https://app.circleci.com/pipelines/github/rqlite/sql)
 
 This repository holds a pure Go SQL parser based on the [SQLite](https://sqlite.org/)
 SQL definition. It implements nearly all features of the language except `ATTACH`,

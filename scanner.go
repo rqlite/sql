@@ -58,7 +58,7 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 				s.read()
 				return pos, NE, "!="
 			}
-			return pos, BITNOT, "!"
+			return pos, ILLEGAL, "!"
 		case '=':
 			if s.peek() == '=' {
 				s.read()
@@ -119,6 +119,8 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 			return pos, SLASH, "/"
 		case '%':
 			return pos, REM, "%"
+		case '~':
+			return pos, BITNOT, "~"
 		default:
 			return pos, ILLEGAL, string(ch)
 		}
@@ -270,6 +272,25 @@ func (s *Scanner) scanNumber() (Pos, Token, string) {
 	tok := INTEGER
 
 	s.buf.Reset()
+
+	if s.peek() == '0' {
+		s.buf.WriteRune('0')
+		s.read()
+		if s.peek() == 'x' || s.peek() == 'X' {
+			s.read()
+			s.buf.WriteRune('x')
+			for isHex(s.peek()) {
+				ch, _ := s.read()
+				s.buf.WriteRune(ch)
+			}
+			// TODO: error handling:
+			// if len(s.buf.String()) < 2 => invalid
+			// reason: means we scanned '0x'
+			// if len(s.buf.String()) - 2 > 16 => invalid
+			// reason: according to spec maximum of 16 significant digits)
+			return pos, tok, s.buf.String()
+		}
+	}
 
 	// Read whole number if starting with a digit.
 	if isDigit(s.peek()) {
