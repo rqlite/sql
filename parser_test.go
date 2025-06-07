@@ -2566,6 +2566,53 @@ func TestParser_ParseStatement(t *testing.T) {
 			WhereExpr: &sql.BoolLit{ValuePos: pos(15), Value: true},
 		})
 
+		AssertParseStatement(t, `SELECT 1 WHERE true AND true`, &sql.SelectStatement{
+			Select:  pos(0),
+			Columns: []*sql.ResultColumn{{Expr: &sql.NumberLit{ValuePos: pos(7), Value: "1"}}},
+			Where:   pos(9),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.BoolLit{ValuePos: pos(15), Value: true},
+				OpPos: pos(20),
+				Op:    sql.AND,
+				Y:     &sql.BoolLit{ValuePos: pos(24), Value: true},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT 1 WHERE true AND (0, 1) = (SELECT 2,3)`, &sql.SelectStatement{
+			Select:  pos(0),
+			Columns: []*sql.ResultColumn{{Expr: &sql.NumberLit{ValuePos: pos(7), Value: "1"}}}, Where: pos(9),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.BoolLit{ValuePos: pos(15), Value: true},
+				OpPos: pos(20),
+				Op:    sql.AND,
+				Y: &sql.BinaryExpr{
+					X: &sql.ExprList{
+						Lparen: pos(24),
+						Exprs: []sql.Expr{
+							&sql.NumberLit{ValuePos: pos(25), Value: "0"},
+							&sql.NumberLit{ValuePos: pos(28), Value: "1"},
+						},
+						Rparen: pos(29),
+					},
+					OpPos: pos(31),
+					Op:    sql.EQ,
+					Y: &sql.ParenExpr{
+						Lparen: pos(33),
+						X: sql.SelectExpr{
+							SelectStatement: &sql.SelectStatement{
+								Select: pos(34),
+								Columns: []*sql.ResultColumn{
+									{Expr: &sql.NumberLit{ValuePos: pos(41), Value: "2"}},
+									{Expr: &sql.NumberLit{ValuePos: pos(43), Value: "3"}},
+								},
+							},
+						},
+						Rparen: pos(44),
+					},
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * GROUP BY foo, bar`, &sql.SelectStatement{
 			Select:  pos(0),
 			Columns: []*sql.ResultColumn{{Star: pos(7)}},
