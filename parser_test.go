@@ -618,7 +618,7 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		t.Run("WithSchema", func(t *testing.T) {
 			t.Run("Basic", func(t *testing.T) {
-				AssertParseStatement(t, `CREATE TABLE main.tbl (col1 TEXT PRIMARY KEY)`, &sql.CreateTableStatement{
+				AssertParseStatement(t, `CREATE TABLE main.tbl (col1 TEXT PRIMARY KEY, col2 INTEGER)`, &sql.CreateTableStatement{
 					Create: pos(0),
 					Table:  pos(7),
 					Schema: &sql.Ident{Name: "main", NamePos: pos(13)},
@@ -637,10 +637,18 @@ func TestParser_ParseStatement(t *testing.T) {
 								},
 							},
 						},
+						{
+							Name: &sql.Ident{Name: "col2", NamePos: pos(46)},
+							Type: &sql.Type{
+								Name: &sql.Ident{Name: "INTEGER", NamePos: pos(51)},
+							},
+						},
 					},
-					Rparen: pos(44),
+					Rparen: pos(58),
 				})
 			})
+
+			AssertParseStatementError(t, `CREATE TABLE main. (col1 TEXT PRIMARY KEY, col2 INTEGER)`, `1:20: expected table name, found '('`)
 		})
 
 		t.Run("WithComment", func(t *testing.T) {
