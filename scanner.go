@@ -273,6 +273,25 @@ func (s *Scanner) scanNumber() (Pos, Token, string) {
 
 	s.buf.Reset()
 
+	if s.peek() == '0' {
+		s.buf.WriteRune('0')
+		s.read()
+		if s.peek() == 'x' || s.peek() == 'X' {
+			s.read()
+			s.buf.WriteRune('x')
+			for isHex(s.peek()) {
+				ch, _ := s.read()
+				s.buf.WriteRune(ch)
+			}
+			// TODO: error handling:
+			// if len(s.buf.String()) < 2 => invalid
+			// reason: means we scanned '0x'
+			// if len(s.buf.String()) - 2 > 16 => invalid
+			// reason: according to spec maximum of 16 significant digits)
+			return pos, tok, s.buf.String()
+		}
+	}
+
 	// Read whole number if starting with a digit.
 	if isDigit(s.peek()) {
 		for isDigit(s.peek()) {
