@@ -1971,10 +1971,16 @@ func (expr *Null) Clone() *Null {
 
 // String returns the string representation of the expression.
 func (expr *Null) String() string {
+	var buf bytes.Buffer
+
+	buf.WriteString(expr.X.String())
 	if expr.Op == ISNULL {
-		return "IS NULL"
+		buf.WriteString(" IS NULL")
+	} else {
+		buf.WriteString(" NOT NULL")
 	}
-	return "NOT NULL"
+
+	return buf.String()
 }
 
 type ExprList struct {

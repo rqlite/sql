@@ -4787,6 +4787,22 @@ func TestParser_ParseExpr(t *testing.T) {
 			},
 			End: pos(19),
 		})
+		AssertParseExpr(t, `CASE WHEN 1 IS NULL THEN 2 END`, &sql.CaseExpr{
+			Case: pos(0),
+			Blocks: []*sql.CaseBlock{
+				{
+					When: pos(5),
+					Condition: &sql.Null{
+						X:     &sql.NumberLit{ValuePos: pos(10), Value: "1"},
+						Op:    sql.ISNULL,
+						OpPos: pos(12),
+					},
+					Then: pos(20),
+					Body: &sql.NumberLit{ValuePos: pos(25), Value: "2"},
+				},
+			},
+			End: pos(27),
+		})
 		AssertParseExprError(t, `CASE`, `1:4: expected expression, found 'EOF'`)
 		AssertParseExprError(t, `CASE 1`, `1:6: expected WHEN, found 'EOF'`)
 		AssertParseExprError(t, `CASE WHEN`, `1:9: expected expression, found 'EOF'`)
