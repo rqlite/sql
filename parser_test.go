@@ -1860,6 +1860,12 @@ func TestParser_ParseStatement(t *testing.T) {
 			End: pos(83),
 		})
 
+		// Test cases that should fail due to qualified table names in trigger body
+		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER DELETE ON tbl BEGIN DELETE FROM host h; END`, `qualified table names not allowed in trigger body`)
+		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER DELETE ON tbl BEGIN UPDATE host h SET x = 1; END`, `qualified table names not allowed in trigger body`)
+		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER DELETE ON tbl BEGIN DELETE FROM schema.host; END`, `qualified table names not allowed in trigger body`)
+		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER DELETE ON tbl BEGIN UPDATE schema.host SET x = 1; END`, `qualified table names not allowed in trigger body`)
+
 		AssertParseStatementError(t, `CREATE TRIGGER`, `1:14: expected index name, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TRIGGER IF`, `1:17: expected NOT, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TRIGGER IF NOT`, `1:21: expected EXISTS, found 'EOF'`)
