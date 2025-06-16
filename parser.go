@@ -120,7 +120,7 @@ func (p *Parser) parseNonExplainStatement() (Statement, error) {
 	case UPDATE:
 		return p.parseUpdateStatement(nil)
 	case DELETE:
-		return p.parseDeleteStatement(nil)
+		return p.parseDeleteStatement(nil, true)
 	case WITH:
 		return p.parseWithStatement()
 	default:
@@ -144,7 +144,7 @@ func (p *Parser) parseWithStatement() (Statement, error) {
 	case UPDATE:
 		return p.parseUpdateStatement(withClause)
 	case DELETE:
-		return p.parseDeleteStatement(withClause)
+		return p.parseDeleteStatement(withClause, true)
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "SELECT, VALUES, INSERT, REPLACE, UPDATE, or DELETE")
 	}
@@ -1306,7 +1306,7 @@ func (p *Parser) parseTriggerBodyStatement() (stmt Statement, err error) {
 	case UPDATE:
 		stmt, err = p.parseUpdateStatement(nil)
 	case DELETE:
-		stmt, err = p.parseDeleteStatement(nil)
+		stmt, err = p.parseDeleteStatement(nil, false)
 	case WITH:
 		stmt, err = p.parseWithStatement()
 	default:
@@ -1738,7 +1738,7 @@ func (p *Parser) parseUpdateStatement(withClause *WithClause) (_ *UpdateStatemen
 	return &stmt, nil
 }
 
-func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatement, err error) {
+func (p *Parser) parseDeleteStatement(withClause *WithClause, allowQualified bool) (_ *DeleteStatement, err error) {
 	assert(p.peek() == DELETE)
 
 	var stmt DeleteStatement
@@ -1754,8 +1754,14 @@ func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatemen
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
 	ident, _ := p.parseIdent("table name")
-	if stmt.Table, err = p.parseQualifiedTableName(ident); err != nil {
-		return &stmt, err
+	if allowQualified {
+		if stmt.Table, err = p.parseQualifiedTableName(ident); err != nil {
+			return &stmt, err
+		}
+	} else {
+		if stmt.Table, err = p.parseUnqualifiedTableName(ident); err != nil {
+			return &stmt, err
+		}
 	}
 
 	// Parse WHERE clause.
@@ -2305,6 +2311,14 @@ func (p *Parser) parseQualifiedTable() (_ Source, err error) {
 }
 
 func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, err error) {
+	return p.parseTableName(ident, true)
+}
+
+func (p *Parser) parseUnqualifiedTableName(ident *Ident) (_ *QualifiedTableName, err error) {
+	return p.parseTableName(ident, false)
+}
+
+func (p *Parser) parseTableName(ident *Ident, allowQualified bool) (_ *QualifiedTableName, err error) {
 	var tbl QualifiedTableName
 
 	if tok := p.peek(); tok == DOT {
@@ -2320,11 +2334,18 @@ func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, e
 
 	// Parse optional table alias ("AS alias" or just "alias").
 	if tok := p.peek(); tok == AS || isIdentToken(tok) {
+
 		if p.peek() == AS {
+			if !allowQualified {
+				return &tbl, p.errorExpected(p.pos, p.tok, "unqualified table name")
+			}
 			tbl.As, _, _ = p.scan()
 		}
 		if tbl.Alias, err = p.parseIdent("table alias"); err != nil {
 			return &tbl, err
+		}
+		if !allowQualified {
+			return &tbl, p.errorExpected(p.pos, p.tok, "unqualified table name")
 		}
 	}
 	// Parse optional "INDEXED BY index-name" or "NOT INDEXED".
