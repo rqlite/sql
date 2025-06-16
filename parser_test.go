@@ -2190,6 +2190,20 @@ func TestParser_ParseStatement(t *testing.T) {
 				Alias: &sql.Ident{NamePos: pos(21), Name: "tbl2"},
 			},
 		})
+		AssertParseStatement(t, `SELECT * FROM main.tbl AS tbl2`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Schema: &sql.Ident{NamePos: pos(14), Name: "main"},
+				Dot:    pos(18),
+				Name:   &sql.Ident{NamePos: pos(19), Name: "tbl"},
+				As:     pos(23),
+				Alias:  &sql.Ident{NamePos: pos(26), Name: "tbl2"},
+			},
+		})
 		AssertParseStatement(t, `SELECT * FROM tbl INDEXED BY idx`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
