@@ -1697,7 +1697,7 @@ func (p *Parser) parseUpdateStatement(withClause *WithClause) (_ *UpdateStatemen
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
 	ident, _ := p.parseIdent("table name")
-	if stmt.Table, err = p.parseQualifiedTableName(ident); err != nil {
+	if stmt.Table, err = p.parseQualifiedTableName(ident, true, true); err != nil {
 		return &stmt, err
 	}
 
@@ -1754,7 +1754,7 @@ func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatemen
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
 	ident, _ := p.parseIdent("table name")
-	if stmt.Table, err = p.parseQualifiedTableName(ident); err != nil {
+	if stmt.Table, err = p.parseQualifiedTableName(ident, true, true); err != nil {
 		return &stmt, err
 	}
 
@@ -2165,7 +2165,7 @@ func (p *Parser) parseUnarySource() (source Source, err error) {
 	case LP:
 		return p.parseParenSource()
 	case IDENT, QIDENT:
-		return p.parseQualifiedTable()
+		return p.parseQualifiedTable(true, true)
 	case VALUES:
 		return p.parseSelectStatement(false, nil)
 	default:
@@ -2293,7 +2293,7 @@ func (p *Parser) parseParenSource() (_ *ParenSource, err error) {
 	return &source, nil
 }
 
-func (p *Parser) parseQualifiedTable() (_ Source, err error) {
+func (p *Parser) parseQualifiedTable(schemaOK, indexedOK bool) (_ Source, err error) {
 	if !isIdentToken(p.peek()) {
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
@@ -2301,13 +2301,16 @@ func (p *Parser) parseQualifiedTable() (_ Source, err error) {
 	if p.peek() == LP {
 		return p.parseQualifiedTableFunctionName(ident)
 	}
-	return p.parseQualifiedTableName(ident)
+	return p.parseQualifiedTableName(ident, schemaOK, indexedOK)
 }
 
-func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, err error) {
+func (p *Parser) parseQualifiedTableName(ident *Ident, schemaOK, indexedOK bool) (_ *QualifiedTableName, err error) {
 	var tbl QualifiedTableName
 
 	if tok := p.peek(); tok == DOT {
+		if !schemaOK {
+			return &tbl, p.errorExpected(p.pos, p.tok, "unqualified table name")
+		}
 		tbl.Schema = ident
 		tbl.Dot, _, _ = p.scan()
 
@@ -2330,6 +2333,9 @@ func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, e
 	// Parse optional "INDEXED BY index-name" or "NOT INDEXED".
 	switch p.peek() {
 	case INDEXED:
+		if !indexedOK {
+			return &tbl, p.errorExpected(p.pos, p.tok, "unqualified table name")
+		}
 		tbl.Indexed, _, _ = p.scan()
 		if p.peek() != BY {
 			return &tbl, p.errorExpected(p.pos, p.tok, "BY")
@@ -2343,6 +2349,9 @@ func (p *Parser) parseQualifiedTableName(ident *Ident) (_ *QualifiedTableName, e
 		tbl.Not, _, _ = p.scan()
 		if p.peek() != INDEXED {
 			return &tbl, p.errorExpected(p.pos, p.tok, "INDEXED")
+		}
+		if !indexedOK {
+			return &tbl, p.errorExpected(p.pos, p.tok, "unqualified table name")
 		}
 		tbl.NotIndexed, _, _ = p.scan()
 	}
