@@ -118,11 +118,11 @@ func (p *Parser) parseNonExplainStatement() (Statement, error) {
 	case INSERT, REPLACE:
 		return p.parseInsertStatement(nil)
 	case UPDATE:
-		return p.parseUpdateStatement(nil)
+		return p.parseUpdateStatement(false, nil)
 	case DELETE:
-		return p.parseDeleteStatement(nil)
+		return p.parseDeleteStatement(false, nil)
 	case WITH:
-		return p.parseWithStatement()
+		return p.parseWithStatement(false)
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "statement")
 	}
@@ -130,7 +130,7 @@ func (p *Parser) parseNonExplainStatement() (Statement, error) {
 
 // parseWithStatement is called only from parseNonExplainStatement as we don't
 // know what kind of statement we'll have after the CTEs (e.g. SELECT, INSERT, etc).
-func (p *Parser) parseWithStatement() (Statement, error) {
+func (p *Parser) parseWithStatement(inTrigger bool) (Statement, error) {
 	withClause, err := p.parseWithClause()
 	if err != nil {
 		return nil, err
@@ -142,9 +142,9 @@ func (p *Parser) parseWithStatement() (Statement, error) {
 	case INSERT, REPLACE:
 		return p.parseInsertStatement(withClause)
 	case UPDATE:
-		return p.parseUpdateStatement(withClause)
+		return p.parseUpdateStatement(inTrigger, withClause)
 	case DELETE:
-		return p.parseDeleteStatement(withClause)
+		return p.parseDeleteStatement(inTrigger, withClause)
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "SELECT, VALUES, INSERT, REPLACE, UPDATE, or DELETE")
 	}
@@ -1304,11 +1304,11 @@ func (p *Parser) parseTriggerBodyStatement() (stmt Statement, err error) {
 	case INSERT, REPLACE:
 		stmt, err = p.parseInsertStatement(nil)
 	case UPDATE:
-		stmt, err = p.parseUpdateStatement(nil)
+		stmt, err = p.parseUpdateStatement(true, nil)
 	case DELETE:
-		stmt, err = p.parseDeleteStatement(nil)
+		stmt, err = p.parseDeleteStatement(true, nil)
 	case WITH:
-		stmt, err = p.parseWithStatement()
+		stmt, err = p.parseWithStatement(true)
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, "statement")
 	}
@@ -1667,7 +1667,7 @@ func (p *Parser) parseIndexedColumn() (_ *IndexedColumn, err error) {
 	return &col, nil
 }
 
-func (p *Parser) parseUpdateStatement(withClause *WithClause) (_ *UpdateStatement, err error) {
+func (p *Parser) parseUpdateStatement(inTrigger bool, withClause *WithClause) (_ *UpdateStatement, err error) {
 	assert(p.peek() == UPDATE)
 
 	var stmt UpdateStatement
@@ -1697,7 +1697,7 @@ func (p *Parser) parseUpdateStatement(withClause *WithClause) (_ *UpdateStatemen
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
 	ident, _ := p.parseIdent("table name")
-	if stmt.Table, err = p.parseQualifiedTableName(ident, true, true); err != nil {
+	if stmt.Table, err = p.parseQualifiedTableName(ident, false, false, false); err != nil {
 		return &stmt, err
 	}
 
@@ -1738,7 +1738,7 @@ func (p *Parser) parseUpdateStatement(withClause *WithClause) (_ *UpdateStatemen
 	return &stmt, nil
 }
 
-func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatement, err error) {
+func (p *Parser) parseDeleteStatement(inTrigger bool, withClause *WithClause) (_ *DeleteStatement, err error) {
 	assert(p.peek() == DELETE)
 
 	var stmt DeleteStatement
@@ -1754,7 +1754,7 @@ func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatemen
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
 	ident, _ := p.parseIdent("table name")
-	if stmt.Table, err = p.parseQualifiedTableName(ident, true, true); err != nil {
+	if stmt.Table, err = p.parseQualifiedTableName(ident, !inTrigger, !inTrigger, !inTrigger); err != nil {
 		return &stmt, err
 	}
 
@@ -1769,6 +1769,9 @@ func (p *Parser) parseDeleteStatement(withClause *WithClause) (_ *DeleteStatemen
 	// Parse ORDER BY clause. This differs from the SELECT parsing in that
 	// if an ORDER BY is specified then the LIMIT is required.
 	if p.peek() == ORDER || p.peek() == LIMIT {
+		if inTrigger {
+			return &stmt, p.errorExpected(p.pos, p.tok, "unqualified table name")
+		}
 		if p.peek() == ORDER {
 			stmt.Order, _, _ = p.scan()
 			if p.peek() != BY {
@@ -2165,7 +2168,7 @@ func (p *Parser) parseUnarySource() (source Source, err error) {
 	case LP:
 		return p.parseParenSource()
 	case IDENT, QIDENT:
-		return p.parseQualifiedTable(true, true)
+		return p.parseQualifiedTable(true, true, true)
 	case VALUES:
 		return p.parseSelectStatement(false, nil)
 	default:
@@ -2293,7 +2296,7 @@ func (p *Parser) parseParenSource() (_ *ParenSource, err error) {
 	return &source, nil
 }
 
-func (p *Parser) parseQualifiedTable(schemaOK, indexedOK bool) (_ Source, err error) {
+func (p *Parser) parseQualifiedTable(schemaOK, aliasOK, indexedOK bool) (_ Source, err error) {
 	if !isIdentToken(p.peek()) {
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
@@ -2301,10 +2304,10 @@ func (p *Parser) parseQualifiedTable(schemaOK, indexedOK bool) (_ Source, err er
 	if p.peek() == LP {
 		return p.parseQualifiedTableFunctionName(ident)
 	}
-	return p.parseQualifiedTableName(ident, schemaOK, indexedOK)
+	return p.parseQualifiedTableName(ident, schemaOK, aliasOK, indexedOK)
 }
 
-func (p *Parser) parseQualifiedTableName(ident *Ident, schemaOK, indexedOK bool) (_ *QualifiedTableName, err error) {
+func (p *Parser) parseQualifiedTableName(ident *Ident, schemaOK, aliasOK, indexedOK bool) (_ *QualifiedTableName, err error) {
 	var tbl QualifiedTableName
 
 	if tok := p.peek(); tok == DOT {
@@ -2323,6 +2326,9 @@ func (p *Parser) parseQualifiedTableName(ident *Ident, schemaOK, indexedOK bool)
 
 	// Parse optional table alias ("AS alias" or just "alias").
 	if tok := p.peek(); tok == AS || isIdentToken(tok) {
+		if !aliasOK {
+			return &tbl, p.errorExpected(p.pos, p.tok, "unqualified table name")
+		}
 		if p.peek() == AS {
 			tbl.As, _, _ = p.scan()
 		}
