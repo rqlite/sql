@@ -1720,37 +1720,6 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("CreateTrigger", func(t *testing.T) {
-		AssertParseStatement(t, `CREATE TRIGGER trig DELETE ON tbl BEGIN INSERT INTO new DEFAULT VALUES; UPDATE new SET x = 1; END`, &sql.CreateTriggerStatement{
-			Create:  pos(0),
-			Trigger: pos(7),
-			Name:    &sql.Ident{NamePos: pos(15), Name: "trig"},
-			Delete:  pos(20),
-			On:      pos(27),
-			Table:   &sql.Ident{NamePos: pos(30), Name: "tbl"},
-			Begin:   pos(34),
-			Body: []sql.Statement{
-				&sql.InsertStatement{
-					Insert:        pos(40),
-					Into:          pos(47),
-					Table:         &sql.Ident{NamePos: pos(52), Name: "new"},
-					Default:       pos(56),
-					DefaultValues: pos(64),
-				},
-				&sql.UpdateStatement{
-					Update: pos(72),
-					Table: &sql.QualifiedTableName{
-						Name: &sql.Ident{NamePos: pos(79), Name: "new"},
-					},
-					Set: pos(83),
-					Assignments: []*sql.Assignment{{
-						Columns: []*sql.Ident{{NamePos: pos(87), Name: "x"}},
-						Eq:      pos(89),
-						Expr:    &sql.NumberLit{ValuePos: pos(91), Value: "1"},
-					}},
-				},
-			},
-			End: pos(94),
-		})
 		AssertParseStatement(t, `CREATE TRIGGER IF NOT EXISTS trig BEFORE INSERT ON tbl BEGIN DELETE FROM new; END`, &sql.CreateTriggerStatement{
 			Create:      pos(0),
 			Trigger:     pos(7),
@@ -1877,6 +1846,7 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON tbl BEGIN SELECT`, `1:52: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON tbl BEGIN SELECT *`, `1:54: expected semicolon, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON tbl BEGIN SELECT *;`, `1:55: expected statement, found 'EOF'`)
+		AssertParseStatementError(t, `CREATE TRIGGER trig DELETE ON tbl BEGIN INSERT INTO new DEFAULT VALUES; UPDATE new SET x = 1; END`, `1:65: expected non-DEFAULT VALUES, found 'VALUES'`)
 		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON foo BEGIN UPDATE baz AS b SET x = 1 WHERE NEW.id = 1; END;;`, `1:58: expected unqualified table name, found 'AS'`)
 		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON foo BEGIN UPDATE baz b SET x = 1 WHERE NEW.id = 1; END;;`, `1:58: expected unqualified table name, found b`)
 		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON foo BEGIN UPDATE baz INDEXED BY id SET x = 1 WHERE NEW.id = 1; END;;`, `1:58: expected unqualified table name, found 'INDEXED'`)

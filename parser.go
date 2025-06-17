@@ -116,7 +116,7 @@ func (p *Parser) parseNonExplainStatement() (Statement, error) {
 	case SELECT, VALUES:
 		return p.parseSelectStatement(false, nil)
 	case INSERT, REPLACE:
-		return p.parseInsertStatement(nil)
+		return p.parseInsertStatement(false, nil)
 	case UPDATE:
 		return p.parseUpdateStatement(false, nil)
 	case DELETE:
@@ -140,7 +140,7 @@ func (p *Parser) parseWithStatement(inTrigger bool) (Statement, error) {
 	case SELECT, VALUES:
 		return p.parseSelectStatement(false, withClause)
 	case INSERT, REPLACE:
-		return p.parseInsertStatement(withClause)
+		return p.parseInsertStatement(inTrigger, withClause)
 	case UPDATE:
 		return p.parseUpdateStatement(inTrigger, withClause)
 	case DELETE:
@@ -1302,7 +1302,7 @@ func (p *Parser) parseTriggerBodyStatement() (stmt Statement, err error) {
 	case SELECT, VALUES:
 		stmt, err = p.parseSelectStatement(false, nil)
 	case INSERT, REPLACE:
-		stmt, err = p.parseInsertStatement(nil)
+		stmt, err = p.parseInsertStatement(true, nil)
 	case UPDATE:
 		stmt, err = p.parseUpdateStatement(true, nil)
 	case DELETE:
@@ -1408,7 +1408,7 @@ func (p *Parser) parseType() (_ *Type, err error) {
 	return &typ, nil
 }
 
-func (p *Parser) parseInsertStatement(withClause *WithClause) (_ *InsertStatement, err error) {
+func (p *Parser) parseInsertStatement(inTrigger bool, withClause *WithClause) (_ *InsertStatement, err error) {
 	assert(p.peek() == INSERT || p.peek() == REPLACE)
 
 	var stmt InsertStatement
@@ -1515,6 +1515,9 @@ func (p *Parser) parseInsertStatement(withClause *WithClause) (_ *InsertStatemen
 		stmt.Default, _, _ = p.scan()
 		if p.peek() != VALUES {
 			return &stmt, p.errorExpected(p.pos, p.tok, "VALUES")
+		}
+		if inTrigger {
+			return &stmt, p.errorExpected(p.pos, p.tok, "non-DEFAULT VALUES")
 		}
 		stmt.DefaultValues, _, _ = p.scan()
 	default:
