@@ -1877,6 +1877,11 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON tbl BEGIN SELECT`, `1:52: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON tbl BEGIN SELECT *`, `1:54: expected semicolon, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON tbl BEGIN SELECT *;`, `1:55: expected statement, found 'EOF'`)
+		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON foo BEGIN UPDATE baz AS b SET x = 1 WHERE NEW.id = 1; END;;`, `1:58: expected unqualified table name, found 'AS'`)
+		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON foo BEGIN UPDATE baz b SET x = 1 WHERE NEW.id = 1; END;;`, `1:58: expected unqualified table name, found b`)
+		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON foo BEGIN UPDATE baz INDEXED BY id SET x = 1 WHERE NEW.id = 1; END;;`, `1:58: expected unqualified table name, found 'INDEXED'`)
+		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON foo BEGIN DELETE FROM baz AS b WHERE NEW.id = 1; END;;`, `1:63: expected unqualified table name, found 'AS'`)
+		AssertParseStatementError(t, `CREATE TRIGGER trig AFTER INSERT ON foo BEGIN DELETE FROM baz b WHERE NEW.id = 1; END;;`, `1:63: expected unqualified table name, found b`)
 	})
 
 	t.Run("DropTrigger", func(t *testing.T) {
