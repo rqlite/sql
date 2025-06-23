@@ -4927,14 +4927,3 @@ func Benchmark_NewParser(b *testing.B) {
 		}
 	}
 }
-
-func Benchmark_NewRuneParser(b *testing.B) {
-	s := `SELECT * FROM foo WHERE bar = 1 AND baz > 2 ORDER BY qux DESC LIMIT 10`
-	for i := 0; i < b.N; i++ {
-		parser := sql.NewRuneParser(strings.NewReader(s))
-		_, err := parser.ParseStatement()
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}

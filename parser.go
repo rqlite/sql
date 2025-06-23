@@ -16,15 +16,9 @@ type Parser struct {
 }
 
 // NewParser returns a new instance of Parser that reads from r.
-func NewParser(r io.Reader) *Parser {
+func NewParser(r io.RuneReader) *Parser {
 	return &Parser{
 		s: NewScanner(r),
-	}
-}
-
-func NewRuneParser(r io.RuneReader) *Parser {
-	return &Parser{
-		s: NewRuneScanner(r),
 	}
 }
 
@@ -33,7 +27,7 @@ func ParseExprString(s string) (Expr, error) {
 	if s == "" {
 		return nil, nil
 	}
-	return NewRuneParser(strings.NewReader(s)).ParseExpr()
+	return NewParser(strings.NewReader(s)).ParseExpr()
 }
 
 // MustParseExprString parses s into an expression. Panic on error.
