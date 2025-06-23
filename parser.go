@@ -22,12 +22,18 @@ func NewParser(r io.Reader) *Parser {
 	}
 }
 
+func NewRuneParser(r io.RuneReader) *Parser {
+	return &Parser{
+		s: NewRuneScanner(r),
+	}
+}
+
 // ParseExprString parses s into an expression. Returns nil if s is blank.
 func ParseExprString(s string) (Expr, error) {
 	if s == "" {
 		return nil, nil
 	}
-	return NewParser(strings.NewReader(s)).ParseExpr()
+	return NewRuneParser(strings.NewReader(s)).ParseExpr()
 }
 
 // MustParseExprString parses s into an expression. Panic on error.
@@ -974,7 +980,6 @@ func (p *Parser) parseModuleArgument() (_ *ModuleArgument, err error) {
 		if arg.Type, err = p.parseType(); err != nil {
 			return &arg, err
 		}
-
 	}
 
 	return &arg, nil

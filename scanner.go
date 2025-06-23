@@ -23,6 +23,13 @@ func NewScanner(r io.Reader) *Scanner {
 	}
 }
 
+func NewRuneScanner(r io.RuneReader) *Scanner {
+	return &Scanner{
+		r:   r,
+		pos: Pos{Offset: -1, Line: 1},
+	}
+}
+
 func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 	for {
 		if ch := s.peek(); ch == -1 {
