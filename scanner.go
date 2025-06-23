@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"unicode"
+	"unicode/utf8"
 )
 
 type Scanner struct {
@@ -18,7 +19,7 @@ type Scanner struct {
 
 func NewScanner(r io.Reader) *Scanner {
 	return &Scanner{
-		r:   bufio.NewReader(r),
+		r:   bufio.NewReaderSize(r, utf8.UTFMax),
 		pos: Pos{Offset: -1, Line: 1},
 	}
 }
