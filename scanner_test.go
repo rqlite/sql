@@ -203,3 +203,35 @@ func AssertScan(tb testing.TB, s string, expectedTok sql.Token, expectedLit stri
 		tb.Fatalf("Scan(%q)=<%s,%s>, want <%s,%s>", s, tok, lit, expectedTok, expectedLit)
 	}
 }
+
+func Benchmark_NewScanner(b *testing.B) {
+	s := `SELECT * FROM foo WHERE bar = 1`
+	for i := 0; i < b.N; i++ {
+		scanner := sql.NewScanner(strings.NewReader(s))
+		for {
+			_, tok, lit := scanner.Scan()
+			if tok == sql.EOF {
+				break
+			}
+			if tok == sql.ILLEGAL {
+				b.Fatalf("Unexpected ILLEGAL token: %s", lit)
+			}
+		}
+	}
+}
+
+func Benchmark_NewRuneScanner(b *testing.B) {
+	s := `SELECT * FROM foo WHERE bar = 1`
+	for i := 0; i < b.N; i++ {
+		scanner := sql.NewRuneScanner(strings.NewReader(s))
+		for {
+			_, tok, lit := scanner.Scan()
+			if tok == sql.EOF {
+				break
+			}
+			if tok == sql.ILLEGAL {
+				b.Fatalf("Unexpected ILLEGAL token: %s", lit)
+			}
+		}
+	}
+}
