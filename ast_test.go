@@ -73,6 +73,11 @@ func TestAlterTableStatement_String(t *testing.T) {
 			Type: &sql.Type{Name: &sql.Ident{Name: "INTEGER"}},
 		},
 	}, `ALTER TABLE "foo" ADD COLUMN "bar" INTEGER`)
+
+	AssertStatementStringer(t, &sql.AlterTableStatement{
+		Name:           &sql.Ident{Name: "foo"},
+		DropColumnName: &sql.Ident{Name: "bar"},
+	}, `ALTER TABLE "foo" DROP COLUMN "bar"`)
 }
 
 func TestAnalyzeStatement_String(t *testing.T) {

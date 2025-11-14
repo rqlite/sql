@@ -3276,8 +3276,19 @@ func (p *Parser) parseAlterTableStatement() (_ *AlterTableStatement, err error) 
 			return &stmt, err
 		}
 		return &stmt, nil
+	case DROP:
+		stmt.Drop, _, _ = p.scan()
+		if p.peek() == COLUMN {
+			stmt.DropColumn, _, _ = p.scan()
+		} else if !isIdentToken(p.peek()) {
+			return &stmt, p.errorExpected(p.pos, p.tok, "COLUMN keyword or column name")
+		}
+		if stmt.DropColumnName, err = p.parseIdent("column name"); err != nil {
+			return &stmt, err
+		}
+		return &stmt, nil
 	default:
-		return &stmt, p.errorExpected(p.pos, p.tok, "ADD or RENAME")
+		return &stmt, p.errorExpected(p.pos, p.tok, "ADD, RENAME or DROP")
 	}
 }
 

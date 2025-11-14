@@ -4042,10 +4042,18 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			},
 		})
+		AssertParseStatement(t, `ALTER TABLE tbl DROP COLUMN col`, &sql.AlterTableStatement{
+			Alter:          pos(0),
+			Table:          pos(6),
+			Name:           &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			Drop:           pos(16),
+			DropColumn:     pos(21),
+			DropColumnName: &sql.Ident{NamePos: pos(28), Name: "col"},
+		})
 
 		AssertParseStatementError(t, `ALTER`, `1:5: expected TABLE, found 'EOF'`)
 		AssertParseStatementError(t, `ALTER TABLE`, `1:11: expected table name, found 'EOF'`)
-		AssertParseStatementError(t, `ALTER TABLE tbl`, `1:15: expected ADD or RENAME, found 'EOF'`)
+		AssertParseStatementError(t, `ALTER TABLE tbl`, `1:15: expected ADD, RENAME or DROP, found 'EOF'`)
 		AssertParseStatementError(t, `ALTER TABLE tbl RENAME`, `1:22: expected COLUMN keyword or column name, found 'EOF'`)
 		AssertParseStatementError(t, `ALTER TABLE tbl RENAME TO`, `1:25: expected new table name, found 'EOF'`)
 		AssertParseStatementError(t, `ALTER TABLE tbl RENAME COLUMN`, `1:29: expected column name, found 'EOF'`)
@@ -4053,6 +4061,7 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `ALTER TABLE tbl RENAME COLUMN col TO`, `1:36: expected new column name, found 'EOF'`)
 		AssertParseStatementError(t, `ALTER TABLE tbl ADD`, `1:19: expected COLUMN keyword or column name, found 'EOF'`)
 		AssertParseStatementError(t, `ALTER TABLE tbl ADD COLUMN`, `1:26: expected column name, found 'EOF'`)
+		AssertParseStatementError(t, `ALTER TABLE tbl DROP`, `1:20: expected COLUMN keyword or column name, found 'EOF'`)
 	})
 
 	t.Run("Analyze", func(t *testing.T) {
