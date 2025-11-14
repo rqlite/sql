@@ -1436,6 +1436,7 @@ func (s *AlterTableStatement) Clone() *AlterTableStatement {
 	other.ColumnName = s.ColumnName.Clone()
 	other.NewColumnName = s.NewColumnName.Clone()
 	other.ColumnDef = s.ColumnDef.Clone()
+	other.DropColumnName = s.DropColumnName.Clone()
 	return &other
 }
 
