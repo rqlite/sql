@@ -1412,13 +1412,17 @@ type AlterTableStatement struct {
 	NewName  *Ident // new table name
 
 	RenameColumn  Pos    // position of COLUMN keyword after RENAME
-	ColumnName    *Ident // new column name
+	ColumnName    *Ident // column name
 	To            Pos    // position of TO keyword
 	NewColumnName *Ident // new column name
 
 	Add       Pos               // position of ADD keyword
 	AddColumn Pos               // position of COLUMN keyword after ADD
 	ColumnDef *ColumnDefinition // new column definition
+
+	Drop           Pos    // position of DROP keyword
+	DropColumn     Pos    // position of COLUMN keyword after DROP
+	DropColumnName *Ident // column name to drop
 }
 
 // Clone returns a deep copy of s.
@@ -1452,6 +1456,9 @@ func (s *AlterTableStatement) String() string {
 	} else if s.ColumnDef != nil {
 		buf.WriteString(" ADD COLUMN ")
 		buf.WriteString(s.ColumnDef.String())
+	} else if s.DropColumnName != nil {
+		buf.WriteString(" DROP COLUMN ")
+		buf.WriteString(s.DropColumnName.String())
 	}
 
 	return buf.String()
