@@ -4145,9 +4145,9 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		// Test INSERT with RETURNING desc
 		AssertParseStatement(t, `INSERT INTO t (desc) VALUES ('d1') RETURNING desc`, &sql.InsertStatement{
-			Insert: pos(0),
-			Into:   pos(7),
-			Table:  &sql.Ident{NamePos: pos(12), Name: "t"},
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "t"},
 			ColumnsLparen: pos(14),
 			Columns: []*sql.Ident{
 				{NamePos: pos(15), Name: "desc"},
