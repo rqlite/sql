@@ -516,20 +516,27 @@ func isIdentToken(tok Token) bool {
 }
 
 // isExprIdentToken returns true if tok can be used as an identifier in an expression.
-// It includes IDENT, QIDENT, and certain keywords.
+// It includes IDENT, QIDENT, bare tokens (keywords that can be used as identifiers),
+// and certain other keywords like ROWID.
+// Note: Some bare tokens have special expression handling (CAST, CASE, RAISE, etc.)
+// and should not be treated as identifiers in parseOperand.
 func isExprIdentToken(tok Token) bool {
 	switch tok {
 	case IDENT, QIDENT:
 		return true
 	// List keywords that can be used as identifiers in expressions
-	case ROWID, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP:
+	case ROWID:
 		return true
 	// Core functions
 	case REPLACE, LIKE, GLOB, IF:
 		return true
-	// Add any other non-reserved keywords here
-	default:
+	// Exclude tokens that have special expression handling in parseOperand
+	case CAST, CASE, RAISE, EXISTS, SELECT, NOT:
 		return false
+	default:
+		// Bare tokens are keywords that can be used as unquoted identifiers
+		// (e.g., DESC, ASC, KEY, ACTION, etc.)
+		return isBareToken(tok)
 	}
 }
 

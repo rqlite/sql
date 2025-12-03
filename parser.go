@@ -1829,8 +1829,8 @@ func (p *Parser) parseDeleteStatement(inTrigger bool, withClause *WithClause) (_
 func (p *Parser) parseAssignment() (_ *Assignment, err error) {
 	var assignment Assignment
 
-	// Parse either a single column (IDENT) or a column list (LP IDENT COMMA IDENT RP)
-	if isIdentToken(p.peek()) {
+	// Parse either a single column (IDENT or bare keyword) or a column list (LP IDENT COMMA IDENT RP)
+	if isIdentToken(p.peek()) || isBareToken(p.peek()) {
 		col, _ := p.parseIdent("column name")
 		assignment.Columns = []*Ident{col}
 	} else if p.peek() == LP {
