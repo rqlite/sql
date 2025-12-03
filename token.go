@@ -524,18 +524,16 @@ func isExprIdentToken(tok Token) bool {
 	switch tok {
 	case IDENT, QIDENT:
 		return true
-	// List keywords that can be used as identifiers in expressions
+	// ROWID is a special keyword that can be used as an identifier but is not a bare token
 	case ROWID:
 		return true
-	// Core functions
-	case REPLACE, LIKE, GLOB, IF:
-		return true
-	// Exclude tokens that have special expression handling in parseOperand
+	// Exclude tokens that have special expression handling in parseOperand.
+	// These are in bareTokens but have precedence as expression keywords.
 	case CAST, CASE, RAISE, EXISTS, SELECT, NOT:
 		return false
 	default:
 		// Bare tokens are keywords that can be used as unquoted identifiers
-		// (e.g., DESC, ASC, KEY, ACTION, etc.)
+		// (e.g., DESC, ASC, KEY, ACTION, REPLACE, LIKE, GLOB, IF, etc.)
 		return isBareToken(tok)
 	}
 }
