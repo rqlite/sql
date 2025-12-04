@@ -4106,6 +4106,27 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		// Test SELECT with 'desc' column name and ORDER BY desc DESC, which
+		// uses the 'desc' keyword both as an identifier and as a keyword.
+		AssertParseStatement(t, `SELECT desc FROM t ORDER BY desc DESC`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Expr: &sql.Ident{NamePos: pos(7), Name: "desc"}},
+			},
+			From: pos(12),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(17), Name: "t"},
+			},
+			Order:   pos(19),
+			OrderBy: pos(25),
+			OrderingTerms: []*sql.OrderingTerm{
+				{
+					X:    &sql.Ident{NamePos: pos(28), Name: "desc"},
+					Desc: pos(33),
+				},
+			},
+		})
+
 		// Test UPDATE with RETURNING desc
 		AssertParseStatement(t, `UPDATE t SET desc = 'd1' RETURNING desc`, &sql.UpdateStatement{
 			Update: pos(0),
