@@ -4091,7 +4091,6 @@ func TestParser_ParseStatement(t *testing.T) {
 		})
 	})
 
-	// Issue: Parser fails when using keywords as column names (e.g., 'desc')
 	// Keywords like DESC, ASC, KEY, etc. should be usable as identifiers in expressions
 	t.Run("KeywordAsColumnName", func(t *testing.T) {
 		// Test SELECT with 'desc' column name (keyword used as identifier)
