@@ -4090,6 +4090,127 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 	})
+
+	// Keywords like DESC, ASC, KEY, etc. should be usable as identifiers in expressions
+	t.Run("KeywordAsColumnName", func(t *testing.T) {
+		// Test SELECT with 'desc' column name (keyword used as identifier)
+		AssertParseStatement(t, `SELECT desc FROM t`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Expr: &sql.Ident{NamePos: pos(7), Name: "desc"}},
+			},
+			From: pos(12),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(17), Name: "t"},
+			},
+		})
+
+		// Test SELECT with 'desc' column name and ORDER BY desc DESC, which
+		// uses the 'desc' keyword both as an identifier and as a keyword.
+		AssertParseStatement(t, `SELECT desc FROM t ORDER BY desc DESC`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Expr: &sql.Ident{NamePos: pos(7), Name: "desc"}},
+			},
+			From: pos(12),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(17), Name: "t"},
+			},
+			Order:   pos(19),
+			OrderBy: pos(25),
+			OrderingTerms: []*sql.OrderingTerm{
+				{
+					X:    &sql.Ident{NamePos: pos(28), Name: "desc"},
+					Desc: pos(33),
+				},
+			},
+		})
+
+		// Test UPDATE with RETURNING desc
+		AssertParseStatement(t, `UPDATE t SET desc = 'd1' RETURNING desc`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(7), Name: "t"},
+			},
+			Set: pos(9),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(13), Name: "desc"}},
+				Eq:      pos(18),
+				Expr:    &sql.StringLit{ValuePos: pos(20), Value: "d1"},
+			}},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(25),
+				Columns:   []*sql.ResultColumn{{Expr: &sql.Ident{NamePos: pos(35), Name: "desc"}}},
+			},
+		})
+
+		// Test DELETE with RETURNING desc
+		AssertParseStatement(t, `DELETE FROM t WHERE desc = 'd1' RETURNING desc`, &sql.DeleteStatement{
+			Delete: pos(0),
+			From:   pos(7),
+			Table: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(12), Name: "t"},
+			},
+			Where: pos(14),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(20), Name: "desc"},
+				OpPos: pos(25), Op: sql.EQ,
+				Y: &sql.StringLit{ValuePos: pos(27), Value: "d1"},
+			},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(32),
+				Columns:   []*sql.ResultColumn{{Expr: &sql.Ident{NamePos: pos(42), Name: "desc"}}},
+			},
+		})
+
+		// Test INSERT with RETURNING desc
+		AssertParseStatement(t, `INSERT INTO t (desc) VALUES ('d1') RETURNING desc`, &sql.InsertStatement{
+			Insert:        pos(0),
+			Into:          pos(7),
+			Table:         &sql.Ident{NamePos: pos(12), Name: "t"},
+			ColumnsLparen: pos(14),
+			Columns: []*sql.Ident{
+				{NamePos: pos(15), Name: "desc"},
+			},
+			ColumnsRparen: pos(19),
+			Values:        pos(21),
+			ValueLists: []*sql.ExprList{
+				{
+					Lparen: pos(28),
+					Exprs:  []sql.Expr{&sql.StringLit{ValuePos: pos(29), Value: "d1"}},
+					Rparen: pos(33),
+				},
+			},
+			ReturningClause: &sql.ReturningClause{
+				Returning: pos(35),
+				Columns:   []*sql.ResultColumn{{Expr: &sql.Ident{NamePos: pos(45), Name: "desc"}}},
+			},
+		})
+
+		// Test with 'key' keyword as column name
+		AssertParseStatement(t, `SELECT key FROM t`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Expr: &sql.Ident{NamePos: pos(7), Name: "key"}},
+			},
+			From: pos(11),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(16), Name: "t"},
+			},
+		})
+
+		// Test with 'asc' keyword as column name
+		AssertParseStatement(t, `SELECT asc FROM t`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Expr: &sql.Ident{NamePos: pos(7), Name: "asc"}},
+			},
+			From: pos(11),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(16), Name: "t"},
+			},
+		})
+	})
 }
 
 func TestParser_ParseExpr(t *testing.T) {
