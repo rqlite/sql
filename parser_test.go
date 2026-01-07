@@ -71,6 +71,19 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			})
 		})
+		t.Run("QueryPlan SELECT", func(t *testing.T) {
+			AssertParseStatement(t, `EXPLAIN QUERY PLAN SELECT foo`, &sql.ExplainStatement{
+				Explain:   pos(0),
+				Query:     pos(8),
+				QueryPlan: pos(14),
+				Stmt: &sql.SelectStatement{
+					Select: pos(19),
+					Columns: []*sql.ResultColumn{
+						{Expr: &sql.Ident{NamePos: pos(26), Name: "foo"}},
+					},
+				},
+			})
+		})
 		t.Run("ErrNoPlan", func(t *testing.T) {
 			AssertParseStatementError(t, `EXPLAIN QUERY`, `1:13: expected PLAN, found 'EOF'`)
 		})
