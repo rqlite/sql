@@ -35,7 +35,7 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 			return s.scanBlob()
 		} else if isAlpha(ch) || ch == '_' {
 			return s.scanUnquotedIdent(s.pos, "")
-		} else if ch == '"' {
+		} else if ch == '"' || ch == '`' {
 			return s.scanQuotedIdent()
 		} else if ch == '\'' {
 			return s.scanString()
@@ -143,7 +143,7 @@ func (s *Scanner) scanUnquotedIdent(pos Pos, prefix string) (Pos, Token, string)
 
 func (s *Scanner) scanQuotedIdent() (Pos, Token, string) {
 	ch, pos := s.read()
-	assert(ch == '"')
+	assert(ch == '"' || ch == '`')
 
 	s.buf.Reset()
 	for {
@@ -157,6 +157,13 @@ func (s *Scanner) scanQuotedIdent() (Pos, Token, string) {
 				continue
 			}
 			return pos, QIDENT, s.buf.String()
+		} else if ch == '`' {
+			if s.peek() == '`' { // escaped quote
+				s.read()
+				s.buf.WriteRune('`')
+				continue
+			}
+			return pos, BIDENT, s.buf.String()
 		}
 		s.buf.WriteRune(ch)
 	}
