@@ -1382,8 +1382,8 @@ func (p *Parser) parseDropTriggerStatement(dropPos Pos) (_ *DropTriggerStatement
 func (p *Parser) parseIdent(desc string) (*Ident, error) {
 	pos, tok, lit := p.scan()
 	switch tok {
-	case IDENT, QIDENT:
-		return &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}, nil
+	case IDENT, QIDENT, BIDENT:
+		return &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}, nil
 	case NULL:
 		return &Ident{Name: lit, NamePos: pos}, nil
 	default:
@@ -2201,7 +2201,7 @@ func (p *Parser) parseUnarySource() (source Source, err error) {
 	switch p.peek() {
 	case LP:
 		return p.parseParenSource()
-	case IDENT, QIDENT:
+	case IDENT, QIDENT, BIDENT:
 		return p.parseQualifiedTable(true, true, true)
 	case VALUES:
 		return p.parseSelectStatement(false, nil)
@@ -2538,7 +2538,7 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 	pos, tok, lit := p.scan()
 	switch {
 	case isExprIdentToken(tok):
-		ident := &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}
+		ident := &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 		if p.peek() == DOT {
 			return p.parseQualifiedRef(ident)
 		} else if p.peek() == LP {
@@ -2688,7 +2688,7 @@ func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {
 		expr.Star, _, _ = p.scan()
 	} else if isIdentToken(p.peek()) {
 		pos, tok, lit := p.scan()
-		expr.Column = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}
+		expr.Column = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 	} else {
 		return &expr, p.errorExpected(p.pos, p.tok, "column name")
 	}
@@ -2785,7 +2785,7 @@ func (p *Parser) parseOverClause() (_ *OverClause, err error) {
 	// If specifying a window name, read it and exit.
 	if isIdentToken(p.peek()) {
 		pos, tok, lit := p.scan()
-		clause.Name = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}
+		clause.Name = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 		return &clause, nil
 	}
 
@@ -2807,7 +2807,7 @@ func (p *Parser) parseWindowDefinition() (_ *WindowDefinition, err error) {
 	// Read base window name.
 	if isIdentToken(p.peek()) {
 		pos, tok, lit := p.scan()
-		def.Base = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT}
+		def.Base = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 	}
 
 	// Parse "PARTITION BY expr, expr..."

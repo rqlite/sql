@@ -38,6 +38,7 @@ const (
 	literal_beg
 	IDENT   // IDENT
 	QIDENT  // "IDENT"
+	BIDENT  // `IDENT`
 	STRING  // 'string'
 	BLOB    // ???
 	FLOAT   // 123.45
@@ -257,6 +258,7 @@ var tokens = [...]string{
 
 	IDENT:   "IDENT",
 	QIDENT:  "QIDENT",
+	BIDENT:  "BIDENT",
 	STRING:  "STRING",
 	BLOB:    "BLOB",
 	FLOAT:   "FLOAT",
@@ -512,17 +514,17 @@ func (tok Token) IsBinaryOp() bool {
 }
 
 func isIdentToken(tok Token) bool {
-	return tok == IDENT || tok == QIDENT
+	return tok == IDENT || tok == QIDENT || tok == BIDENT
 }
 
 // isExprIdentToken returns true if tok can be used as an identifier in an expression.
-// It includes IDENT, QIDENT, bare tokens (keywords that can be used as identifiers),
+// It includes IDENT, QIDENT, BIDENT, bare tokens (keywords that can be used as identifiers),
 // and certain other keywords like ROWID.
 // Note: Some bare tokens have special expression handling (CAST, CASE, RAISE, etc.)
 // and should not be treated as identifiers in parseOperand.
 func isExprIdentToken(tok Token) bool {
 	switch tok {
-	case IDENT, QIDENT:
+	case IDENT, QIDENT, BIDENT:
 		return true
 	// ROWID is a special keyword that can be used as an identifier but is not a bare token
 	case ROWID:

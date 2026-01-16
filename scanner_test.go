@@ -15,6 +15,9 @@ func TestScanner_Scan(t *testing.T) {
 		t.Run("Quoted", func(t *testing.T) {
 			AssertScan(t, `"crazy ~!#*&# column name"" foo"`, sql.QIDENT, `crazy ~!#*&# column name" foo`)
 		})
+		t.Run("BacktickQuoted", func(t *testing.T) {
+			AssertScan(t, "`crazy ~!#*&# column name foo`", sql.BIDENT, `crazy ~!#*&# column name foo`)
+		})
 		t.Run("NoEndQuote", func(t *testing.T) {
 			AssertScan(t, `"unfinished`, sql.ILLEGAL, `"unfinished`)
 		})
