@@ -62,6 +62,31 @@ func (p *Parser) ParseStatement() (stmt Statement, err error) {
 	return stmt, nil
 }
 
+func (p *Parser) ParseStatements() (stmts []Statement, err error) {
+	for {
+		switch tok := p.peek(); tok {
+		case EOF:
+			return stmts, nil
+		case EXPLAIN:
+			if stmt, err := p.parseExplainStatement(); err != nil {
+				return nil, err
+			} else {
+				stmts = append(stmts, stmt)
+			}
+		default:
+			if stmt, err := p.parseNonExplainStatement(); err != nil {
+				return nil, err
+			} else {
+				stmts = append(stmts, stmt)
+			}
+		}
+		if tok := p.peek(); tok != EOF && tok != SEMI {
+			return stmts, p.errorExpected(p.pos, p.tok, "semicolon or EOF")
+		}
+		p.scan()
+	}
+}
+
 // parseExplain parses EXPLAIN [QUERY PLAN] STMT.
 func (p *Parser) parseExplainStatement() (_ *ExplainStatement, err error) {
 	var tok Token
