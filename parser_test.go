@@ -1756,6 +1756,30 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 			End: pos(78),
 		})
+		AssertParseStatement(t, `CREATE TEMP TRIGGER IF NOT EXISTS trig BEFORE INSERT ON tbl BEGIN DELETE FROM new; END`, &sql.CreateTriggerStatement{
+			Create:      pos(0),
+			Temp:        pos(7),
+			Trigger:     pos(12),
+			If:          pos(20),
+			IfNot:       pos(23),
+			IfNotExists: pos(27),
+			Name:        &sql.Ident{NamePos: pos(34), Name: "trig"},
+			Before:      pos(39),
+			Insert:      pos(46),
+			On:          pos(53),
+			Table:       &sql.Ident{NamePos: pos(56), Name: "tbl"},
+			Begin:       pos(60),
+			Body: []sql.Statement{
+				&sql.DeleteStatement{
+					Delete: pos(66),
+					From:   pos(73),
+					Table: &sql.QualifiedTableName{
+						Name: &sql.Ident{NamePos: pos(78), Name: "new"},
+					},
+				},
+			},
+			End: pos(83),
+		})
 		AssertParseStatement(t, `CREATE TRIGGER trig INSTEAD OF UPDATE ON tbl BEGIN SELECT *; END`, &sql.CreateTriggerStatement{
 			Create:    pos(0),
 			Trigger:   pos(7),
