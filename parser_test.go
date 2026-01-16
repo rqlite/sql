@@ -4226,6 +4226,94 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 }
 
+func TestParser_ParseStatements(t *testing.T) {
+	t.Run("EmptyInput", func(t *testing.T) {
+		AssertParseStatements(t, ``, 0)
+	})
+
+	t.Run("SingleStatement", func(t *testing.T) {
+		AssertParseStatements(t, `SELECT * FROM foo`, 1)
+	})
+
+	t.Run("MultipleStatementsWithSemicolons", func(t *testing.T) {
+		AssertParseStatements(t, `SELECT * FROM foo; SELECT * FROM bar;`, 2)
+	})
+
+	t.Run("ThreeStatementsWithSemicolons", func(t *testing.T) {
+		AssertParseStatements(t, `BEGIN; SELECT 1; COMMIT;`, 3)
+	})
+
+	t.Run("MixedStatementTypes", func(t *testing.T) {
+		input := `
+			CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
+			INSERT INTO users (id, name) VALUES (1, 'Alice');
+			SELECT * FROM users;
+			UPDATE users SET name = 'Bob' WHERE id = 1;
+			DELETE FROM users WHERE id = 1;
+		`
+		AssertParseStatements(t, input, 5)
+	})
+
+	t.Run("StatementWithoutTrailingSemicolon", func(t *testing.T) {
+		AssertParseStatements(t, `SELECT * FROM foo`, 1)
+	})
+
+	t.Run("StatementWithLeadingWhitespace", func(t *testing.T) {
+		AssertParseStatements(t, `  
+			
+			SELECT * FROM foo;
+		`, 1)
+	})
+
+	t.Run("ExplainStatements", func(t *testing.T) {
+		AssertParseStatements(t, `EXPLAIN SELECT * FROM foo; EXPLAIN QUERY PLAN SELECT * FROM bar;`, 2)
+	})
+
+	t.Run("PragmaStatements", func(t *testing.T) {
+		AssertParseStatements(t, `PRAGMA journal_mode; PRAGMA foreign_keys = 'ON';`, 2)
+	})
+
+	t.Run("TransactionStatements", func(t *testing.T) {
+		AssertParseStatements(t, `BEGIN TRANSACTION; ROLLBACK; BEGIN; COMMIT;`, 4)
+	})
+
+	t.Run("MissingSemicolonBetweenStatements", func(t *testing.T) {
+		AssertParseStatementsError(t, `SELECT * FROM foo SELECT * FROM bar`, "semicolon or EOF")
+	})
+
+	t.Run("InvalidStatement", func(t *testing.T) {
+		_, err := sql.NewParser(strings.NewReader(`INVALID STATEMENT;`)).ParseStatements()
+		if err == nil {
+			t.Fatal("ParseStatements() expected error, got nil")
+		}
+	})
+
+	t.Run("EmptySemicolons", func(t *testing.T) {
+		_, err := sql.NewParser(strings.NewReader(`;;`)).ParseStatements()
+		if err == nil {
+			t.Fatal("ParseStatements() expected error, got nil")
+		}
+	})
+
+	t.Run("CreateIndexStatements", func(t *testing.T) {
+		AssertParseStatements(t, `CREATE INDEX idx_foo ON foo(bar); CREATE UNIQUE INDEX idx_baz ON baz(qux);`, 2)
+	})
+
+	t.Run("DropStatements", func(t *testing.T) {
+		AssertParseStatements(t, `DROP TABLE foo; DROP INDEX idx; DROP VIEW v;`, 3)
+	})
+
+	t.Run("MixedWhitespaceAndComments", func(t *testing.T) {
+		input := `
+			SELECT * FROM foo;
+			
+			-- This is a comment
+			SELECT * FROM bar;
+		`
+		AssertParseStatements(t, input, 2)
+	})
+}
+
 func TestParser_ParseExpr(t *testing.T) {
 	t.Run("Ident", func(t *testing.T) {
 		AssertParseExpr(t, `fooBAR_123'`, &sql.Ident{NamePos: pos(0), Name: `fooBAR_123`})
@@ -5018,6 +5106,29 @@ func AssertParseStatementError(tb testing.TB, s string, want string) {
 	_, err := sql.NewParser(strings.NewReader(s)).ParseStatement()
 	if err == nil || err.Error() != want {
 		tb.Fatalf("ParseStatement()=%q, want %q", err, want)
+	}
+}
+
+// AssertParseStatements asserts the count of statements parsed from s.
+func AssertParseStatements(tb testing.TB, s string, wantCount int) {
+	tb.Helper()
+	stmts, err := sql.NewParser(strings.NewReader(s)).ParseStatements()
+	if err != nil {
+		tb.Fatal(err)
+	} else if len(stmts) != wantCount {
+		tb.Fatalf("ParseStatements()=%d statements, want %d", len(stmts), wantCount)
+	}
+}
+
+// AssertParseStatementsError asserts s parses to a given error substring.
+func AssertParseStatementsError(tb testing.TB, s string, wantSubstring string) {
+	tb.Helper()
+	_, err := sql.NewParser(strings.NewReader(s)).ParseStatements()
+	if err == nil {
+		tb.Fatal("ParseStatements() expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), wantSubstring) {
+		tb.Fatalf("ParseStatements() error=%q, want error containing %q", err, wantSubstring)
 	}
 }
 
