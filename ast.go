@@ -2576,6 +2576,7 @@ func (s *DropIndexStatement) String() string {
 
 type CreateTriggerStatement struct {
 	Create      Pos    // position of CREATE keyword
+	Temp        Pos    // position of TEMP keyword
 	Trigger     Pos    // position of TRIGGER keyword
 	If          Pos    // position of IF keyword
 	IfNot       Pos    // position of NOT keyword after IF
@@ -2624,7 +2625,11 @@ func (s *CreateTriggerStatement) Clone() *CreateTriggerStatement {
 // String returns the string representation of the statement.
 func (s *CreateTriggerStatement) String() string {
 	var buf bytes.Buffer
-	buf.WriteString("CREATE TRIGGER")
+	buf.WriteString("CREATE")
+	if s.Temp.IsValid() {
+		buf.WriteString(" TEMP")
+	}
+	buf.WriteString(" TRIGGER")
 	if s.IfNotExists.IsValid() {
 		buf.WriteString(" IF NOT EXISTS")
 	}

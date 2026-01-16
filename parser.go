@@ -253,7 +253,7 @@ func (p *Parser) parseCreateStatement() (Statement, error) {
 		return p.parseCreateViewStatement(pos)
 	case INDEX, UNIQUE:
 		return p.parseCreateIndexStatement(pos)
-	case TRIGGER:
+	case TRIGGER, TEMP:
 		return p.parseCreateTriggerStatement(pos)
 	default:
 		return nil, p.errorExpected(pos, tok, "TABLE, VIEW, INDEX, TRIGGER")
@@ -1178,10 +1178,17 @@ func (p *Parser) parseDropIndexStatement(dropPos Pos) (_ *DropIndexStatement, er
 }
 
 func (p *Parser) parseCreateTriggerStatement(createPos Pos) (_ *CreateTriggerStatement, err error) {
-	assert(p.peek() == TRIGGER)
+	assert(p.peek() == TRIGGER || p.peek() == TEMP)
 
 	var stmt CreateTriggerStatement
 	stmt.Create = createPos
+	if p.peek() == TEMP {
+		stmt.Temp, _, _ = p.scan()
+	}
+	if p.peek() != TRIGGER {
+		return &stmt, p.errorExpected(p.pos, p.tok, "TRIGGER")
+	}
+
 	stmt.Trigger, _, _ = p.scan()
 
 	// Parse optional "IF NOT EXISTS".
