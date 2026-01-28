@@ -1475,9 +1475,17 @@ func (p *Parser) parseInsertStatement(inTrigger bool, withClause *WithClause) (_
 	}
 	stmt.Into, _, _ = p.scan()
 
-	// Parse table name & optional alias.
+	// Parse table name & optional schema & alias.
 	if stmt.Table, err = p.parseIdent("table name"); err != nil {
 		return &stmt, err
+	}
+	// Check for schema.table syntax
+	if p.peek() == DOT {
+		stmt.Schema = stmt.Table
+		stmt.Dot, _, _ = p.scan()
+		if stmt.Table, err = p.parseIdent("table name"); err != nil {
+			return &stmt, err
+		}
 	}
 	if p.peek() == AS {
 		stmt.As, _, _ = p.scan()
@@ -1731,7 +1739,7 @@ func (p *Parser) parseUpdateStatement(inTrigger bool, withClause *WithClause) (_
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
 	ident, _ := p.parseIdent("table name")
-	if stmt.Table, err = p.parseQualifiedTableName(ident, false, false, false); err != nil {
+	if stmt.Table, err = p.parseQualifiedTableName(ident, true, false, false); err != nil {
 		return &stmt, err
 	}
 

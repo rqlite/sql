@@ -3685,6 +3685,34 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		// Test schema-qualified table name
+		AssertParseStatement(t, `INSERT INTO main.tableau VALUES (1, 2), (3, 4)`, &sql.InsertStatement{
+			Insert: pos(0),
+			Into:   pos(7),
+			Schema: &sql.Ident{NamePos: pos(12), Name: "main"},
+			Dot:    pos(16),
+			Table:  &sql.Ident{NamePos: pos(17), Name: "tableau"},
+			Values: pos(25),
+			ValueLists: []*sql.ExprList{
+				{
+					Lparen: pos(32),
+					Exprs: []sql.Expr{
+						&sql.NumberLit{ValuePos: pos(33), Value: "1"},
+						&sql.NumberLit{ValuePos: pos(36), Value: "2"},
+					},
+					Rparen: pos(37),
+				},
+				{
+					Lparen: pos(40),
+					Exprs: []sql.Expr{
+						&sql.NumberLit{ValuePos: pos(41), Value: "3"},
+						&sql.NumberLit{ValuePos: pos(44), Value: "4"},
+					},
+					Rparen: pos(45),
+				},
+			},
+		})
+
 		AssertParseStatementError(t, `INSERT`, `1:6: expected INTO, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT OR`, `1:9: expected ROLLBACK, REPLACE, ABORT, FAIL, or IGNORE, found 'EOF'`)
 		AssertParseStatementError(t, `INSERT INTO`, `1:11: expected table name, found 'EOF'`)
@@ -3853,6 +3881,22 @@ func TestParser_ParseStatement(t *testing.T) {
 				Columns: []*sql.Ident{{NamePos: pos(42), Name: "x"}},
 				Eq:      pos(44),
 				Expr:    &sql.NumberLit{ValuePos: pos(46), Value: "1"},
+			}},
+		})
+
+		// Test schema-qualified table name
+		AssertParseStatement(t, `UPDATE main.tableau SET n2=n1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Schema: &sql.Ident{NamePos: pos(7), Name: "main"},
+				Dot:    pos(11),
+				Name:   &sql.Ident{NamePos: pos(12), Name: "tableau"},
+			},
+			Set: pos(20),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(24), Name: "n2"}},
+				Eq:      pos(26),
+				Expr:    &sql.Ident{NamePos: pos(27), Name: "n1"},
 			}},
 		})
 
