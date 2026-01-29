@@ -2721,9 +2721,11 @@ type InsertStatement struct {
 	InsertOrIgnore   Pos // position of IGNORE keyword after INSERT OR
 	Into             Pos // position of INTO keyword
 
-	Table *Ident // table name
-	As    Pos    // position of AS keyword
-	Alias *Ident // optional alias
+	Schema *Ident // optional schema name
+	Dot    Pos    // position of DOT between schema and table name
+	Table  *Ident // table name
+	As     Pos    // position of AS keyword
+	Alias  *Ident // optional alias
 
 	ColumnsLparen Pos      // position of column list left paren
 	Columns       []*Ident // optional column list
@@ -2748,6 +2750,7 @@ func (s *InsertStatement) Clone() *InsertStatement {
 	}
 	other := *s
 	other.WithClause = s.WithClause.Clone()
+	other.Schema = s.Schema.Clone()
 	other.Table = s.Table.Clone()
 	other.Alias = s.Alias.Clone()
 	other.Columns = cloneIdents(s.Columns)
@@ -2783,7 +2786,12 @@ func (s *InsertStatement) String() string {
 		}
 	}
 
-	fmt.Fprintf(&buf, " INTO %s", s.Table.String())
+	buf.WriteString(" INTO ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Table.String())
 	if s.Alias != nil {
 		fmt.Fprintf(&buf, " AS %s", s.Alias.String())
 	}
