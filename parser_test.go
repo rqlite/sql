@@ -4744,6 +4744,8 @@ func TestParser_ParseExpr(t *testing.T) {
 				Rparen: pos(26),
 			},
 		})
+		// Test error case: schema-qualified function calls are not supported
+		AssertParseExprError(t, `1 IN schema.func()`, `schema-qualified function calls are not supported in IN/NOT IN expressions`)
 		AssertParseExpr(t, `1 BETWEEN 2 AND 3'`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.BETWEEN,

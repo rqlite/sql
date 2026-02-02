@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"fmt"
 	"io"
 	"strings"
 )
@@ -2715,7 +2716,11 @@ func (p *Parser) parseInExpr() (Expr, error) {
 
 	// Check if there's a schema qualifier (dot)
 	if p.peek() == DOT {
-		// Parse schema.table-name using QualifiedRef (Table=schema, Column=table)
+		// Parse schema.table-name using QualifiedRef.
+		// Note: We use QualifiedRef with Table=schema and Column=table_name
+		// to represent schema-qualified table names in IN expressions.
+		// This is semantically different from column references but reuses
+		// the existing QualifiedRef type to avoid creating a new AST node.
 		var ref QualifiedRef
 		ref.Table = ident
 		ref.Dot, _, _ = p.scan()
@@ -2726,8 +2731,8 @@ func (p *Parser) parseInExpr() (Expr, error) {
 
 		// Check if the qualified name is followed by a function call
 		if p.peek() == LP {
-			// This is actually schema.table_function(args) - not supported by SQLite for IN
-			return &ref, nil
+			// Schema-qualified function calls like "schema.func()" are not supported in IN clauses
+			return &ref, fmt.Errorf("schema-qualified function calls are not supported in IN/NOT IN expressions")
 		}
 
 		return &ref, nil
