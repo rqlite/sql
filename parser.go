@@ -2697,7 +2697,7 @@ func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {
 	} else if isIdentToken(p.peek()) {
 		pos, tok, lit := p.scan()
 		expr.Column = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
-		
+
 		// Check if there's another DOT for schema.table.column format
 		if p.peek() == DOT {
 			// What we thought was table.column is actually schema.table
@@ -2706,7 +2706,7 @@ func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {
 			expr.SchemaPos = expr.Dot
 			expr.Table = expr.Column
 			expr.Dot, _, _ = p.scan()
-			
+
 			// Now parse the actual column
 			if p.peek() == STAR {
 				expr.Column = nil
