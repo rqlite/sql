@@ -2896,6 +2896,72 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		// Test IN/NOT IN with table names in SELECT statements
+		AssertParseStatement(t, `SELECT * FROM vals WHERE a NOT IN vals`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(25), Name: "a"},
+				OpPos: pos(27),
+				Op:    sql.NOTIN,
+				Y:     &sql.Ident{NamePos: pos(34), Name: "vals"},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * FROM vals WHERE a IN main.vals`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(25), Name: "a"},
+				OpPos: pos(27),
+				Op:    sql.IN,
+				Y: &sql.QualifiedRef{
+					Table:  &sql.Ident{NamePos: pos(30), Name: "main"},
+					Dot:    pos(34),
+					Column: &sql.Ident{NamePos: pos(35), Name: "vals"},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * FROM vals WHERE a NOT IN json_each('[]')`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(25), Name: "a"},
+				OpPos: pos(27),
+				Op:    sql.NOTIN,
+				Y: &sql.Call{
+					Name:   &sql.Ident{NamePos: pos(34), Name: "json_each"},
+					Lparen: pos(43),
+					Args: []sql.Expr{
+						&sql.StringLit{ValuePos: pos(44), Value: "[]"},
+					},
+					Rparen: pos(48),
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT rowid FROM foo`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
@@ -4623,9 +4689,61 @@ func TestParser_ParseExpr(t *testing.T) {
 				Rparen: pos(14),
 			},
 		})
-		AssertParseExprError(t, `1 IN 2`, `1:6: expected left paren, found 2`)
+		AssertParseExprError(t, `1 IN 2`, `1:6: expected left paren or table name, found 2`)
 		AssertParseExprError(t, `1 IN (`, `1:6: expected expression, found 'EOF'`)
 		AssertParseExprError(t, `1 IN (2 3`, `1:9: expected comma or right paren, found 3`)
+		// Test table name in IN clause
+		AssertParseExpr(t, `1 IN tbl`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.IN,
+			Y:     &sql.Ident{NamePos: pos(5), Name: "tbl"},
+		})
+		AssertParseExpr(t, `1 NOT IN tbl`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.NOTIN,
+			Y:     &sql.Ident{NamePos: pos(9), Name: "tbl"},
+		})
+		// Test schema-qualified table name in IN clause
+		AssertParseExpr(t, `1 IN main.tbl`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.IN,
+			Y: &sql.QualifiedRef{
+				Table: &sql.Ident{NamePos: pos(5), Name: "main"},
+				Dot:   pos(9),
+				Column: &sql.Ident{NamePos: pos(10), Name: "tbl"},
+			},
+		})
+		AssertParseExpr(t, `1 NOT IN schema1.tbl`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.NOTIN,
+			Y: &sql.QualifiedRef{
+				Table: &sql.Ident{NamePos: pos(9), Name: "schema1"},
+				Dot:   pos(16),
+				Column: &sql.Ident{NamePos: pos(17), Name: "tbl"},
+			},
+		})
+		// Test table-valued function in IN clause
+		AssertParseExpr(t, `1 IN func()`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.IN,
+			Y: &sql.Call{
+				Name:   &sql.Ident{NamePos: pos(5), Name: "func"},
+				Lparen: pos(9),
+				Rparen: pos(10),
+			},
+		})
+		AssertParseExpr(t, `1 NOT IN json_each('[1,2]')`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.NOTIN,
+			Y: &sql.Call{
+				Name:   &sql.Ident{NamePos: pos(9), Name: "json_each"},
+				Lparen: pos(18),
+				Args: []sql.Expr{
+					&sql.StringLit{ValuePos: pos(19), Value: "[1,2]"},
+				},
+				Rparen: pos(26),
+			},
+		})
 		AssertParseExpr(t, `1 BETWEEN 2 AND 3'`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.BETWEEN,
