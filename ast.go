@@ -2055,10 +2055,12 @@ func (r *Range) String() string {
 }
 
 type QualifiedRef struct {
-	Table  *Ident // table name
-	Dot    Pos    // position of dot
-	Star   Pos    // position of * (result column only)
-	Column *Ident // column name
+	Schema    *Ident // optional schema name
+	SchemaPos Pos    // position of schema dot
+	Table     *Ident // table name
+	Dot       Pos    // position of dot
+	Star      Pos    // position of * (result column only)
+	Column    *Ident // column name
 }
 
 // Clone returns a deep copy of r.
@@ -2067,6 +2069,7 @@ func (r *QualifiedRef) Clone() *QualifiedRef {
 		return nil
 	}
 	other := *r
+	other.Schema = r.Schema.Clone()
 	other.Table = r.Table.Clone()
 	other.Column = r.Column.Clone()
 	return &other
@@ -2074,10 +2077,14 @@ func (r *QualifiedRef) Clone() *QualifiedRef {
 
 // String returns the string representation of the expression.
 func (r *QualifiedRef) String() string {
-	if r.Star.IsValid() {
-		return fmt.Sprintf("%s.*", r.Table.String())
+	var s string
+	if r.Schema != nil {
+		s = r.Schema.String() + "."
 	}
-	return fmt.Sprintf("%s.%s", r.Table.String(), r.Column.String())
+	if r.Star.IsValid() {
+		return s + fmt.Sprintf("%s.*", r.Table.String())
+	}
+	return s + fmt.Sprintf("%s.%s", r.Table.String(), r.Column.String())
 }
 
 type Call struct {

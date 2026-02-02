@@ -3900,6 +3900,35 @@ func TestParser_ParseStatement(t *testing.T) {
 			}},
 		})
 
+		// Test schema.table.column in expressions (issue fix)
+		AssertParseStatement(t, `UPDATE main.vals SET a=lower(main.vals.a)`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Schema: &sql.Ident{NamePos: pos(7), Name: "main"},
+				Dot:    pos(11),
+				Name:   &sql.Ident{NamePos: pos(12), Name: "vals"},
+			},
+			Set: pos(17),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(21), Name: "a"}},
+				Eq:      pos(22),
+				Expr: &sql.Call{
+					Name:   &sql.Ident{NamePos: pos(23), Name: "lower"},
+					Lparen: pos(28),
+					Args: []sql.Expr{
+						&sql.QualifiedRef{
+							Schema:    &sql.Ident{NamePos: pos(29), Name: "main"},
+							SchemaPos: pos(33),
+							Table:     &sql.Ident{NamePos: pos(34), Name: "vals"},
+							Dot:       pos(38),
+							Column:    &sql.Ident{NamePos: pos(39), Name: "a"},
+						},
+					},
+					Rparen: pos(40),
+				},
+			}},
+		})
+
 		AssertParseStatementError(t, `UPDATE`, `1:6: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `UPDATE OR`, `1:9: expected ROLLBACK, REPLACE, ABORT, FAIL, or IGNORE, found 'EOF'`)
 		AssertParseStatementError(t, `UPDATE tbl`, `1:10: expected SET, found 'EOF'`)
@@ -4424,6 +4453,27 @@ func TestParser_ParseExpr(t *testing.T) {
 			Table:  &sql.Ident{NamePos: pos(0), Name: "tbl", Quoted: true},
 			Dot:    pos(5),
 			Column: &sql.Ident{NamePos: pos(6), Name: "col", Quoted: true},
+		})
+		AssertParseExpr(t, `schema.tbl.col`, &sql.QualifiedRef{
+			Schema:    &sql.Ident{NamePos: pos(0), Name: "schema"},
+			SchemaPos: pos(6),
+			Table:     &sql.Ident{NamePos: pos(7), Name: "tbl"},
+			Dot:       pos(10),
+			Column:    &sql.Ident{NamePos: pos(11), Name: "col"},
+		})
+		AssertParseExpr(t, `"schema"."tbl"."col"`, &sql.QualifiedRef{
+			Schema:    &sql.Ident{NamePos: pos(0), Name: "schema", Quoted: true},
+			SchemaPos: pos(8),
+			Table:     &sql.Ident{NamePos: pos(9), Name: "tbl", Quoted: true},
+			Dot:       pos(14),
+			Column:    &sql.Ident{NamePos: pos(15), Name: "col", Quoted: true},
+		})
+		AssertParseExpr(t, `main.vals.a`, &sql.QualifiedRef{
+			Schema:    &sql.Ident{NamePos: pos(0), Name: "main"},
+			SchemaPos: pos(4),
+			Table:     &sql.Ident{NamePos: pos(5), Name: "vals"},
+			Dot:       pos(9),
+			Column:    &sql.Ident{NamePos: pos(10), Name: "a"},
 		})
 		AssertParseExprError(t, `tbl.`, `1:4: expected column name, found 'EOF'`)
 	})
