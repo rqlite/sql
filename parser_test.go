@@ -3900,6 +3900,81 @@ func TestParser_ParseStatement(t *testing.T) {
 			}},
 		})
 
+		// Test table alias with AS keyword
+		AssertParseStatement(t, `UPDATE vals AS v SET a=upper(v.a)`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:  &sql.Ident{NamePos: pos(7), Name: "vals"},
+				As:    pos(12),
+				Alias: &sql.Ident{NamePos: pos(15), Name: "v"},
+			},
+			Set: pos(17),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(21), Name: "a"}},
+				Eq:      pos(22),
+				Expr: &sql.Call{
+					Name:   &sql.Ident{NamePos: pos(23), Name: "upper"},
+					Lparen: pos(28),
+					Args: []sql.Expr{
+						&sql.QualifiedRef{
+							Table:  &sql.Ident{NamePos: pos(29), Name: "v"},
+							Dot:    pos(30),
+							Column: &sql.Ident{NamePos: pos(31), Name: "a"},
+						},
+					},
+					Rparen: pos(32),
+				},
+			}},
+		})
+
+		// Test table alias without AS keyword
+		AssertParseStatement(t, `UPDATE vals v SET a=1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:  &sql.Ident{NamePos: pos(7), Name: "vals"},
+				Alias: &sql.Ident{NamePos: pos(12), Name: "v"},
+			},
+			Set: pos(14),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(18), Name: "a"}},
+				Eq:      pos(19),
+				Expr:    &sql.NumberLit{ValuePos: pos(20), Value: "1"},
+			}},
+		})
+
+		// Test INDEXED BY clause
+		AssertParseStatement(t, `UPDATE tbl INDEXED BY idx SET x=1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:      &sql.Ident{NamePos: pos(7), Name: "tbl"},
+				Indexed:   pos(11),
+				IndexedBy: pos(19),
+				Index:     &sql.Ident{NamePos: pos(22), Name: "idx"},
+			},
+			Set: pos(26),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(30), Name: "x"}},
+				Eq:      pos(31),
+				Expr:    &sql.NumberLit{ValuePos: pos(32), Value: "1"},
+			}},
+		})
+
+		// Test NOT INDEXED clause
+		AssertParseStatement(t, `UPDATE tbl NOT INDEXED SET x=1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:       &sql.Ident{NamePos: pos(7), Name: "tbl"},
+				Not:        pos(11),
+				NotIndexed: pos(15),
+			},
+			Set: pos(23),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(27), Name: "x"}},
+				Eq:      pos(28),
+				Expr:    &sql.NumberLit{ValuePos: pos(29), Value: "1"},
+			}},
+		})
+
 		AssertParseStatementError(t, `UPDATE`, `1:6: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `UPDATE OR`, `1:9: expected ROLLBACK, REPLACE, ABORT, FAIL, or IGNORE, found 'EOF'`)
 		AssertParseStatementError(t, `UPDATE tbl`, `1:10: expected SET, found 'EOF'`)
