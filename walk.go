@@ -380,6 +380,13 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 				nn.Assignments[i] = rn.(*Assignment)
 			}
 		}
+		if nn.Source != nil {
+			if rn, err := walk(v, nn.Source); err != nil {
+				return nil, err
+			} else {
+				nn.Source = rn.(Source)
+			}
+		}
 		if expr, err := walkExpr(v, nn.WhereExpr); err != nil {
 			return nil, err
 		} else {

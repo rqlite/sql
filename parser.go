@@ -1762,6 +1762,14 @@ func (p *Parser) parseUpdateStatement(inTrigger bool, withClause *WithClause) (_
 		p.scan()
 	}
 
+	// Parse optional FROM clause.
+	if p.peek() == FROM {
+		stmt.From, _, _ = p.scan()
+		if stmt.Source, err = p.parseSource(); err != nil {
+			return &stmt, err
+		}
+	}
+
 	// Parse WHERE clause.
 	if p.peek() == WHERE {
 		stmt.Where, _, _ = p.scan()

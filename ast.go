@@ -2925,8 +2925,12 @@ type UpdateStatement struct {
 
 	Set         Pos           // position of SET keyword
 	Assignments []*Assignment // list of column assignments
-	Where       Pos           // position of WHERE keyword
-	WhereExpr   Expr          // conditional expression
+
+	From   Pos    // position of FROM keyword
+	Source Source // chain of tables & subqueries in FROM clause
+
+	Where     Pos  // position of WHERE keyword
+	WhereExpr Expr // conditional expression
 
 	ReturningClause *ReturningClause // optional RETURNING clause
 }
@@ -2940,6 +2944,7 @@ func (s *UpdateStatement) Clone() *UpdateStatement {
 	other.WithClause = s.WithClause.Clone()
 	other.Table = s.Table.Clone()
 	other.Assignments = cloneAssignments(s.Assignments)
+	other.Source = CloneSource(s.Source)
 	other.WhereExpr = CloneExpr(s.WhereExpr)
 	return &other
 }
@@ -2973,6 +2978,10 @@ func (s *UpdateStatement) String() string {
 			buf.WriteString(", ")
 		}
 		buf.WriteString(s.Assignments[i].String())
+	}
+
+	if s.Source != nil {
+		fmt.Fprintf(&buf, " FROM %s", s.Source.String())
 	}
 
 	if s.WhereExpr != nil {
