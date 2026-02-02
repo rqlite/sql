@@ -3759,14 +3759,16 @@ func (c *WithClause) String() string {
 
 // CTE represents an AST node for a common table expression.
 type CTE struct {
-	TableName     *Ident           // table name
-	ColumnsLparen Pos              // position of column list left paren
-	Columns       []*Ident         // optional column list
-	ColumnsRparen Pos              // position of column list right paren
-	As            Pos              // position of AS keyword
-	SelectLparen  Pos              // position of select left paren
-	Select        *SelectStatement // select statement
-	SelectRparen  Pos              // position of select right paren
+	TableName      *Ident           // table name
+	ColumnsLparen  Pos              // position of column list left paren
+	Columns        []*Ident         // optional column list
+	ColumnsRparen  Pos              // position of column list right paren
+	As             Pos              // position of AS keyword
+	Not            Pos              // position of optional NOT keyword
+	Materialized   Pos              // position of optional MATERIALIZED keyword
+	SelectLparen   Pos              // position of select left paren
+	Select         *SelectStatement // select statement
+	SelectRparen   Pos              // position of select right paren
 }
 
 // Clone returns a deep copy of cte.
@@ -3808,7 +3810,16 @@ func (cte *CTE) String() string {
 		buf.WriteString(")")
 	}
 
-	fmt.Fprintf(&buf, " AS (%s)", cte.Select.String())
+	buf.WriteString(" AS")
+	
+	if cte.Not.IsValid() {
+		buf.WriteString(" NOT")
+	}
+	if cte.Materialized.IsValid() {
+		buf.WriteString(" MATERIALIZED")
+	}
+
+	fmt.Fprintf(&buf, " (%s)", cte.Select.String())
 
 	return buf.String()
 }

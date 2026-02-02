@@ -2500,6 +2500,17 @@ func (p *Parser) parseCTE() (_ *CTE, err error) {
 	}
 	cte.As, _, _ = p.scan()
 
+	// Parse optional [NOT] MATERIALIZED
+	if p.peek() == NOT {
+		cte.Not, _, _ = p.scan()
+		if p.peek() != MATERIALIZED {
+			return nil, p.errorExpected(p.pos, p.tok, "MATERIALIZED")
+		}
+		cte.Materialized, _, _ = p.scan()
+	} else if p.peek() == MATERIALIZED {
+		cte.Materialized, _, _ = p.scan()
+	}
+
 	// Parse select statement.
 	if p.peek() != LP {
 		return nil, p.errorExpected(p.pos, p.tok, "left paren")

@@ -2585,6 +2585,57 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		AssertParseStatement(t, `WITH cte AS MATERIALIZED (SELECT foo) SELECT bar`, &sql.SelectStatement{
+			WithClause: &sql.WithClause{
+				With: pos(0),
+				CTEs: []*sql.CTE{
+					{
+						TableName:    &sql.Ident{NamePos: pos(5), Name: "cte"},
+						As:           pos(9),
+						Materialized: pos(12),
+						SelectLparen: pos(25),
+						Select: &sql.SelectStatement{
+							Select: pos(26),
+							Columns: []*sql.ResultColumn{
+								{Expr: &sql.Ident{NamePos: pos(33), Name: "foo"}},
+							},
+						},
+						SelectRparen: pos(36),
+					},
+				},
+			},
+			Select: pos(38),
+			Columns: []*sql.ResultColumn{
+				{Expr: &sql.Ident{NamePos: pos(45), Name: "bar"}},
+			},
+		})
+
+		AssertParseStatement(t, `WITH cte AS NOT MATERIALIZED (SELECT foo) SELECT bar`, &sql.SelectStatement{
+			WithClause: &sql.WithClause{
+				With: pos(0),
+				CTEs: []*sql.CTE{
+					{
+						TableName:    &sql.Ident{NamePos: pos(5), Name: "cte"},
+						As:           pos(9),
+						Not:          pos(12),
+						Materialized: pos(16),
+						SelectLparen: pos(29),
+						Select: &sql.SelectStatement{
+							Select: pos(30),
+							Columns: []*sql.ResultColumn{
+								{Expr: &sql.Ident{NamePos: pos(37), Name: "foo"}},
+							},
+						},
+						SelectRparen: pos(40),
+					},
+				},
+			},
+			Select: pos(42),
+			Columns: []*sql.ResultColumn{
+				{Expr: &sql.Ident{NamePos: pos(49), Name: "bar"}},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * WHERE true`, &sql.SelectStatement{
 			Select:    pos(0),
 			Columns:   []*sql.ResultColumn{{Star: pos(7)}},

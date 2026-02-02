@@ -170,6 +170,7 @@ const (
 	LIKE
 	LIMIT
 	MATCH
+	MATERIALIZED
 	NATURAL
 	NO
 	NOT
@@ -383,6 +384,7 @@ var tokens = [...]string{
 	LIKE:              "LIKE",
 	LIMIT:             "LIMIT",
 	MATCH:             "MATCH",
+	MATERIALIZED:      "MATERIALIZED",
 	NO:                "NO",
 	NATURAL:           "NATURAL",
 	NOT:               "NOT",

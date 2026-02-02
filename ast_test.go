@@ -360,6 +360,33 @@ func TestDeleteStatement_String(t *testing.T) {
 		},
 		Table: &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}},
 	}, `WITH RECURSIVE "cte" AS (SELECT *) DELETE FROM "tbl"`)
+
+	AssertStatementStringer(t, &sql.DeleteStatement{
+		WithClause: &sql.WithClause{
+			CTEs: []*sql.CTE{{
+				TableName:    &sql.Ident{Name: "cte"},
+				Materialized: pos(0),
+				Select: &sql.SelectStatement{
+					Columns: []*sql.ResultColumn{{Star: pos(0)}},
+				},
+			}},
+		},
+		Table: &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}},
+	}, `WITH "cte" AS MATERIALIZED (SELECT *) DELETE FROM "tbl"`)
+
+	AssertStatementStringer(t, &sql.DeleteStatement{
+		WithClause: &sql.WithClause{
+			CTEs: []*sql.CTE{{
+				TableName:    &sql.Ident{Name: "cte"},
+				Not:          pos(0),
+				Materialized: pos(0),
+				Select: &sql.SelectStatement{
+					Columns: []*sql.ResultColumn{{Star: pos(0)}},
+				},
+			}},
+		},
+		Table: &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}},
+	}, `WITH "cte" AS NOT MATERIALIZED (SELECT *) DELETE FROM "tbl"`)
 }
 
 func TestDropIndexStatement_String(t *testing.T) {
