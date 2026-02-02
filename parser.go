@@ -2689,7 +2689,7 @@ func (p *Parser) parseExprList() (_ *ExprList, err error) {
 // parseInExpr parses the right-hand side of an IN or NOT IN expression.
 // It handles:
 // - (expr-list) or (select-stmt)
-// - table-name or schema.table-name  
+// - table-name or schema.table-name
 // - table-function(args)
 func (p *Parser) parseInExpr() (Expr, error) {
 	// If we have a left paren, parse it as an expression list
@@ -2724,7 +2724,7 @@ func (p *Parser) parseInExpr() (Expr, error) {
 		var ref QualifiedRef
 		ref.Table = ident
 		ref.Dot, _, _ = p.scan()
-		
+
 		if ref.Column, err = p.parseIdent("table name"); err != nil {
 			return &ref, err
 		}

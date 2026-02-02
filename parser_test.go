@@ -4696,20 +4696,20 @@ func TestParser_ParseExpr(t *testing.T) {
 		AssertParseExpr(t, `1 IN tbl`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.IN,
-			Y:     &sql.Ident{NamePos: pos(5), Name: "tbl"},
+			Y: &sql.Ident{NamePos: pos(5), Name: "tbl"},
 		})
 		AssertParseExpr(t, `1 NOT IN tbl`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.NOTIN,
-			Y:     &sql.Ident{NamePos: pos(9), Name: "tbl"},
+			Y: &sql.Ident{NamePos: pos(9), Name: "tbl"},
 		})
 		// Test schema-qualified table name in IN clause
 		AssertParseExpr(t, `1 IN main.tbl`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.IN,
 			Y: &sql.QualifiedRef{
-				Table: &sql.Ident{NamePos: pos(5), Name: "main"},
-				Dot:   pos(9),
+				Table:  &sql.Ident{NamePos: pos(5), Name: "main"},
+				Dot:    pos(9),
 				Column: &sql.Ident{NamePos: pos(10), Name: "tbl"},
 			},
 		})
@@ -4717,8 +4717,8 @@ func TestParser_ParseExpr(t *testing.T) {
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.NOTIN,
 			Y: &sql.QualifiedRef{
-				Table: &sql.Ident{NamePos: pos(9), Name: "schema1"},
-				Dot:   pos(16),
+				Table:  &sql.Ident{NamePos: pos(9), Name: "schema1"},
+				Dot:    pos(16),
 				Column: &sql.Ident{NamePos: pos(17), Name: "tbl"},
 			},
 		})
