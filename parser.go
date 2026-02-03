@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"fmt"
 	"io"
 	"strings"
 )
@@ -2624,8 +2625,8 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 		case NOTNULL, ISNULL:
 			x = &Null{X: x, OpPos: pos, Op: op}
 		case IN, NOTIN:
-
-			y, err := p.parseExprList()
+			// Parse right-hand side: either (expr-list), (select-stmt), table-name, or table-function
+			y, err := p.parseInExpr()
 			if err != nil {
 				return x, err
 			}
@@ -2683,6 +2684,62 @@ func (p *Parser) parseExprList() (_ *ExprList, err error) {
 	list.Rparen, _, _ = p.scan()
 
 	return &list, nil
+}
+
+// parseInExpr parses the right-hand side of an IN or NOT IN expression.
+// It handles:
+// - (expr-list) or (select-stmt)
+// - table-name or schema.table-name
+// - table-function(args)
+func (p *Parser) parseInExpr() (Expr, error) {
+	// If we have a left paren, parse it as an expression list
+	if p.peek() == LP {
+		return p.parseExprList()
+	}
+
+	// Otherwise, we should have a table name or table function
+	if !isIdentToken(p.peek()) {
+		return nil, p.errorExpected(p.pos, p.tok, "left paren or table name")
+	}
+
+	// Parse the identifier (could be table name or schema name)
+	ident, err := p.parseIdent("table name")
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if it's a table function (has left paren after name)
+	if p.peek() == LP {
+		// Parse as table-valued function using Call
+		return p.parseCall(ident)
+	}
+
+	// Check if there's a schema qualifier (dot)
+	if p.peek() == DOT {
+		// Parse schema.table-name using QualifiedRef.
+		// Note: We use QualifiedRef with Table=schema and Column=table_name
+		// to represent schema-qualified table names in IN expressions.
+		// This is semantically different from column references but reuses
+		// the existing QualifiedRef type to avoid creating a new AST node.
+		var ref QualifiedRef
+		ref.Table = ident
+		ref.Dot, _, _ = p.scan()
+
+		if ref.Column, err = p.parseIdent("table name"); err != nil {
+			return &ref, err
+		}
+
+		// Check if the qualified name is followed by a function call
+		if p.peek() == LP {
+			// Schema-qualified function calls like "schema.func()" are not supported in IN clauses
+			return &ref, fmt.Errorf("schema-qualified function calls are not supported in IN/NOT IN expressions")
+		}
+
+		return &ref, nil
+	}
+
+	// Just a simple table name - return as Ident
+	return ident, nil
 }
 
 func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {
