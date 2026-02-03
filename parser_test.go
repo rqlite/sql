@@ -4574,6 +4574,115 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 	})
+
+	// Tests for schema-qualified names
+	t.Run("AlterTableWithSchema", func(t *testing.T) {
+		AssertParseStatement(t, `ALTER TABLE main.t DROP COLUMN a`, &sql.AlterTableStatement{
+			Alter:          pos(0),
+			Table:          pos(6),
+			Schema:         &sql.Ident{NamePos: pos(12), Name: "main"},
+			Dot:            pos(16),
+			Name:           &sql.Ident{NamePos: pos(17), Name: "t"},
+			Drop:           pos(19),
+			DropColumn:     pos(24),
+			DropColumnName: &sql.Ident{NamePos: pos(31), Name: "a"},
+		})
+		AssertParseStatement(t, `ALTER TABLE schema.tbl RENAME TO new_tbl`, &sql.AlterTableStatement{
+			Alter:    pos(0),
+			Table:    pos(6),
+			Schema:   &sql.Ident{NamePos: pos(12), Name: "schema"},
+			Dot:      pos(18),
+			Name:     &sql.Ident{NamePos: pos(19), Name: "tbl"},
+			Rename:   pos(23),
+			RenameTo: pos(30),
+			NewName:  &sql.Ident{NamePos: pos(33), Name: "new_tbl"},
+		})
+		AssertParseStatement(t, `ALTER TABLE main.tbl ADD COLUMN col TEXT`, &sql.AlterTableStatement{
+			Alter:     pos(0),
+			Table:     pos(6),
+			Schema:    &sql.Ident{NamePos: pos(12), Name: "main"},
+			Dot:       pos(16),
+			Name:      &sql.Ident{NamePos: pos(17), Name: "tbl"},
+			Add:       pos(21),
+			AddColumn: pos(25),
+			ColumnDef: &sql.ColumnDefinition{
+				Name: &sql.Ident{Name: "col", NamePos: pos(32)},
+				Type: &sql.Type{
+					Name: &sql.Ident{Name: "TEXT", NamePos: pos(36)},
+				},
+			},
+		})
+	})
+
+	t.Run("CreateIndexWithSchema", func(t *testing.T) {
+		AssertParseStatement(t, `CREATE INDEX main.idx ON vals (A)`, &sql.CreateIndexStatement{
+			Create: pos(0),
+			Index:  pos(7),
+			Schema: &sql.Ident{NamePos: pos(13), Name: "main"},
+			Dot:    pos(17),
+			Name:   &sql.Ident{NamePos: pos(18), Name: "idx"},
+			On:     pos(22),
+			Table:  &sql.Ident{NamePos: pos(25), Name: "vals"},
+			Lparen: pos(30),
+			Columns: []*sql.IndexedColumn{
+				{X: &sql.Ident{NamePos: pos(31), Name: "A"}},
+			},
+			Rparen: pos(32),
+		})
+		AssertParseStatement(t, `CREATE UNIQUE INDEX schema.idx ON tbl (x)`, &sql.CreateIndexStatement{
+			Create: pos(0),
+			Unique: pos(7),
+			Index:  pos(14),
+			Schema: &sql.Ident{NamePos: pos(20), Name: "schema"},
+			Dot:    pos(26),
+			Name:   &sql.Ident{NamePos: pos(27), Name: "idx"},
+			On:     pos(31),
+			Table:  &sql.Ident{NamePos: pos(34), Name: "tbl"},
+			Lparen: pos(38),
+			Columns: []*sql.IndexedColumn{
+				{X: &sql.Ident{NamePos: pos(39), Name: "x"}},
+			},
+			Rparen: pos(40),
+		})
+	})
+
+	t.Run("DropIndexWithSchema", func(t *testing.T) {
+		AssertParseStatement(t, `DROP INDEX main.idx`, &sql.DropIndexStatement{
+			Drop:   pos(0),
+			Index:  pos(5),
+			Schema: &sql.Ident{NamePos: pos(11), Name: "main"},
+			Dot:    pos(15),
+			Name:   &sql.Ident{NamePos: pos(16), Name: "idx"},
+		})
+		AssertParseStatement(t, `DROP INDEX IF EXISTS schema.idx`, &sql.DropIndexStatement{
+			Drop:     pos(0),
+			Index:    pos(5),
+			If:       pos(11),
+			IfExists: pos(14),
+			Schema:   &sql.Ident{NamePos: pos(21), Name: "schema"},
+			Dot:      pos(27),
+			Name:     &sql.Ident{NamePos: pos(28), Name: "idx"},
+		})
+	})
+
+	t.Run("DropTableWithSchema", func(t *testing.T) {
+		AssertParseStatement(t, `DROP TABLE main.vals`, &sql.DropTableStatement{
+			Drop:   pos(0),
+			Table:  pos(5),
+			Schema: &sql.Ident{NamePos: pos(11), Name: "main"},
+			Dot:    pos(15),
+			Name:   &sql.Ident{NamePos: pos(16), Name: "vals"},
+		})
+		AssertParseStatement(t, `DROP TABLE IF EXISTS schema.tbl`, &sql.DropTableStatement{
+			Drop:     pos(0),
+			Table:    pos(5),
+			If:       pos(11),
+			IfExists: pos(14),
+			Schema:   &sql.Ident{NamePos: pos(21), Name: "schema"},
+			Dot:      pos(27),
+			Name:     &sql.Ident{NamePos: pos(28), Name: "tbl"},
+		})
+	})
 }
 
 func TestParser_ParseStatements(t *testing.T) {
