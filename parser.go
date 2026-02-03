@@ -1740,7 +1740,7 @@ func (p *Parser) parseUpdateStatement(inTrigger bool, withClause *WithClause) (_
 		return nil, p.errorExpected(p.pos, p.tok, "table name")
 	}
 	ident, _ := p.parseIdent("table name")
-	if stmt.Table, err = p.parseQualifiedTableName(ident, true, false, false); err != nil {
+	if stmt.Table, err = p.parseQualifiedTableName(ident, !inTrigger, !inTrigger, !inTrigger); err != nil {
 		return &stmt, err
 	}
 
