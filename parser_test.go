@@ -2896,6 +2896,72 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 		})
 
+		// Test IN/NOT IN with table names in SELECT statements
+		AssertParseStatement(t, `SELECT * FROM vals WHERE a NOT IN vals`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(25), Name: "a"},
+				OpPos: pos(27),
+				Op:    sql.NOTIN,
+				Y:     &sql.Ident{NamePos: pos(34), Name: "vals"},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * FROM vals WHERE a IN main.vals`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(25), Name: "a"},
+				OpPos: pos(27),
+				Op:    sql.IN,
+				Y: &sql.QualifiedRef{
+					Table:  &sql.Ident{NamePos: pos(30), Name: "main"},
+					Dot:    pos(34),
+					Column: &sql.Ident{NamePos: pos(35), Name: "vals"},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * FROM vals WHERE a NOT IN json_each('[]')`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(25), Name: "a"},
+				OpPos: pos(27),
+				Op:    sql.NOTIN,
+				Y: &sql.Call{
+					Name:   &sql.Ident{NamePos: pos(34), Name: "json_each"},
+					Lparen: pos(43),
+					Args: []sql.Expr{
+						&sql.StringLit{ValuePos: pos(44), Value: "[]"},
+					},
+					Rparen: pos(48),
+				},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT rowid FROM foo`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
@@ -3900,6 +3966,81 @@ func TestParser_ParseStatement(t *testing.T) {
 			}},
 		})
 
+		// Test table alias with AS keyword
+		AssertParseStatement(t, `UPDATE vals AS v SET a=upper(v.a)`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:  &sql.Ident{NamePos: pos(7), Name: "vals"},
+				As:    pos(12),
+				Alias: &sql.Ident{NamePos: pos(15), Name: "v"},
+			},
+			Set: pos(17),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(21), Name: "a"}},
+				Eq:      pos(22),
+				Expr: &sql.Call{
+					Name:   &sql.Ident{NamePos: pos(23), Name: "upper"},
+					Lparen: pos(28),
+					Args: []sql.Expr{
+						&sql.QualifiedRef{
+							Table:  &sql.Ident{NamePos: pos(29), Name: "v"},
+							Dot:    pos(30),
+							Column: &sql.Ident{NamePos: pos(31), Name: "a"},
+						},
+					},
+					Rparen: pos(32),
+				},
+			}},
+		})
+
+		// Test table alias without AS keyword
+		AssertParseStatement(t, `UPDATE vals v SET a=1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:  &sql.Ident{NamePos: pos(7), Name: "vals"},
+				Alias: &sql.Ident{NamePos: pos(12), Name: "v"},
+			},
+			Set: pos(14),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(18), Name: "a"}},
+				Eq:      pos(19),
+				Expr:    &sql.NumberLit{ValuePos: pos(20), Value: "1"},
+			}},
+		})
+
+		// Test INDEXED BY clause
+		AssertParseStatement(t, `UPDATE tbl INDEXED BY idx SET x=1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:      &sql.Ident{NamePos: pos(7), Name: "tbl"},
+				Indexed:   pos(11),
+				IndexedBy: pos(19),
+				Index:     &sql.Ident{NamePos: pos(22), Name: "idx"},
+			},
+			Set: pos(26),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(30), Name: "x"}},
+				Eq:      pos(31),
+				Expr:    &sql.NumberLit{ValuePos: pos(32), Value: "1"},
+			}},
+		})
+
+		// Test NOT INDEXED clause
+		AssertParseStatement(t, `UPDATE tbl NOT INDEXED SET x=1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:       &sql.Ident{NamePos: pos(7), Name: "tbl"},
+				Not:        pos(11),
+				NotIndexed: pos(15),
+			},
+			Set: pos(23),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(27), Name: "x"}},
+				Eq:      pos(28),
+				Expr:    &sql.NumberLit{ValuePos: pos(29), Value: "1"},
+			}},
+		})
+
 		// Test UPDATE FROM with simple table
 		AssertParseStatement(t, `UPDATE t SET a=v.b FROM v`, &sql.UpdateStatement{
 			Update: pos(0),
@@ -4764,9 +4905,63 @@ func TestParser_ParseExpr(t *testing.T) {
 				Rparen: pos(14),
 			},
 		})
-		AssertParseExprError(t, `1 IN 2`, `1:6: expected left paren, found 2`)
+		AssertParseExprError(t, `1 IN 2`, `1:6: expected left paren or table name, found 2`)
 		AssertParseExprError(t, `1 IN (`, `1:6: expected expression, found 'EOF'`)
 		AssertParseExprError(t, `1 IN (2 3`, `1:9: expected comma or right paren, found 3`)
+		// Test table name in IN clause
+		AssertParseExpr(t, `1 IN tbl`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.IN,
+			Y: &sql.Ident{NamePos: pos(5), Name: "tbl"},
+		})
+		AssertParseExpr(t, `1 NOT IN tbl`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.NOTIN,
+			Y: &sql.Ident{NamePos: pos(9), Name: "tbl"},
+		})
+		// Test schema-qualified table name in IN clause
+		AssertParseExpr(t, `1 IN main.tbl`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.IN,
+			Y: &sql.QualifiedRef{
+				Table:  &sql.Ident{NamePos: pos(5), Name: "main"},
+				Dot:    pos(9),
+				Column: &sql.Ident{NamePos: pos(10), Name: "tbl"},
+			},
+		})
+		AssertParseExpr(t, `1 NOT IN schema1.tbl`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.NOTIN,
+			Y: &sql.QualifiedRef{
+				Table:  &sql.Ident{NamePos: pos(9), Name: "schema1"},
+				Dot:    pos(16),
+				Column: &sql.Ident{NamePos: pos(17), Name: "tbl"},
+			},
+		})
+		// Test table-valued function in IN clause
+		AssertParseExpr(t, `1 IN func()`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.IN,
+			Y: &sql.Call{
+				Name:   &sql.Ident{NamePos: pos(5), Name: "func"},
+				Lparen: pos(9),
+				Rparen: pos(10),
+			},
+		})
+		AssertParseExpr(t, `1 NOT IN json_each('[1,2]')`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.NOTIN,
+			Y: &sql.Call{
+				Name:   &sql.Ident{NamePos: pos(9), Name: "json_each"},
+				Lparen: pos(18),
+				Args: []sql.Expr{
+					&sql.StringLit{ValuePos: pos(19), Value: "[1,2]"},
+				},
+				Rparen: pos(26),
+			},
+		})
+		// Test error case: schema-qualified function calls are not supported
+		AssertParseExprError(t, `1 IN schema.func()`, `schema-qualified function calls are not supported in IN/NOT IN expressions`)
 		AssertParseExpr(t, `1 BETWEEN 2 AND 3'`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.BETWEEN,
