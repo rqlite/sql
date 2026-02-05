@@ -653,6 +653,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *QualifiedRef:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Table); err != nil {
 			return nil, err
 		} else {
