@@ -2711,12 +2711,12 @@ func TestParser_ParseStatement(t *testing.T) {
 			Having:     pos(22),
 			HavingExpr: &sql.BoolLit{ValuePos: pos(29), Value: true},
 		})
-		
+
 		// COLLATE expression tests
 		AssertParseStatement(t, `SELECT * FROM vals WHERE a < 'C' COLLATE NOCASE`, &sql.SelectStatement{
-			Select: pos(0),
+			Select:  pos(0),
 			Columns: []*sql.ResultColumn{{Star: pos(7)}},
-			From:   pos(9),
+			From:    pos(9),
 			Source: &sql.QualifiedTableName{
 				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
 			},
@@ -2736,9 +2736,9 @@ func TestParser_ParseStatement(t *testing.T) {
 		})
 
 		AssertParseStatement(t, `SELECT * FROM vals WHERE 'C' COLLATE NOCASE < a`, &sql.SelectStatement{
-			Select: pos(0),
+			Select:  pos(0),
 			Columns: []*sql.ResultColumn{{Star: pos(7)}},
-			From:   pos(9),
+			From:    pos(9),
 			Source: &sql.QualifiedTableName{
 				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
 			},
@@ -2777,9 +2777,9 @@ func TestParser_ParseStatement(t *testing.T) {
 		})
 
 		AssertParseStatement(t, `SELECT * FROM vals WHERE (a COLLATE NOCASE) = 'test'`, &sql.SelectStatement{
-			Select: pos(0),
+			Select:  pos(0),
 			Columns: []*sql.ResultColumn{{Star: pos(7)}},
-			From:   pos(9),
+			From:    pos(9),
 			Source: &sql.QualifiedTableName{
 				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
 			},

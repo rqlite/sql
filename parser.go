@@ -2688,7 +2688,7 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Check for COLLATE postfix operator
 	if p.peek() == COLLATE {
 		collation, err := p.parseCollationClause()
@@ -2697,7 +2697,7 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 		}
 		x = &CollateExpr{X: x, Collation: collation}
 	}
-	
+
 	for {
 		if p.peek().Precedence() < prec1 {
 			return x, nil
