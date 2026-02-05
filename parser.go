@@ -1021,8 +1021,25 @@ func (p *Parser) parseDropTableStatement(dropPos Pos) (_ *DropTableStatement, er
 		stmt.IfExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("table name"); err != nil {
+	// Parse the first identifier (either schema or table name)
+	firstIdent, err := p.parseIdent("table name")
+	if err != nil {
 		return &stmt, err
+	}
+
+	// Check if it's a schema.table format
+	if p.peek() == DOT {
+		// First identifier is the schema name
+		stmt.Schema = firstIdent
+		stmt.Dot, _, _ = p.scan()
+
+		// Parse the table name
+		if stmt.Name, err = p.parseIdent("table name"); err != nil {
+			return &stmt, err
+		}
+	} else {
+		// Just a table name without schema
+		stmt.Name = firstIdent
 	}
 
 	return &stmt, nil
@@ -1136,8 +1153,25 @@ func (p *Parser) parseCreateIndexStatement(createPos Pos) (_ *CreateIndexStateme
 		stmt.IfNotExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("index name"); err != nil {
+	// Parse the first identifier (either schema or index name)
+	firstIdent, err := p.parseIdent("index name")
+	if err != nil {
 		return &stmt, err
+	}
+
+	// Check if it's a schema.index format
+	if p.peek() == DOT {
+		// First identifier is the schema name
+		stmt.Schema = firstIdent
+		stmt.Dot, _, _ = p.scan()
+
+		// Parse the index name
+		if stmt.Name, err = p.parseIdent("index name"); err != nil {
+			return &stmt, err
+		}
+	} else {
+		// Just an index name without schema
+		stmt.Name = firstIdent
 	}
 
 	if p.peek() != ON {
@@ -1196,8 +1230,25 @@ func (p *Parser) parseDropIndexStatement(dropPos Pos) (_ *DropIndexStatement, er
 		stmt.IfExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("index name"); err != nil {
+	// Parse the first identifier (either schema or index name)
+	firstIdent, err := p.parseIdent("index name")
+	if err != nil {
 		return &stmt, err
+	}
+
+	// Check if it's a schema.index format
+	if p.peek() == DOT {
+		// First identifier is the schema name
+		stmt.Schema = firstIdent
+		stmt.Dot, _, _ = p.scan()
+
+		// Parse the index name
+		if stmt.Name, err = p.parseIdent("index name"); err != nil {
+			return &stmt, err
+		}
+	} else {
+		// Just an index name without schema
+		stmt.Name = firstIdent
 	}
 
 	return &stmt, nil
@@ -2509,6 +2560,17 @@ func (p *Parser) parseCTE() (_ *CTE, err error) {
 	}
 	cte.As, _, _ = p.scan()
 
+	// Parse optional [NOT] MATERIALIZED
+	if p.peek() == NOT {
+		cte.Not, _, _ = p.scan()
+		if p.peek() != MATERIALIZED {
+			return nil, p.errorExpected(p.pos, p.tok, "MATERIALIZED")
+		}
+		cte.Materialized, _, _ = p.scan()
+	} else if p.peek() == MATERIALIZED {
+		cte.Materialized, _, _ = p.scan()
+	}
+
 	// Parse select statement.
 	if p.peek() != LP {
 		return nil, p.errorExpected(p.pos, p.tok, "left paren")
@@ -3335,8 +3397,25 @@ func (p *Parser) parseAlterTableStatement() (_ *AlterTableStatement, err error) 
 	}
 	stmt.Table, _, _ = p.scan()
 
-	if stmt.Name, err = p.parseIdent("table name"); err != nil {
+	// Parse the first identifier (either schema or table name)
+	firstIdent, err := p.parseIdent("table name")
+	if err != nil {
 		return &stmt, err
+	}
+
+	// Check if it's a schema.table format
+	if p.peek() == DOT {
+		// First identifier is the schema name
+		stmt.Schema = firstIdent
+		stmt.Dot, _, _ = p.scan()
+
+		// Parse the table name
+		if stmt.Name, err = p.parseIdent("table name"); err != nil {
+			return &stmt, err
+		}
+	} else {
+		// Just a table name without schema
+		stmt.Name = firstIdent
 	}
 
 	switch p.peek() {

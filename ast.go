@@ -1403,9 +1403,11 @@ func (s *ReindexStatement) String() string {
 }
 
 type AlterTableStatement struct {
-	Alter Pos    // position of ALTER keyword
-	Table Pos    // position of TABLE keyword
-	Name  *Ident // table name
+	Alter  Pos    // position of ALTER keyword
+	Table  Pos    // position of TABLE keyword
+	Schema *Ident // optional schema name
+	Dot    Pos    // position of dot (optional)
+	Name   *Ident // table name
 
 	Rename   Pos    // position of RENAME keyword
 	RenameTo Pos    // position of TO keyword after RENAME
@@ -1431,7 +1433,8 @@ func (s *AlterTableStatement) Clone() *AlterTableStatement {
 		return nil
 	}
 	other := *s
-	other.Name = other.Name.Clone()
+	other.Schema = s.Schema.Clone()
+	other.Name = s.Name.Clone()
 	other.NewName = s.NewName.Clone()
 	other.ColumnName = s.ColumnName.Clone()
 	other.NewColumnName = s.NewColumnName.Clone()
@@ -1444,6 +1447,10 @@ func (s *AlterTableStatement) Clone() *AlterTableStatement {
 func (s *AlterTableStatement) String() string {
 	var buf bytes.Buffer
 	buf.WriteString("ALTER TABLE ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
 	buf.WriteString(s.Name.String())
 
 	if s.NewName != nil {
@@ -2382,6 +2389,8 @@ type DropTableStatement struct {
 	Table    Pos    // position of TABLE keyword
 	If       Pos    // position of IF keyword
 	IfExists Pos    // position of EXISTS keyword after IF
+	Schema   *Ident // optional schema name
+	Dot      Pos    // position of dot (optional)
 	Name     *Ident // view name
 }
 
@@ -2391,6 +2400,7 @@ func (s *DropTableStatement) Clone() *DropTableStatement {
 		return nil
 	}
 	other := *s
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	return &other
 }
@@ -2402,7 +2412,12 @@ func (s *DropTableStatement) String() string {
 	if s.IfExists.IsValid() {
 		buf.WriteString(" IF EXISTS")
 	}
-	fmt.Fprintf(&buf, " %s", s.Name.String())
+	buf.WriteString(" ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Name.String())
 	return buf.String()
 }
 
@@ -2493,6 +2508,8 @@ type CreateIndexStatement struct {
 	If          Pos              // position of IF keyword
 	IfNot       Pos              // position of NOT keyword after IF
 	IfNotExists Pos              // position of EXISTS keyword after IF NOT
+	Schema      *Ident           // optional schema name
+	Dot         Pos              // position of dot (optional)
 	Name        *Ident           // index name
 	On          Pos              // position of ON keyword
 	Table       *Ident           // index name
@@ -2509,6 +2526,7 @@ func (s *CreateIndexStatement) Clone() *CreateIndexStatement {
 		return nil
 	}
 	other := *s
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	other.Table = s.Table.Clone()
 	other.Columns = cloneIndexedColumns(s.Columns)
@@ -2527,7 +2545,15 @@ func (s *CreateIndexStatement) String() string {
 	if s.IfNotExists.IsValid() {
 		buf.WriteString(" IF NOT EXISTS")
 	}
-	fmt.Fprintf(&buf, " %s ON %s ", s.Name.String(), s.Table.String())
+	buf.WriteString(" ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Name.String())
+	buf.WriteString(" ON ")
+	buf.WriteString(s.Table.String())
+	buf.WriteString(" ")
 
 	buf.WriteString("(")
 	for i, col := range s.Columns {
@@ -2550,6 +2576,8 @@ type DropIndexStatement struct {
 	Index    Pos    // position of INDEX keyword
 	If       Pos    // position of IF keyword
 	IfExists Pos    // position of EXISTS keyword after IF
+	Schema   *Ident // optional schema name
+	Dot      Pos    // position of dot (optional)
 	Name     *Ident // index name
 }
 
@@ -2559,6 +2587,7 @@ func (s *DropIndexStatement) Clone() *DropIndexStatement {
 		return nil
 	}
 	other := *s
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	return &other
 }
@@ -2570,7 +2599,12 @@ func (s *DropIndexStatement) String() string {
 	if s.IfExists.IsValid() {
 		buf.WriteString(" IF EXISTS")
 	}
-	fmt.Fprintf(&buf, " %s", s.Name.String())
+	buf.WriteString(" ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Name.String())
 	return buf.String()
 }
 
@@ -3773,6 +3807,8 @@ type CTE struct {
 	Columns       []*Ident         // optional column list
 	ColumnsRparen Pos              // position of column list right paren
 	As            Pos              // position of AS keyword
+	Not           Pos              // position of optional NOT keyword
+	Materialized  Pos              // position of optional MATERIALIZED keyword
 	SelectLparen  Pos              // position of select left paren
 	Select        *SelectStatement // select statement
 	SelectRparen  Pos              // position of select right paren
@@ -3817,7 +3853,16 @@ func (cte *CTE) String() string {
 		buf.WriteString(")")
 	}
 
-	fmt.Fprintf(&buf, " AS (%s)", cte.Select.String())
+	buf.WriteString(" AS")
+
+	if cte.Not.IsValid() {
+		buf.WriteString(" NOT")
+	}
+	if cte.Materialized.IsValid() {
+		buf.WriteString(" MATERIALIZED")
+	}
+
+	fmt.Fprintf(&buf, " (%s)", cte.Select.String())
 
 	return buf.String()
 }
