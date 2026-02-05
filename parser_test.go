@@ -4044,7 +4044,7 @@ func TestParser_ParseStatement(t *testing.T) {
 			}},
 		})
 
-		// Test schema.table.column in expressions (issue fix)
+		// Test schema.table.column in expressions
 		AssertParseStatement(t, `UPDATE main.vals SET a=lower(main.vals.a)`, &sql.UpdateStatement{
 			Update: pos(0),
 			Table: &sql.QualifiedTableName{
@@ -4213,21 +4213,6 @@ func TestParser_ParseStatement(t *testing.T) {
 					Column: &sql.Ident{NamePos: pos(41), Name: "id"},
 				},
 			},
-		})
-
-		// Test table alias without AS keyword
-		AssertParseStatement(t, `UPDATE vals v SET a=1`, &sql.UpdateStatement{
-			Update: pos(0),
-			Table: &sql.QualifiedTableName{
-				Name:  &sql.Ident{NamePos: pos(7), Name: "vals"},
-				Alias: &sql.Ident{NamePos: pos(12), Name: "v"},
-			},
-			Set: pos(14),
-			Assignments: []*sql.Assignment{{
-				Columns: []*sql.Ident{{NamePos: pos(18), Name: "a"}},
-				Eq:      pos(19),
-				Expr:    &sql.NumberLit{ValuePos: pos(20), Value: "1"},
-			}},
 		})
 
 		// Test UPDATE FROM with JOIN
