@@ -4046,6 +4046,148 @@ func TestParser_ParseStatement(t *testing.T) {
 			}},
 		})
 
+		// Test INDEXED BY clause
+		AssertParseStatement(t, `UPDATE tbl INDEXED BY idx SET x=1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:      &sql.Ident{NamePos: pos(7), Name: "tbl"},
+				Indexed:   pos(11),
+				IndexedBy: pos(19),
+				Index:     &sql.Ident{NamePos: pos(22), Name: "idx"},
+			},
+			Set: pos(26),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(30), Name: "x"}},
+				Eq:      pos(31),
+				Expr:    &sql.NumberLit{ValuePos: pos(32), Value: "1"},
+			}},
+		})
+
+		// Test NOT INDEXED clause
+		AssertParseStatement(t, `UPDATE tbl NOT INDEXED SET x=1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:       &sql.Ident{NamePos: pos(7), Name: "tbl"},
+				Not:        pos(11),
+				NotIndexed: pos(15),
+			},
+			Set: pos(23),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(27), Name: "x"}},
+				Eq:      pos(28),
+				Expr:    &sql.NumberLit{ValuePos: pos(29), Value: "1"},
+			}},
+		})
+
+		// Test UPDATE FROM with simple table
+		AssertParseStatement(t, `UPDATE t SET a=v.b FROM v`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(7), Name: "t"},
+			},
+			Set: pos(9),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(13), Name: "a"}},
+				Eq:      pos(14),
+				Expr: &sql.QualifiedRef{
+					Table:  &sql.Ident{NamePos: pos(15), Name: "v"},
+					Dot:    pos(16),
+					Column: &sql.Ident{NamePos: pos(17), Name: "b"},
+				},
+			}},
+			From: pos(19),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(24), Name: "v"},
+			},
+		})
+
+		// Test UPDATE FROM with subquery
+		AssertParseStatement(t, `UPDATE t SET a=v.b FROM (SELECT b FROM v) AS v`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(7), Name: "t"},
+			},
+			Set: pos(9),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(13), Name: "a"}},
+				Eq:      pos(14),
+				Expr: &sql.QualifiedRef{
+					Table:  &sql.Ident{NamePos: pos(15), Name: "v"},
+					Dot:    pos(16),
+					Column: &sql.Ident{NamePos: pos(17), Name: "b"},
+				},
+			}},
+			From: pos(19),
+			Source: &sql.ParenSource{
+				Lparen: pos(24),
+				X: &sql.SelectStatement{
+					Select: pos(25),
+					Columns: []*sql.ResultColumn{
+						{Expr: &sql.Ident{NamePos: pos(32), Name: "b"}},
+					},
+					From: pos(34),
+					Source: &sql.QualifiedTableName{
+						Name: &sql.Ident{NamePos: pos(39), Name: "v"},
+					},
+				},
+				Rparen: pos(40),
+				As:     pos(42),
+				Alias:  &sql.Ident{NamePos: pos(45), Name: "v"},
+			},
+		})
+
+		// Test UPDATE FROM with WHERE clause
+		AssertParseStatement(t, `UPDATE t SET a=v.b FROM v WHERE t.id = v.id`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(7), Name: "t"},
+			},
+			Set: pos(9),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(13), Name: "a"}},
+				Eq:      pos(14),
+				Expr: &sql.QualifiedRef{
+					Table:  &sql.Ident{NamePos: pos(15), Name: "v"},
+					Dot:    pos(16),
+					Column: &sql.Ident{NamePos: pos(17), Name: "b"},
+				},
+			}},
+			From: pos(19),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(24), Name: "v"},
+			},
+			Where: pos(26),
+			WhereExpr: &sql.BinaryExpr{
+				X: &sql.QualifiedRef{
+					Table:  &sql.Ident{NamePos: pos(32), Name: "t"},
+					Dot:    pos(33),
+					Column: &sql.Ident{NamePos: pos(34), Name: "id"},
+				},
+				OpPos: pos(37),
+				Op:    sql.EQ,
+				Y: &sql.QualifiedRef{
+					Table:  &sql.Ident{NamePos: pos(39), Name: "v"},
+					Dot:    pos(40),
+					Column: &sql.Ident{NamePos: pos(41), Name: "id"},
+				},
+			},
+		})
+
+		// Test table alias without AS keyword
+		AssertParseStatement(t, `UPDATE vals v SET a=1`, &sql.UpdateStatement{
+			Update: pos(0),
+			Table: &sql.QualifiedTableName{
+				Name:  &sql.Ident{NamePos: pos(7), Name: "vals"},
+				Alias: &sql.Ident{NamePos: pos(12), Name: "v"},
+			},
+			Set: pos(14),
+			Assignments: []*sql.Assignment{{
+				Columns: []*sql.Ident{{NamePos: pos(18), Name: "a"}},
+				Eq:      pos(19),
+				Expr:    &sql.NumberLit{ValuePos: pos(20), Value: "1"},
+			}},
+		})
+
 		AssertParseStatementError(t, `UPDATE`, `1:6: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `UPDATE OR`, `1:9: expected ROLLBACK, REPLACE, ABORT, FAIL, or IGNORE, found 'EOF'`)
 		AssertParseStatementError(t, `UPDATE tbl`, `1:10: expected SET, found 'EOF'`)
