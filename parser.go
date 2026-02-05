@@ -1751,11 +1751,9 @@ func (p *Parser) parseIndexedColumn() (_ *IndexedColumn, err error) {
 	// CREATE INDEX context, we want it in the IndexedColumn's Collation field
 	if collateExpr, ok := col.X.(*CollateExpr); ok {
 		col.X = collateExpr.X
-		col.Collate = collateExpr.Collation.Collate
-		col.Collation = collateExpr.Collation.Name
+		col.Collation = collateExpr.Collation
 	} else if p.peek() == COLLATE {
-		col.Collate, _, _ = p.scan()
-		if col.Collation, err = p.parseIdent("collation name"); err != nil {
+		if col.Collation, err = p.parseCollationClause(); err != nil {
 			return &col, err
 		}
 	}

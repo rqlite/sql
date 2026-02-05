@@ -1317,9 +1317,11 @@ func TestParser_ParseStatement(t *testing.T) {
 							Columns: []*sql.IndexedColumn{
 								{X: &sql.Ident{Name: "col1", NamePos: pos(53)}},
 								{
-									X:         &sql.Ident{Name: "col2", NamePos: pos(59)},
-									Collate:   pos(64),
-									Collation: &sql.Ident{Name: "NOCASE", NamePos: pos(72)},
+									X: &sql.Ident{Name: "col2", NamePos: pos(59)},
+									Collation: &sql.CollationClause{
+										Collate: pos(64),
+										Name:    &sql.Ident{Name: "NOCASE", NamePos: pos(72)},
+									},
 								},
 							},
 							Rparen: pos(78),
@@ -1695,9 +1697,11 @@ func TestParser_ParseStatement(t *testing.T) {
 			Lparen: pos(24),
 			Columns: []*sql.IndexedColumn{
 				{
-					X:         &sql.Ident{NamePos: pos(25), Name: "x"},
-					Collate:   pos(27),
-					Collation: &sql.Ident{NamePos: pos(35), Name: "NOCASE"},
+					X: &sql.Ident{NamePos: pos(25), Name: "x"},
+					Collation: &sql.CollationClause{
+						Collate: pos(27),
+						Name:    &sql.Ident{NamePos: pos(35), Name: "NOCASE"},
+					},
 				},
 			},
 			Rparen: pos(41),
