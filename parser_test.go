@@ -2711,6 +2711,97 @@ func TestParser_ParseStatement(t *testing.T) {
 			Having:     pos(22),
 			HavingExpr: &sql.BoolLit{ValuePos: pos(29), Value: true},
 		})
+		
+		// COLLATE expression tests
+		AssertParseStatement(t, `SELECT * FROM vals WHERE a < 'C' COLLATE NOCASE`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{{Star: pos(7)}},
+			From:   pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(25), Name: "a"},
+				OpPos: pos(27),
+				Op:    sql.LT,
+				Y: &sql.CollateExpr{
+					X: &sql.StringLit{ValuePos: pos(29), Value: "C"},
+					Collation: &sql.CollationClause{
+						Collate: pos(33),
+						Name:    &sql.Ident{NamePos: pos(41), Name: "NOCASE"},
+					},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * FROM vals WHERE 'C' COLLATE NOCASE < a`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{{Star: pos(7)}},
+			From:   pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X: &sql.CollateExpr{
+					X: &sql.StringLit{ValuePos: pos(25), Value: "C"},
+					Collation: &sql.CollationClause{
+						Collate: pos(29),
+						Name:    &sql.Ident{NamePos: pos(37), Name: "NOCASE"},
+					},
+				},
+				OpPos: pos(44),
+				Op:    sql.LT,
+				Y:     &sql.Ident{NamePos: pos(46), Name: "a"},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT name COLLATE BINARY FROM users`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.CollateExpr{
+						X: &sql.Ident{NamePos: pos(7), Name: "name"},
+						Collation: &sql.CollationClause{
+							Collate: pos(12),
+							Name:    &sql.Ident{NamePos: pos(20), Name: "BINARY"},
+						},
+					},
+				},
+			},
+			From: pos(27),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(32), Name: "users"},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * FROM vals WHERE (a COLLATE NOCASE) = 'test'`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{{Star: pos(7)}},
+			From:   pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X: &sql.ParenExpr{
+					Lparen: pos(25),
+					X: &sql.CollateExpr{
+						X: &sql.Ident{NamePos: pos(26), Name: "a"},
+						Collation: &sql.CollationClause{
+							Collate: pos(28),
+							Name:    &sql.Ident{NamePos: pos(36), Name: "NOCASE"},
+						},
+					},
+					Rparen: pos(42),
+				},
+				OpPos: pos(44),
+				Op:    sql.EQ,
+				Y:     &sql.StringLit{ValuePos: pos(46), Value: "test"},
+			},
+		})
+
 		AssertParseStatement(t, `SELECT * WINDOW win1 AS (), win2 AS ()`, &sql.SelectStatement{
 			Select:  pos(0),
 			Columns: []*sql.ResultColumn{{Star: pos(7)}},

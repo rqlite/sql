@@ -1746,7 +1746,14 @@ func (p *Parser) parseIndexedColumn() (_ *IndexedColumn, err error) {
 		return &col, err
 	}
 
-	if p.peek() == COLLATE {
+	// If the expression is a CollateExpr, unwrap it and use its Collation
+	// This happens because COLLATE is parsed as part of expressions, but in
+	// CREATE INDEX context, we want it in the IndexedColumn's Collation field
+	if collateExpr, ok := col.X.(*CollateExpr); ok {
+		col.X = collateExpr.X
+		col.Collate = collateExpr.Collation.Collate
+		col.Collation = collateExpr.Collation.Name
+	} else if p.peek() == COLLATE {
 		col.Collate, _, _ = p.scan()
 		if col.Collation, err = p.parseIdent("collation name"); err != nil {
 			return &col, err
@@ -2681,6 +2688,16 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 	if err != nil {
 		return nil, err
 	}
+	
+	// Check for COLLATE postfix operator
+	if p.peek() == COLLATE {
+		collation, err := p.parseCollationClause()
+		if err != nil {
+			return nil, err
+		}
+		x = &CollateExpr{X: x, Collation: collation}
+	}
+	
 	for {
 		if p.peek().Precedence() < prec1 {
 			return x, nil
@@ -3032,8 +3049,14 @@ func (p *Parser) parseOrderingTerm() (_ *OrderingTerm, err error) {
 		return &term, err
 	}
 
-	// Parse optional "COLLATE"
-	if p.peek() == COLLATE {
+	// If the expression is a CollateExpr, unwrap it and use its Collation field
+	// This happens because COLLATE is parsed as part of expressions, but in
+	// ORDER BY context, we want it in the OrderingTerm's Collation field
+	if collateExpr, ok := term.X.(*CollateExpr); ok {
+		term.X = collateExpr.X
+		term.Collation = collateExpr.Collation
+	} else if p.peek() == COLLATE {
+		// Parse optional "COLLATE" if it wasn't already part of the expression
 		if term.Collation, err = p.parseCollationClause(); err != nil {
 			return &term, err
 		}

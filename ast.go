@@ -24,6 +24,7 @@ func (*CaseBlock) node()                   {}
 func (*CaseExpr) node()                    {}
 func (*CastExpr) node()                    {}
 func (*CheckConstraint) node()             {}
+func (*CollateExpr) node()                 {}
 func (*CollateConstraint) node()           {}
 func (*ColumnDefinition) node()            {}
 func (*CommitStatement) node()             {}
@@ -211,6 +212,7 @@ func (*BoolLit) expr()      {}
 func (*Call) expr()         {}
 func (*CaseExpr) expr()     {}
 func (*CastExpr) expr()     {}
+func (*CollateExpr) expr()  {}
 func (*Exists) expr()       {}
 func (*Null) expr()         {}
 func (*ExprList) expr()     {}
@@ -246,6 +248,8 @@ func CloneExpr(expr Expr) Expr {
 	case *CaseExpr:
 		return expr.Clone()
 	case *CastExpr:
+		return expr.Clone()
+	case *CollateExpr:
 		return expr.Clone()
 	case *Exists:
 		return expr.Clone()
@@ -1826,6 +1830,27 @@ func (expr *CastExpr) Clone() *CastExpr {
 // String returns the string representation of the expression.
 func (expr *CastExpr) String() string {
 	return fmt.Sprintf("CAST(%s AS %s)", expr.X.String(), expr.Type.String())
+}
+
+type CollateExpr struct {
+	X         Expr             // target expression
+	Collation *CollationClause // collation clause
+}
+
+// Clone returns a deep copy of expr.
+func (expr *CollateExpr) Clone() *CollateExpr {
+	if expr == nil {
+		return nil
+	}
+	other := *expr
+	other.X = CloneExpr(expr.X)
+	other.Collation = expr.Collation.Clone()
+	return &other
+}
+
+// String returns the string representation of the expression.
+func (expr *CollateExpr) String() string {
+	return fmt.Sprintf("%s %s", expr.X.String(), expr.Collation.String())
 }
 
 type CaseExpr struct {

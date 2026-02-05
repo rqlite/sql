@@ -614,6 +614,20 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			}
 		}
 
+	case *CollateExpr:
+		if expr, err := walkExpr(v, nn.X); err != nil {
+			return nil, err
+		} else {
+			nn.X = expr
+		}
+		if nn.Collation != nil && nn.Collation.Name != nil {
+			if rn, err := walk(v, nn.Collation.Name); err != nil {
+				return nil, err
+			} else {
+				nn.Collation.Name = rn.(*Ident)
+			}
+		}
+
 	case *CaseBlock:
 		if expr, err := walkExpr(v, nn.Condition); err != nil {
 			return nil, err
