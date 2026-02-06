@@ -3184,11 +3184,10 @@ func (a *Assignment) String() string {
 }
 
 type IndexedColumn struct {
-	X         Expr   // column expression
-	Collate   Pos    // position of COLLATE keyword
-	Collation *Ident // collation name
-	Asc       Pos    // position of optional ASC keyword
-	Desc      Pos    // position of optional DESC keyword
+	X         Expr             // column expression
+	Collation *CollationClause // collation clause
+	Asc       Pos              // position of optional ASC keyword
+	Desc      Pos              // position of optional DESC keyword
 }
 
 // Clone returns a deep copy of c.
@@ -3218,8 +3217,8 @@ func (c *IndexedColumn) String() string {
 	var buf bytes.Buffer
 	buf.WriteString(c.X.String())
 
-	if c.Collate.IsValid() {
-		buf.WriteString(" COLLATE ")
+	if c.Collation != nil {
+		buf.WriteString(" ")
 		buf.WriteString(c.Collation.String())
 	}
 
