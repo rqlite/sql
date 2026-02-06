@@ -1746,12 +1746,6 @@ func (p *Parser) parseIndexedColumn() (_ *IndexedColumn, err error) {
 		return &col, err
 	}
 
-	if p.peek() == COLLATE {
-		if col.Collation, err = p.parseCollationClause(); err != nil {
-			return &col, err
-		}
-	}
-
 	if p.peek() == ASC {
 		col.Asc, _, _ = p.scan()
 	} else if p.peek() == DESC {
@@ -2680,6 +2674,13 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 	if err != nil {
 		return nil, err
 	}
+	if p.peek() == COLLATE {
+		collation, err := p.parseCollationClause()
+		if err != nil {
+			return nil, err
+		}
+		x = &CollateExpr{X: x, Collation: collation}
+	}
 	for {
 		if p.peek().Precedence() < prec1 {
 			return x, nil
@@ -3029,13 +3030,6 @@ func (p *Parser) parseOrderingTerm() (_ *OrderingTerm, err error) {
 	var term OrderingTerm
 	if term.X, err = p.ParseExpr(); err != nil {
 		return &term, err
-	}
-
-	// Parse optional "COLLATE"
-	if p.peek() == COLLATE {
-		if term.Collation, err = p.parseCollationClause(); err != nil {
-			return &term, err
-		}
 	}
 
 	// Parse optional sort direction ("ASC" or "DESC")
