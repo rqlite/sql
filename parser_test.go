@@ -1317,10 +1317,12 @@ func TestParser_ParseStatement(t *testing.T) {
 							Columns: []*sql.IndexedColumn{
 								{X: &sql.Ident{Name: "col1", NamePos: pos(53)}},
 								{
-									X: &sql.Ident{Name: "col2", NamePos: pos(59)},
-									Collation: &sql.CollationClause{
-										Collate: pos(64),
-										Name:    &sql.Ident{Name: "NOCASE", NamePos: pos(72)},
+									X: &sql.CollateExpr{
+										X: &sql.Ident{Name: "col2", NamePos: pos(59)},
+										Collation: &sql.CollationClause{
+											Collate: pos(64),
+											Name:    &sql.Ident{Name: "NOCASE", NamePos: pos(72)},
+										},
 									},
 								},
 							},
@@ -1697,10 +1699,9 @@ func TestParser_ParseStatement(t *testing.T) {
 			Lparen: pos(24),
 			Columns: []*sql.IndexedColumn{
 				{
-					X: &sql.Ident{NamePos: pos(25), Name: "x"},
-					Collation: &sql.CollationClause{
-						Collate: pos(27),
-						Name:    &sql.Ident{NamePos: pos(35), Name: "NOCASE"},
+					X: &sql.CollateExpr{
+						X:         &sql.Ident{NamePos: pos(25), Name: "x"},
+						Collation: &sql.CollationClause{Collate: pos(27), Name: &sql.Ident{NamePos: pos(35), Name: "NOCASE"}},
 					},
 				},
 			},
@@ -2779,10 +2780,12 @@ func TestParser_ParseStatement(t *testing.T) {
 			OrderBy: pos(15),
 			OrderingTerms: []*sql.OrderingTerm{
 				{
-					X: &sql.Ident{NamePos: pos(18), Name: "c1"},
-					Collation: &sql.CollationClause{
-						Collate: pos(21),
-						Name:    &sql.Ident{NamePos: pos(29), Name: "BINARY"},
+					X: &sql.CollateExpr{
+						X: &sql.Ident{NamePos: pos(18), Name: "c1"},
+						Collation: &sql.CollationClause{
+							Collate: pos(21),
+							Name:    &sql.Ident{NamePos: pos(29), Name: "BINARY"},
+						},
 					},
 				},
 			},
@@ -2797,9 +2800,11 @@ func TestParser_ParseStatement(t *testing.T) {
 			OrderBy: pos(15),
 			OrderingTerms: []*sql.OrderingTerm{
 				{
-					X: &sql.Ident{NamePos: pos(18), Name: "c1"},
-					Collation: &sql.CollationClause{
-						Collate: pos(21), Name: &sql.Ident{NamePos: pos(29), Name: "NOCASE"},
+					X: &sql.CollateExpr{
+						X: &sql.Ident{NamePos: pos(18), Name: "c1"},
+						Collation: &sql.CollationClause{
+							Collate: pos(21), Name: &sql.Ident{NamePos: pos(29), Name: "NOCASE"},
+						},
 					},
 					Desc: pos(36),
 				},
@@ -3014,6 +3019,74 @@ func TestParser_ParseStatement(t *testing.T) {
 					},
 					Rparen: pos(48),
 				},
+			},
+		})
+
+		// Test COLLATE as a postfix expression operator
+		AssertParseStatement(t, `SELECT * FROM vals WHERE a < 'C' COLLATE NOCASE`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X:     &sql.Ident{NamePos: pos(25), Name: "a"},
+				OpPos: pos(27),
+				Op:    sql.LT,
+				Y: &sql.CollateExpr{
+					X: &sql.StringLit{ValuePos: pos(29), Value: "C"},
+					Collation: &sql.CollationClause{
+						Collate: pos(33),
+						Name:    &sql.Ident{NamePos: pos(41), Name: "NOCASE"},
+					},
+				},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT * FROM vals WHERE 'C' COLLATE NOCASE > a`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(14), Name: "vals"},
+			},
+			Where: pos(19),
+			WhereExpr: &sql.BinaryExpr{
+				X: &sql.CollateExpr{
+					X: &sql.StringLit{ValuePos: pos(25), Value: "C"},
+					Collation: &sql.CollationClause{
+						Collate: pos(29),
+						Name:    &sql.Ident{NamePos: pos(37), Name: "NOCASE"},
+					},
+				},
+				OpPos: pos(44),
+				Op:    sql.GT,
+				Y:     &sql.Ident{NamePos: pos(46), Name: "a"},
+			},
+		})
+
+		AssertParseStatement(t, `SELECT name COLLATE BINARY FROM users`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.CollateExpr{
+						X: &sql.Ident{NamePos: pos(7), Name: "name"},
+						Collation: &sql.CollationClause{
+							Collate: pos(12),
+							Name:    &sql.Ident{NamePos: pos(20), Name: "BINARY"},
+						},
+					},
+				},
+			},
+			From: pos(27),
+			Source: &sql.QualifiedTableName{
+				Name: &sql.Ident{NamePos: pos(32), Name: "users"},
 			},
 		})
 
