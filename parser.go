@@ -1747,8 +1747,7 @@ func (p *Parser) parseIndexedColumn() (_ *IndexedColumn, err error) {
 	}
 
 	if p.peek() == COLLATE {
-		col.Collate, _, _ = p.scan()
-		if col.Collation, err = p.parseIdent("collation name"); err != nil {
+		if col.Collation, err = p.parseCollationClause(); err != nil {
 			return &col, err
 		}
 	}
