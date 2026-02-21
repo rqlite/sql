@@ -2110,6 +2110,35 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			},
 		})
+		AssertParseStatement(t, `SELECT 1 IS NOT NULL`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.Null{
+						X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+						OpPos: pos(9),
+						Op:    sql.NOTNULL,
+					},
+				},
+			},
+		})
+		AssertParseStatement(t, `SELECT 1 IS NOT NULL AND false`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{
+					Expr: &sql.BinaryExpr{
+						X: &sql.Null{
+							X:     &sql.NumberLit{ValuePos: pos(7), Value: "1"},
+							OpPos: pos(9),
+							Op:    sql.NOTNULL,
+						},
+						OpPos: pos(21),
+						Op:    sql.AND,
+						Y:     &sql.BoolLit{ValuePos: pos(25), Value: false},
+					},
+				},
+			},
+		})
 
 		AssertParseStatement(t, `SELECT * FROM tbl`, &sql.SelectStatement{
 			Select: pos(0),
@@ -5713,6 +5742,22 @@ func TestParser_ParseExpr(t *testing.T) {
 				},
 			},
 			End: pos(27),
+		})
+		AssertParseExpr(t, `CASE WHEN 1 IS NOT NULL THEN 2 END`, &sql.CaseExpr{
+			Case: pos(0),
+			Blocks: []*sql.CaseBlock{
+				{
+					When: pos(5),
+					Condition: &sql.Null{
+						X:     &sql.NumberLit{ValuePos: pos(10), Value: "1"},
+						Op:    sql.NOTNULL,
+						OpPos: pos(12),
+					},
+					Then: pos(24),
+					Body: &sql.NumberLit{ValuePos: pos(29), Value: "2"},
+				},
+			},
+			End: pos(31),
 		})
 		AssertParseExprError(t, `CASE`, `1:4: expected expression, found 'EOF'`)
 		AssertParseExprError(t, `CASE 1`, `1:6: expected WHEN, found 'EOF'`)

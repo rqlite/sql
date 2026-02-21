@@ -3599,6 +3599,11 @@ func (p *Parser) scanBinaryOp() (Pos, Token, error) {
 	case IS:
 		if p.peek() == NOT {
 			p.scan()
+			// Check if NULL follows IS NOT
+			if p.peek() == NULL {
+				p.scan()
+				return pos, NOTNULL, nil
+			}
 			return pos, ISNOT, nil
 		} else if p.peek() == NULL {
 			p.scan()
