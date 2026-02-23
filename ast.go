@@ -3611,79 +3611,58 @@ func (c *JoinClause) Clone() *JoinClause {
 func (c *JoinClause) String() string {
 	var buf bytes.Buffer
 
-	// Print the left side
+	// Print the first table and operator.
 	buf.WriteString(c.X.String())
-
-	// Print the operator
 	buf.WriteString(c.Operator.String())
 
-	// Handle the right side
-	if y, ok := c.Y.(*JoinClause); ok {
-		// Special case: right side is a JoinClause
-
-		// Check if the X of the nested JoinClause is also a JoinClause
-		if yx, ok := y.X.(*JoinClause); ok {
-			// Handle the double-nested case
-
-			// Print the first table of the inner JoinClause
-			buf.WriteString(yx.X.String())
-
-			// Add the constraint for the first join
-			if c.Constraint != nil {
-				fmt.Fprintf(&buf, " %s", c.Constraint.String())
-			}
-
-			// Print the operator of the inner JoinClause
-			buf.WriteString(yx.Operator.String())
-
-			// Print the second table of the inner JoinClause
-			buf.WriteString(yx.Y.String())
-
-			// Add the constraint for the inner JoinClause
-			if yx.Constraint != nil {
-				fmt.Fprintf(&buf, " %s", yx.Constraint.String())
-			}
-
-			// Print the operator of the outer JoinClause
-			buf.WriteString(y.Operator.String())
-
-			// Print the right side of the outer JoinClause
-			buf.WriteString(y.Y.String())
-
-			// Add the constraint for the outer JoinClause
-			if y.Constraint != nil {
-				fmt.Fprintf(&buf, " %s", y.Constraint.String())
-			}
-		} else {
-			// Handle the singly-nested case
-
-			// Print the left side of the nested JoinClause
-			buf.WriteString(y.X.String())
-
-			// Add the constraint for the first join
-			if c.Constraint != nil {
-				fmt.Fprintf(&buf, " %s", c.Constraint.String())
-			}
-
-			// Print the operator of the nested JoinClause
-			buf.WriteString(y.Operator.String())
-
-			// Print the right side of the nested JoinClause
-			buf.WriteString(y.Y.String())
-
-			// Add the constraint for the nested JoinClause
-			if y.Constraint != nil {
-				fmt.Fprintf(&buf, " %s", y.Constraint.String())
-			}
-		}
-	} else {
-		// Normal case: right side is not a JoinClause
+	y, ok := c.Y.(*JoinClause)
+	if !ok {
+		// Simple single-join case: print right side and constraint.
 		buf.WriteString(c.Y.String())
-
-		// Add the constraint
 		if c.Constraint != nil {
 			fmt.Fprintf(&buf, " %s", c.Constraint.String())
 		}
+		return buf.String()
+	}
+
+	// Multi-join case: walk down y.X chain collecting intermediate entries.
+	type entry struct {
+		operator   *JoinOperator
+		source     Source
+		constraint JoinConstraint
+	}
+	var stack []entry
+	cur := y.X
+	for {
+		jc, ok := cur.(*JoinClause)
+		if !ok {
+			break
+		}
+		stack = append(stack, entry{jc.Operator, jc.Y, jc.Constraint})
+		cur = jc.X
+	}
+
+	// cur is now the second table (leftmost non-JoinClause in the chain).
+	buf.WriteString(cur.String())
+	if c.Constraint != nil {
+		fmt.Fprintf(&buf, " %s", c.Constraint.String())
+	}
+
+	// Print stack entries in reverse (innermost first).
+	for i := len(stack) - 1; i >= 0; i-- {
+		e := stack[i]
+		buf.WriteString(e.operator.String())
+		buf.WriteString(e.source.String())
+		if e.constraint != nil {
+			fmt.Fprintf(&buf, " %s", e.constraint.String())
+		}
+	}
+
+	// Print the outermost Y entry.
+	buf.WriteString(y.Operator.String())
+	buf.WriteString(y.Y.String())
+	if y.Constraint != nil {
+		fmt.Fprintf(&buf, " %s", y.Constraint.String())
 	}
 
 	return buf.String()
