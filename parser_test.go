@@ -2435,26 +2435,26 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 			From: pos(9),
 			Source: &sql.JoinClause{
-				X: &sql.QualifiedTableName{
-					Name: &sql.Ident{NamePos: pos(14), Name: "X"},
-				},
-				Operator: &sql.JoinOperator{Inner: pos(16), Join: pos(22)},
-				Y: &sql.JoinClause{
+				X: &sql.JoinClause{
 					X: &sql.QualifiedTableName{
+						Name: &sql.Ident{NamePos: pos(14), Name: "X"},
+					},
+					Operator: &sql.JoinOperator{Inner: pos(16), Join: pos(22)},
+					Y: &sql.QualifiedTableName{
 						Name: &sql.Ident{NamePos: pos(27), Name: "Y"},
 					},
-					Operator: &sql.JoinOperator{Inner: pos(37), Join: pos(43)},
-					Y: &sql.QualifiedTableName{
-						Name: &sql.Ident{NamePos: pos(48), Name: "Z"},
-					},
 					Constraint: &sql.OnConstraint{
-						On: pos(50),
-						X:  &sql.BoolLit{ValuePos: pos(53), Value: false},
+						On: pos(29),
+						X:  &sql.BoolLit{ValuePos: pos(32), Value: true},
 					},
 				},
+				Operator: &sql.JoinOperator{Inner: pos(37), Join: pos(43)},
+				Y: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(48), Name: "Z"},
+				},
 				Constraint: &sql.OnConstraint{
-					On: pos(29),
-					X:  &sql.BoolLit{ValuePos: pos(32), Value: true},
+					On: pos(50),
+					X:  &sql.BoolLit{ValuePos: pos(53), Value: false},
 				},
 			},
 		})
@@ -2465,56 +2465,56 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 			From: pos(9),
 			Source: &sql.JoinClause{
-				X: &sql.QualifiedTableName{
-					Name:  &sql.Ident{NamePos: pos(14), Name: "X"},
-					As:    pos(16),
-					Alias: &sql.Ident{NamePos: pos(19), Name: "a"},
-				},
-				Operator: &sql.JoinOperator{Join: pos(21)},
-				Y: &sql.JoinClause{
+				X: &sql.JoinClause{
 					X: &sql.QualifiedTableName{
+						Name:  &sql.Ident{NamePos: pos(14), Name: "X"},
+						As:    pos(16),
+						Alias: &sql.Ident{NamePos: pos(19), Name: "a"},
+					},
+					Operator: &sql.JoinOperator{Join: pos(21)},
+					Y: &sql.QualifiedTableName{
 						Name:  &sql.Ident{NamePos: pos(26), Name: "Y"},
 						As:    pos(28),
 						Alias: &sql.Ident{NamePos: pos(31), Name: "b"},
 					},
-					Operator: &sql.JoinOperator{Join: pos(48)},
-					Y: &sql.QualifiedTableName{
-						Name:  &sql.Ident{NamePos: pos(53), Name: "Z"},
-						As:    pos(55),
-						Alias: &sql.Ident{NamePos: pos(58), Name: "c"},
-					},
 					Constraint: &sql.OnConstraint{
-						On: pos(60),
+						On: pos(33),
 						X: &sql.BinaryExpr{
 							X: &sql.QualifiedRef{
-								Table:  &sql.Ident{NamePos: pos(63), Name: "b"},
-								Dot:    pos(64),
-								Column: &sql.Ident{NamePos: pos(65), Name: "id"},
+								Table:  &sql.Ident{NamePos: pos(36), Name: "a"},
+								Dot:    pos(37),
+								Column: &sql.Ident{NamePos: pos(38), Name: "id"},
 							},
-							OpPos: pos(68),
+							OpPos: pos(41),
 							Op:    sql.EQ,
 							Y: &sql.QualifiedRef{
-								Table:  &sql.Ident{NamePos: pos(70), Name: "c"},
-								Dot:    pos(71),
-								Column: &sql.Ident{NamePos: pos(72), Name: "id"},
+								Table:  &sql.Ident{NamePos: pos(43), Name: "b"},
+								Dot:    pos(44),
+								Column: &sql.Ident{NamePos: pos(45), Name: "id"},
 							},
 						},
 					},
 				},
+				Operator: &sql.JoinOperator{Join: pos(48)},
+				Y: &sql.QualifiedTableName{
+					Name:  &sql.Ident{NamePos: pos(53), Name: "Z"},
+					As:    pos(55),
+					Alias: &sql.Ident{NamePos: pos(58), Name: "c"},
+				},
 				Constraint: &sql.OnConstraint{
-					On: pos(33),
+					On: pos(60),
 					X: &sql.BinaryExpr{
 						X: &sql.QualifiedRef{
-							Table:  &sql.Ident{NamePos: pos(36), Name: "a"},
-							Dot:    pos(37),
-							Column: &sql.Ident{NamePos: pos(38), Name: "id"},
+							Table:  &sql.Ident{NamePos: pos(63), Name: "b"},
+							Dot:    pos(64),
+							Column: &sql.Ident{NamePos: pos(65), Name: "id"},
 						},
-						OpPos: pos(41),
+						OpPos: pos(68),
 						Op:    sql.EQ,
 						Y: &sql.QualifiedRef{
-							Table:  &sql.Ident{NamePos: pos(43), Name: "b"},
-							Dot:    pos(44),
-							Column: &sql.Ident{NamePos: pos(45), Name: "id"},
+							Table:  &sql.Ident{NamePos: pos(70), Name: "c"},
+							Dot:    pos(71),
+							Column: &sql.Ident{NamePos: pos(72), Name: "id"},
 						},
 					},
 				},
@@ -2559,20 +2559,20 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 			From: pos(9),
 			Source: &sql.JoinClause{
-				X:        &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(14), Name: "A"}},
-				Operator: &sql.JoinOperator{Join: pos(16)},
-				Y: &sql.JoinClause{
+				X: &sql.JoinClause{
 					X: &sql.JoinClause{
-						X:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(21), Name: "B"}},
-						Operator:   &sql.JoinOperator{Join: pos(28)},
-						Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(33), Name: "C"}},
-						Constraint: &sql.OnConstraint{On: pos(35), X: &sql.NumberLit{ValuePos: pos(38), Value: "2"}},
+						X:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(14), Name: "A"}},
+						Operator:   &sql.JoinOperator{Join: pos(16)},
+						Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(21), Name: "B"}},
+						Constraint: &sql.OnConstraint{On: pos(23), X: &sql.NumberLit{ValuePos: pos(26), Value: "1"}},
 					},
-					Operator:   &sql.JoinOperator{Join: pos(40)},
-					Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(45), Name: "D"}},
-					Constraint: &sql.OnConstraint{On: pos(47), X: &sql.NumberLit{ValuePos: pos(50), Value: "3"}},
+					Operator:   &sql.JoinOperator{Join: pos(28)},
+					Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(33), Name: "C"}},
+					Constraint: &sql.OnConstraint{On: pos(35), X: &sql.NumberLit{ValuePos: pos(38), Value: "2"}},
 				},
-				Constraint: &sql.OnConstraint{On: pos(23), X: &sql.NumberLit{ValuePos: pos(26), Value: "1"}},
+				Operator:   &sql.JoinOperator{Join: pos(40)},
+				Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(45), Name: "D"}},
+				Constraint: &sql.OnConstraint{On: pos(47), X: &sql.NumberLit{ValuePos: pos(50), Value: "3"}},
 			},
 		})
 		AssertParseStatement(t, `SELECT * FROM A JOIN B ON 1 JOIN C ON 2 JOIN D ON 3 JOIN E ON 4`, &sql.SelectStatement{
@@ -2582,25 +2582,25 @@ func TestParser_ParseStatement(t *testing.T) {
 			},
 			From: pos(9),
 			Source: &sql.JoinClause{
-				X:        &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(14), Name: "A"}},
-				Operator: &sql.JoinOperator{Join: pos(16)},
-				Y: &sql.JoinClause{
+				X: &sql.JoinClause{
 					X: &sql.JoinClause{
 						X: &sql.JoinClause{
-							X:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(21), Name: "B"}},
-							Operator:   &sql.JoinOperator{Join: pos(28)},
-							Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(33), Name: "C"}},
-							Constraint: &sql.OnConstraint{On: pos(35), X: &sql.NumberLit{ValuePos: pos(38), Value: "2"}},
+							X:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(14), Name: "A"}},
+							Operator:   &sql.JoinOperator{Join: pos(16)},
+							Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(21), Name: "B"}},
+							Constraint: &sql.OnConstraint{On: pos(23), X: &sql.NumberLit{ValuePos: pos(26), Value: "1"}},
 						},
-						Operator:   &sql.JoinOperator{Join: pos(40)},
-						Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(45), Name: "D"}},
-						Constraint: &sql.OnConstraint{On: pos(47), X: &sql.NumberLit{ValuePos: pos(50), Value: "3"}},
+						Operator:   &sql.JoinOperator{Join: pos(28)},
+						Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(33), Name: "C"}},
+						Constraint: &sql.OnConstraint{On: pos(35), X: &sql.NumberLit{ValuePos: pos(38), Value: "2"}},
 					},
-					Operator:   &sql.JoinOperator{Join: pos(52)},
-					Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(57), Name: "E"}},
-					Constraint: &sql.OnConstraint{On: pos(59), X: &sql.NumberLit{ValuePos: pos(62), Value: "4"}},
+					Operator:   &sql.JoinOperator{Join: pos(40)},
+					Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(45), Name: "D"}},
+					Constraint: &sql.OnConstraint{On: pos(47), X: &sql.NumberLit{ValuePos: pos(50), Value: "3"}},
 				},
-				Constraint: &sql.OnConstraint{On: pos(23), X: &sql.NumberLit{ValuePos: pos(26), Value: "1"}},
+				Operator:   &sql.JoinOperator{Join: pos(52)},
+				Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(57), Name: "E"}},
+				Constraint: &sql.OnConstraint{On: pos(59), X: &sql.NumberLit{ValuePos: pos(62), Value: "4"}},
 			},
 		})
 
