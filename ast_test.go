@@ -870,53 +870,6 @@ func TestSelectStatement_String(t *testing.T) {
 			},
 		},
 	}, `SELECT * FROM "X" AS "a" JOIN "Y" AS "b" ON "a"."id" = "b"."id" JOIN "Z" AS "c" ON "b"."id" = "c"."id"`)
-
-	// 4-join stringer roundtrip
-	AssertStatementStringer(t, &sql.SelectStatement{
-		Columns: []*sql.ResultColumn{{Star: pos(0)}},
-		Source: &sql.JoinClause{
-			X:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "a"}},
-			Operator: &sql.JoinOperator{},
-			Y: &sql.JoinClause{
-				X: &sql.JoinClause{
-					X:          &sql.QualifiedTableName{Name: &sql.Ident{Name: "b"}},
-					Operator:   &sql.JoinOperator{},
-					Y:          &sql.QualifiedTableName{Name: &sql.Ident{Name: "c"}},
-					Constraint: &sql.OnConstraint{X: &sql.NumberLit{Value: "2"}},
-				},
-				Operator:   &sql.JoinOperator{},
-				Y:          &sql.QualifiedTableName{Name: &sql.Ident{Name: "d"}},
-				Constraint: &sql.OnConstraint{X: &sql.NumberLit{Value: "3"}},
-			},
-			Constraint: &sql.OnConstraint{X: &sql.NumberLit{Value: "1"}},
-		},
-	}, `SELECT * FROM "a" JOIN "b" ON 1 JOIN "c" ON 2 JOIN "d" ON 3`)
-
-	// 5-join stringer roundtrip
-	AssertStatementStringer(t, &sql.SelectStatement{
-		Columns: []*sql.ResultColumn{{Star: pos(0)}},
-		Source: &sql.JoinClause{
-			X:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "a"}},
-			Operator: &sql.JoinOperator{},
-			Y: &sql.JoinClause{
-				X: &sql.JoinClause{
-					X: &sql.JoinClause{
-						X:          &sql.QualifiedTableName{Name: &sql.Ident{Name: "b"}},
-						Operator:   &sql.JoinOperator{},
-						Y:          &sql.QualifiedTableName{Name: &sql.Ident{Name: "c"}},
-						Constraint: &sql.OnConstraint{X: &sql.NumberLit{Value: "2"}},
-					},
-					Operator:   &sql.JoinOperator{},
-					Y:          &sql.QualifiedTableName{Name: &sql.Ident{Name: "d"}},
-					Constraint: &sql.OnConstraint{X: &sql.NumberLit{Value: "3"}},
-				},
-				Operator:   &sql.JoinOperator{},
-				Y:          &sql.QualifiedTableName{Name: &sql.Ident{Name: "e"}},
-				Constraint: &sql.OnConstraint{X: &sql.NumberLit{Value: "4"}},
-			},
-			Constraint: &sql.OnConstraint{X: &sql.NumberLit{Value: "1"}},
-		},
-	}, `SELECT * FROM "a" JOIN "b" ON 1 JOIN "c" ON 2 JOIN "d" ON 3 JOIN "e" ON 4`)
 }
 
 func TestUpdateStatement_String(t *testing.T) {

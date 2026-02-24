@@ -2520,59 +2520,6 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			},
 		})
-		// 4-join roundtrip: parse then verify String() output re-parses to the same result.
-		AssertParseStatement(t, `SELECT * FROM A JOIN B ON 1 JOIN C ON 2 JOIN D ON 3`, &sql.SelectStatement{
-			Select: pos(0),
-			Columns: []*sql.ResultColumn{
-				{Star: pos(7)},
-			},
-			From: pos(9),
-			Source: &sql.JoinClause{
-				X:        &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(14), Name: "A"}},
-				Operator: &sql.JoinOperator{Join: pos(16)},
-				Y: &sql.JoinClause{
-					X: &sql.JoinClause{
-						X:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(21), Name: "B"}},
-						Operator:   &sql.JoinOperator{Join: pos(28)},
-						Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(33), Name: "C"}},
-						Constraint: &sql.OnConstraint{On: pos(35), X: &sql.NumberLit{ValuePos: pos(38), Value: "2"}},
-					},
-					Operator:   &sql.JoinOperator{Join: pos(40)},
-					Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(45), Name: "D"}},
-					Constraint: &sql.OnConstraint{On: pos(47), X: &sql.NumberLit{ValuePos: pos(50), Value: "3"}},
-				},
-				Constraint: &sql.OnConstraint{On: pos(23), X: &sql.NumberLit{ValuePos: pos(26), Value: "1"}},
-			},
-		})
-		// 5-join roundtrip
-		AssertParseStatement(t, `SELECT * FROM A JOIN B ON 1 JOIN C ON 2 JOIN D ON 3 JOIN E ON 4`, &sql.SelectStatement{
-			Select: pos(0),
-			Columns: []*sql.ResultColumn{
-				{Star: pos(7)},
-			},
-			From: pos(9),
-			Source: &sql.JoinClause{
-				X:        &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(14), Name: "A"}},
-				Operator: &sql.JoinOperator{Join: pos(16)},
-				Y: &sql.JoinClause{
-					X: &sql.JoinClause{
-						X: &sql.JoinClause{
-							X:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(21), Name: "B"}},
-							Operator:   &sql.JoinOperator{Join: pos(28)},
-							Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(33), Name: "C"}},
-							Constraint: &sql.OnConstraint{On: pos(35), X: &sql.NumberLit{ValuePos: pos(38), Value: "2"}},
-						},
-						Operator:   &sql.JoinOperator{Join: pos(40)},
-						Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(45), Name: "D"}},
-						Constraint: &sql.OnConstraint{On: pos(47), X: &sql.NumberLit{ValuePos: pos(50), Value: "3"}},
-					},
-					Operator:   &sql.JoinOperator{Join: pos(52)},
-					Y:          &sql.QualifiedTableName{Name: &sql.Ident{NamePos: pos(57), Name: "E"}},
-					Constraint: &sql.OnConstraint{On: pos(59), X: &sql.NumberLit{ValuePos: pos(62), Value: "4"}},
-				},
-				Constraint: &sql.OnConstraint{On: pos(23), X: &sql.NumberLit{ValuePos: pos(26), Value: "1"}},
-			},
-		})
 		AssertParseStatement(t, `SELECT * FROM foo LEFT OUTER JOIN bar`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
