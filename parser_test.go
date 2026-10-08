@@ -6437,6 +6437,28 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 	}
 }
 
+// Ensure a string literal is accepted as a column or table alias, as sqlite3
+// allows (as ::= AS nm | ids, where ids includes STRING).
+func TestParser_StringAlias(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `SELECT x 'lbl', y AS 'lbl2' FROM t 'a' JOIN json_each('[1]') 'j'`).(*sql.SelectStatement)
+	if diff := deepEqual(stmt.Columns[0].Alias, &sql.Ident{Name: "lbl", NamePos: pos(9), Quoted: true}); diff != "" {
+		t.Fatal(diff)
+	}
+	if diff := deepEqual(stmt.Columns[1].Alias, &sql.Ident{Name: "lbl2", NamePos: pos(21), Quoted: true}); diff != "" {
+		t.Fatal(diff)
+	}
+	join := stmt.Source.(*sql.JoinClause)
+	if alias := join.X.(*sql.QualifiedTableName).Alias; alias == nil || alias.Name != "a" {
+		t.Fatalf("table alias=%v, want a", alias)
+	}
+	if alias := join.Y.(*sql.QualifiedTableFunctionName).Alias; alias == nil || alias.Name != "j" {
+		t.Fatalf("table function alias=%v, want j", alias)
+	}
+	if got, want := stmt.String(), `SELECT "x" AS "lbl", "y" AS "lbl2" FROM "t" AS "a" JOIN "json_each"('[1]') AS "j"`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
 // Ensure a bind parameter prefix without a name is rejected.
 func TestParser_EmptyBindName(t *testing.T) {
 	AssertParseStatementError(t, `SELECT $`, `1:8: expected expression, found 'ILLEGAL'`)

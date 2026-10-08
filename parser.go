@@ -1566,6 +1566,21 @@ func (p *Parser) parseDropTriggerStatement(dropPos Pos) (_ *DropTriggerStatement
 	return &stmt, nil
 }
 
+// isAliasToken returns true if tok can begin an alias: an identifier or a
+// string literal, which SQLite accepts as an alias too.
+func isAliasToken(tok Token) bool {
+	return isIdentToken(tok) || tok == STRING
+}
+
+// parseAlias parses an alias name, which may be a string literal.
+func (p *Parser) parseAlias(desc string) (*Ident, error) {
+	if p.peek() == STRING {
+		pos, _, lit := p.scan()
+		return &Ident{Name: lit, NamePos: pos, Quoted: true}, nil
+	}
+	return p.parseIdent(desc)
+}
+
 func (p *Parser) parseIdent(desc string) (*Ident, error) {
 	pos, tok, lit := p.scan()
 	switch tok {
@@ -2341,15 +2356,15 @@ func (p *Parser) parseResultColumn() (_ *ResultColumn, err error) {
 	}
 
 	// If "AS" is next, the alias must follow.
-	// Otherwise it can optionally be an IDENT alias.
+	// Otherwise it can optionally be an identifier or string alias.
 	if p.peek() == AS {
 		col.As, _, _ = p.scan()
-		if !isIdentToken(p.peek()) {
+		if !isAliasToken(p.peek()) {
 			return &col, p.errorExpected(p.pos, p.tok, "column alias")
 		}
-		col.Alias, _ = p.parseIdent("column alias")
-	} else if isIdentToken(p.peek()) {
-		col.Alias, _ = p.parseIdent("column alias")
+		col.Alias, _ = p.parseAlias("column alias")
+	} else if isAliasToken(p.peek()) {
+		col.Alias, _ = p.parseAlias("column alias")
 	}
 
 	return &col, nil
@@ -2582,14 +2597,14 @@ func (p *Parser) parseQualifiedTableName(ident *Ident, schemaOK, aliasOK, indexe
 	}
 
 	// Parse optional table alias ("AS alias" or just "alias").
-	if tok := p.peek(); tok == AS || isIdentToken(tok) {
+	if tok := p.peek(); tok == AS || isAliasToken(tok) {
 		if !aliasOK {
 			return &tbl, p.errorExpected(p.pos, p.tok, "unqualified table name")
 		}
 		if p.peek() == AS {
 			tbl.As, _, _ = p.scan()
 		}
-		if tbl.Alias, err = p.parseIdent("table alias"); err != nil {
+		if tbl.Alias, err = p.parseAlias("table alias"); err != nil {
 			return &tbl, err
 		}
 	}
@@ -2646,11 +2661,11 @@ func (p *Parser) parseQualifiedTableFunctionName(schema *Ident, dot Pos, name *I
 	tbl.Rparen, _, _ = p.scan()
 
 	// Parse optional table alias ("AS alias" or just "alias").
-	if tok := p.peek(); tok == AS || isIdentToken(tok) {
+	if tok := p.peek(); tok == AS || isAliasToken(tok) {
 		if p.peek() == AS {
 			tbl.As, _, _ = p.scan()
 		}
-		if tbl.Alias, err = p.parseIdent("table function alias"); err != nil {
+		if tbl.Alias, err = p.parseAlias("table function alias"); err != nil {
 			return &tbl, err
 		}
 	}
