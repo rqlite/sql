@@ -541,6 +541,21 @@ func isIdentToken(tok Token) bool {
 	return tok == IDENT || tok == QIDENT || tok == BIDENT
 }
 
+// isTypeNameToken returns true if tok can be a word of a type name. SQLite's
+// grammar is typename ::= ids | typename ids, where ids is an identifier (plain
+// or quoted) or a string literal; fallback keywords are identifiers too.
+// GENERATED is excluded because it begins a column constraint.
+func isTypeNameToken(tok Token) bool {
+	switch tok {
+	case IDENT, QIDENT, BIDENT, STRING, NULL:
+		return true
+	case GENERATED:
+		return false
+	default:
+		return isBareToken(tok)
+	}
+}
+
 // isNameToken returns true if tok can be used as an object name: an
 // identifier, a fallback keyword, or ROWID.
 func isNameToken(tok Token) bool {

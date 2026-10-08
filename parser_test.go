@@ -6357,6 +6357,42 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 	}
 }
 
+// Ensure type names may be quoted identifiers, string literals or fallback
+// keywords, as sqlite3 allows (typename ::= ids | typename ids).
+func TestParser_TypeNames(t *testing.T) {
+	for _, tt := range []struct{ s, typ string }{
+		{`CREATE TABLE tbl (col1 "my type")`, "my type"},
+		{`CREATE TABLE tbl (col1 'my type')`, "my type"},
+		{"CREATE TABLE tbl (col1 `bt type`(10))", "bt type"},
+		{`CREATE TABLE tbl (col1 key)`, "key"},
+		{`CREATE TABLE tbl (col1 INTEGER key)`, "INTEGER key"},
+		{`CREATE TABLE tbl (col1 UNSIGNED BIG INT NOT NULL)`, "UNSIGNED BIG INT"},
+	} {
+		stmt := ParseStatementOrFail(t, tt.s).(*sql.CreateTableStatement)
+		if len(stmt.Columns) != 1 {
+			t.Errorf("%s: expected 1 column, got %d", tt.s, len(stmt.Columns))
+		} else if got := stmt.Columns[0].Type.Name.Name; got != tt.typ {
+			t.Errorf("%s: type=%q, want %q", tt.s, got, tt.typ)
+		}
+		if _, err := sql.NewParser(strings.NewReader(stmt.String())).ParseStatement(); err != nil {
+			t.Errorf("%s: cannot re-parse %q: %v", tt.s, stmt.String(), err)
+		}
+	}
+	// GENERATED starts a constraint and is never part of a type name.
+	stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER GENERATED ALWAYS AS (1), col2)`).(*sql.CreateTableStatement)
+	if got := stmt.Columns[0].Type.Name.Name; got != "INTEGER" {
+		t.Errorf("type=%q, want INTEGER", got)
+	} else if len(stmt.Columns[0].Constraints) != 1 {
+		t.Errorf("expected generated constraint, got %v", stmt.Columns[0].Constraints)
+	}
+	AssertParseExprError(t, `CAST(1 AS)`, `1:10: expected type name, found ')'`)
+	if e, err := sql.NewParser(strings.NewReader(`CAST(1 AS "weird type")`)).ParseExpr(); err != nil {
+		t.Fatal(err)
+	} else if got := e.(*sql.CastExpr).Type.Name.Name; got != "weird type" {
+		t.Errorf("CAST type=%q, want %q", got, "weird type")
+	}
+}
+
 // Ensure rowid and fallback keywords are accepted as column names after a dot
 // and in INSERT column lists, as sqlite3 does.
 func TestParser_RowidAndKeywordColumns(t *testing.T) {
