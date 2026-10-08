@@ -415,9 +415,15 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `CREATE TABLE`, `1:12: expected table name, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl `, `1:17: expected AS or left paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (`, `1:18: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
-		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT`, `1:27: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
+		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT`, `1:27: expected right paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT) WITHOUT`, `1:36: expected ROWID, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT) WITHOUT ROWID,`, `1:43: expected STRICT or WITHOUT ROWID, found 'EOF'`)
+		// Column definitions must be separated by commas; a missing comma must
+		// not silently start a new column. (A bare identifier directly after
+		// the type is part of a multi-word type name, so a constraint is used
+		// here to end the first definition.)
+		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT NOT NULL col2 INTEGER)`, `1:38: expected right paren, found col2`)
+		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, col2 INTEGER PRIMARY KEY col3)`, `1:55: expected right paren, found col3`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT) STRICT,`, `1:36: expected STRICT or WITHOUT ROWID, found 'EOF'`)
 
 		AssertParseStatement(t, `CREATE TABLE IF NOT EXISTS tbl (col1 TEXT)`, &sql.CreateTableStatement{
@@ -567,7 +573,7 @@ func TestParser_ParseStatement(t *testing.T) {
 
 		AssertParseStatementError(t, `CREATE TABLE IF`, `1:15: expected NOT, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE IF NOT`, `1:19: expected EXISTS, found 'EOF'`)
-		AssertParseStatementError(t, `CREATE TABLE tbl (col1`, `1:22: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
+		AssertParseStatementError(t, `CREATE TABLE tbl (col1`, `1:22: expected right paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 DECIMAL(`, `1:31: expected precision, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 DECIMAL(-12,`, `1:35: expected scale, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 DECIMAL(1,2`, `1:34: expected right paren, found 'EOF'`)
