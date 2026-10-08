@@ -1458,7 +1458,7 @@ func (p *Parser) parseCreateTriggerStatement(createPos, tempPos Pos) (_ *CreateT
 		return &stmt, p.errorExpected(p.pos, p.tok, "ON")
 	}
 	stmt.On, _, _ = p.scan()
-	if stmt.Table, err = p.parseIdent("table name"); err != nil {
+	if stmt.TableSchema, stmt.TableDot, stmt.Table, err = p.parseSchemaQualifiedIdent("table name"); err != nil {
 		return &stmt, err
 	}
 

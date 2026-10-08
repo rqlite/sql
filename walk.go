@@ -232,6 +232,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		} else {
 			nn.UpdateOfColumns = columns
 		}
+		if ri, err := walkIdent(v, nn.TableSchema); err != nil {
+			return nil, err
+		} else {
+			nn.TableSchema = ri
+		}
 		if ri, err := walkIdent(v, nn.Table); err != nil {
 			return nil, err
 		} else {

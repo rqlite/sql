@@ -2839,6 +2839,8 @@ type CreateTriggerStatement struct {
 	UpdateOf        Pos      // position of OF keyword after UPDATE
 	UpdateOfColumns []*Ident // columns list for UPDATE OF
 	On              Pos      // position of ON keyword
+	TableSchema     *Ident   // schema of the table (optional)
+	TableDot        Pos      // position of DOT after the table schema (optional)
 	Table           *Ident   // table name
 
 	For        Pos // position of FOR keyword
@@ -2862,6 +2864,7 @@ func (s *CreateTriggerStatement) Clone() *CreateTriggerStatement {
 	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	other.UpdateOfColumns = cloneIdents(s.UpdateOfColumns)
+	other.TableSchema = s.TableSchema.Clone()
 	other.Table = s.Table.Clone()
 	other.WhenExpr = CloneExpr(s.WhenExpr)
 	other.Body = cloneStatements(s.Body)
@@ -2911,7 +2914,12 @@ func (s *CreateTriggerStatement) String() string {
 		}
 	}
 
-	fmt.Fprintf(&buf, " ON %s", s.Table.String())
+	buf.WriteString(" ON ")
+	if s.TableSchema != nil {
+		buf.WriteString(s.TableSchema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Table.String())
 
 	if s.ForEachRow.IsValid() {
 		buf.WriteString(" FOR EACH ROW")
