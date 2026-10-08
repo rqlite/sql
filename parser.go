@@ -1725,7 +1725,8 @@ func (p *Parser) parseInsertStatement(inTrigger bool, withClause *WithClause) (_
 			}
 			p.scan()
 		}
-	case SELECT:
+	case SELECT, WITH:
+		// A select-stmt, which may itself begin with a WITH clause.
 		if stmt.Select, err = p.parseSelectStatement(false, nil); err != nil {
 			return &stmt, err
 		}

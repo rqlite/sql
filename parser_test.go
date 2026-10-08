@@ -6410,6 +6410,17 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 	}
 }
 
+// Ensure the SELECT of an INSERT may itself begin with a WITH clause.
+func TestParser_InsertWithSelect(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `INSERT INTO t (x) WITH c AS (SELECT 1) SELECT * FROM c`).(*sql.InsertStatement)
+	if stmt.Select == nil || stmt.Select.WithClause == nil || len(stmt.Select.WithClause.CTEs) != 1 {
+		t.Fatalf("expected select with one CTE, got %s", stmt.String())
+	}
+	if got, want := stmt.String(), `INSERT INTO "t" ("x") WITH "c" AS (SELECT 1) SELECT * FROM "c"`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
 // Ensure an INSERT may carry several ON CONFLICT clauses. Only the last may
 // omit the conflict target, as in sqlite3.
 func TestParser_MultipleUpsertClauses(t *testing.T) {
