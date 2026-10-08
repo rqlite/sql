@@ -1749,9 +1749,11 @@ func TestParser_ParseStatement(t *testing.T) {
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1`, "1:40: expected comma or right paren, found 'EOF'")
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1=3`, "1:42: expected comma or right paren, found 'EOF'")
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1=3,`, "1:43: expected module argument name, found 'EOF'")
-			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl()`, "1:37: expected module arguments, found ')'")
+			// An empty argument list and free-form argument words are accepted,
+			// as sqlite3 passes module arguments through as text.
+			AssertParseStatements(t, `CREATE VIRTUAL TABLE vtbl USING mdl()`, 1)
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 BLOB`, "1:45: expected comma or right paren, found 'EOF'")
-			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 arg2)`, "1:42: expected comma or right paren, found arg2")
+			AssertParseStatements(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 arg2)`, 1)
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 TEXT=value)`, "1:46: expected comma or right paren, found '='")
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(=)`, "1:37: expected module argument name, found '='")
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(key=)`, "1:41: expected expression, found ')'")
@@ -6437,6 +6439,35 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 		} else if stmt2.String() != stmt.String() {
 			t.Errorf("%s: unstable: %q != %q", tt.s, stmt.String(), stmt2.String())
 		}
+	}
+}
+
+// Ensure virtual table module arguments accept the forms FTS5 and other
+// modules use: a column with a type-like word (UNINDEXED), a quoted or string
+// name, an option assigned a function-call value, and no arguments at all.
+func TestParser_ModuleArguments(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `CREATE VIRTUAL TABLE t USING fts5(a UNINDEXED, 'b c', c=d(e), content=t2)`).(*sql.CreateVirtualTableStatement)
+	if len(stmt.Arguments) != 4 {
+		t.Fatalf("expected 4 arguments, got %d", len(stmt.Arguments))
+	}
+	if got := stmt.Arguments[0].Type.Name.Name; got != "UNINDEXED" {
+		t.Errorf("arg 0 type=%q, want UNINDEXED", got)
+	}
+	if got := stmt.Arguments[1].Name.Name; got != "b c" {
+		t.Errorf("arg 1 name=%q, want %q", got, "b c")
+	}
+	if _, ok := stmt.Arguments[2].Literal.(*sql.Call); !ok {
+		t.Errorf("arg 2 value=%T, want *sql.Call", stmt.Arguments[2].Literal)
+	}
+	if got, want := stmt.String(), `CREATE VIRTUAL TABLE "t" USING "fts5" ("a" UNINDEXED,"b c","c"=d("e"),"content"="t2")`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	if _, err := sql.NewParser(strings.NewReader(stmt.String())).ParseStatement(); err != nil {
+		t.Fatalf("cannot re-parse %q: %v", stmt.String(), err)
+	}
+	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE t USING fts5()`).(*sql.CreateVirtualTableStatement)
+	if len(stmt.Arguments) != 0 || stmt.String() != `CREATE VIRTUAL TABLE "t" USING "fts5" ()` {
+		t.Fatalf("unexpected: %s", stmt.String())
 	}
 }
 

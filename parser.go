@@ -1078,10 +1078,6 @@ func (p *Parser) parseCreateVirtualTableStatement(createPos Pos) (_ *CreateVirtu
 		return &stmt, err
 	}
 
-	if len(stmt.Arguments) == 0 {
-		return &stmt, p.errorExpected(p.pos, p.tok, "module arguments")
-	}
-
 	if p.peek() != RP {
 		return &stmt, p.errorExpected(p.pos, p.tok, "right paren")
 	}
@@ -1113,17 +1109,32 @@ func (p *Parser) parseModuleArguments() (_ []*ModuleArgument, err error) {
 func (p *Parser) parseModuleArgument() (_ *ModuleArgument, err error) {
 	var arg ModuleArgument
 
-	if arg.Name, err = p.parseIdent("module argument name"); err != nil {
-		return &arg, err
+	// SQLite passes module arguments to the module as raw text, so the name
+	// may be an identifier, a string literal or any keyword.
+	switch tok := p.peek(); {
+	case tok == STRING:
+		pos, _, lit := p.scan()
+		arg.Name = &Ident{Name: lit, NamePos: pos, Quoted: true}
+	case isNameToken(tok):
+		if arg.Name, err = p.parseIdent("module argument name"); err != nil {
+			return &arg, err
+		}
+	case tok.IsKeyword():
+		pos, _, lit := p.scan()
+		arg.Name = &Ident{Name: lit, NamePos: pos}
+	default:
+		return &arg, p.errorExpected(p.pos, p.tok, "module argument name")
 	}
 
 	if p.peek() == EQ {
-		// Parse literal
+		// Parse the assigned value, which may be a literal, name or call.
 		arg.Assign, _, _ = p.scan()
 		if arg.Literal, err = p.parseOperand(); err != nil {
 			return &arg, err
 		}
-	} else if isTypeName(p.lit) {
+	} else if isTypeNameToken(p.peek()) {
+		// Any following words are treated as the column's type (e.g. FTS5's
+		// UNINDEXED), as in an ordinary column definition.
 		if arg.Type, err = p.parseType(); err != nil {
 			return &arg, err
 		}
