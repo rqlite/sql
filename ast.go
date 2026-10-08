@@ -1898,6 +1898,10 @@ func (expr *BinaryExpr) String() string {
 		return expr.X.String() + " IS " + expr.Y.String()
 	case ISNOT:
 		return expr.X.String() + " IS NOT " + expr.Y.String()
+	case ISDISTINCT:
+		return expr.X.String() + " IS DISTINCT FROM " + expr.Y.String()
+	case ISNOTDISTINCT:
+		return expr.X.String() + " IS NOT DISTINCT FROM " + expr.Y.String()
 	case IN:
 		return expr.X.String() + " IN " + expr.Y.String()
 	case NOTIN:

@@ -1146,6 +1146,8 @@ func TestBinaryExpr_String(t *testing.T) {
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.NE, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 != 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.IS, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 IS 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.ISNOT, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 IS NOT 2`)
+	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.ISDISTINCT, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 IS DISTINCT FROM 2`)
+	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.ISNOTDISTINCT, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 IS NOT DISTINCT FROM 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.IN, X: &sql.NumberLit{Value: "1"}, Y: &sql.ExprList{Exprs: []sql.Expr{&sql.NumberLit{Value: "2"}}}}, `1 IN (2)`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.NOTIN, X: &sql.NumberLit{Value: "1"}, Y: &sql.ExprList{Exprs: []sql.Expr{&sql.NumberLit{Value: "2"}}}}, `1 NOT IN (2)`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.LIKE, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 LIKE 2`)

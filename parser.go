@@ -3726,15 +3726,31 @@ func (p *Parser) scanBinaryOp() (Pos, Token, error) {
 	case IS:
 		if p.peek() == NOT {
 			p.scan()
-			// Check if NULL follows IS NOT
-			if p.peek() == NULL {
+			switch p.peek() {
+			case NULL: // IS NOT NULL
 				p.scan()
 				return pos, NOTNULL, nil
+			case DISTINCT: // IS NOT DISTINCT FROM
+				p.scan()
+				if p.peek() != FROM {
+					return pos, tok, p.errorExpected(p.pos, p.tok, "FROM")
+				}
+				p.scan()
+				return pos, ISNOTDISTINCT, nil
 			}
 			return pos, ISNOT, nil
-		} else if p.peek() == NULL {
+		}
+		switch p.peek() {
+		case NULL: // IS NULL
 			p.scan()
 			return pos, ISNULL, nil
+		case DISTINCT: // IS DISTINCT FROM
+			p.scan()
+			if p.peek() != FROM {
+				return pos, tok, p.errorExpected(p.pos, p.tok, "FROM")
+			}
+			p.scan()
+			return pos, ISDISTINCT, nil
 		}
 		return pos, IS, nil
 	case NOT:

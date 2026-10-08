@@ -241,6 +241,8 @@ const (
 	FUNCTION
 	IF_NULL_ROW
 	ISNOT
+	ISDISTINCT
+	ISNOTDISTINCT
 	NOTBETWEEN
 	NOTEXISTS
 	NOTGLOB
@@ -386,6 +388,8 @@ var tokens = [...]string{
 	INTO:              "INTO",
 	IS:                "IS",
 	ISNOT:             "ISNOT",
+	ISDISTINCT:        "ISDISTINCT",
+	ISNOTDISTINCT:     "ISNOTDISTINCT",
 	ISNULL:            "ISNULL",
 	JOIN:              "JOIN",
 	KEY:               "KEY",
@@ -579,8 +583,9 @@ func (op Token) Precedence() int {
 		// precedence. Unary NOT has its own level, NotPrec, and is handled
 		// by the parser directly.
 		return 4
-	case IS, ISNOT, MATCH, NOTMATCH, LIKE, NOTLIKE, GLOB, NOTGLOB, REGEXP, NOTREGEXP,
-		BETWEEN, NOTBETWEEN, IN, NOTIN, ISNULL, NOTNULL, NE, EQ:
+	case IS, ISNOT, ISDISTINCT, ISNOTDISTINCT, MATCH, NOTMATCH, LIKE, NOTLIKE,
+		GLOB, NOTGLOB, REGEXP, NOTREGEXP, BETWEEN, NOTBETWEEN, IN, NOTIN,
+		ISNULL, NOTNULL, NE, EQ:
 		return 4
 	case GT, LE, LT, GE:
 		return 5

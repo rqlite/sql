@@ -5443,6 +5443,22 @@ func TestParser_ParseExpr(t *testing.T) {
 			OpPos: pos(2), Op: sql.ISNOT,
 			Y: &sql.NumberLit{ValuePos: pos(9), Value: "2"},
 		})
+		// IS [NOT] DISTINCT FROM is a null-safe (in)equality comparison.
+		AssertParseExpr(t, `1 IS DISTINCT FROM 2`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.ISDISTINCT,
+			Y: &sql.NumberLit{ValuePos: pos(19), Value: "2"},
+		})
+		AssertParseExpr(t, `1 IS NOT DISTINCT FROM 2 AND 3`, &sql.BinaryExpr{
+			X: &sql.BinaryExpr{
+				X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+				OpPos: pos(2), Op: sql.ISNOTDISTINCT,
+				Y: &sql.NumberLit{ValuePos: pos(23), Value: "2"},
+			},
+			OpPos: pos(25), Op: sql.AND,
+			Y: &sql.NumberLit{ValuePos: pos(29), Value: "3"},
+		})
+		AssertParseExprError(t, `1 IS DISTINCT 2`, `1:15: expected FROM, found 2`)
 		// IS NOT and the NOT-prefixed operators share the precedence of IS/LIKE,
 		// so they must not swallow a following AND/OR.
 		AssertParseExpr(t, `1 IS NOT 2 AND 3`, &sql.BinaryExpr{
