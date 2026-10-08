@@ -18,6 +18,17 @@ func TestScanner_Scan(t *testing.T) {
 		t.Run("BacktickQuoted", func(t *testing.T) {
 			AssertScan(t, "`crazy ~!#*&# column name foo`", sql.BIDENT, `crazy ~!#*&# column name foo`)
 		})
+		// Only the opening delimiter closes a quoted identifier; the other
+		// quote character is an ordinary part of the name.
+		t.Run("QuotedContainingBacktick", func(t *testing.T) {
+			AssertScan(t, "\"a`b\"", sql.QIDENT, "a`b")
+		})
+		t.Run("BacktickQuotedContainingQuote", func(t *testing.T) {
+			AssertScan(t, "`a\"b`", sql.BIDENT, `a"b`)
+		})
+		t.Run("QuotedEscapedBacktickNotEscape", func(t *testing.T) {
+			AssertScan(t, "\"a``b\"", sql.QIDENT, "a``b")
+		})
 		t.Run("NoEndQuote", func(t *testing.T) {
 			AssertScan(t, `"unfinished`, sql.ILLEGAL, `"unfinished`)
 		})

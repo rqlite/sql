@@ -142,28 +142,28 @@ func (s *Scanner) scanUnquotedIdent(pos Pos, prefix string) (Pos, Token, string)
 }
 
 func (s *Scanner) scanQuotedIdent() (Pos, Token, string) {
-	ch, pos := s.read()
-	assert(ch == '"' || ch == '`')
+	quote, pos := s.read()
+	assert(quote == '"' || quote == '`')
+
+	// Only the opening delimiter terminates (or, when doubled, escapes) the
+	// identifier; the other quote character is an ordinary name character.
+	tok := QIDENT
+	if quote == '`' {
+		tok = BIDENT
+	}
 
 	s.buf.Reset()
 	for {
 		ch, _ := s.read()
 		if ch == -1 {
-			return pos, ILLEGAL, `"` + s.buf.String()
-		} else if ch == '"' {
-			if s.peek() == '"' { // escaped quote
+			return pos, ILLEGAL, string(quote) + s.buf.String()
+		} else if ch == quote {
+			if s.peek() == quote { // escaped quote
 				s.read()
-				s.buf.WriteRune('"')
+				s.buf.WriteRune(quote)
 				continue
 			}
-			return pos, QIDENT, s.buf.String()
-		} else if ch == '`' {
-			if s.peek() == '`' { // escaped quote
-				s.read()
-				s.buf.WriteRune('`')
-				continue
-			}
-			return pos, BIDENT, s.buf.String()
+			return pos, tok, s.buf.String()
 		}
 		s.buf.WriteRune(ch)
 	}
