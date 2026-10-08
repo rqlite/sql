@@ -17,3 +17,17 @@ func TestFrameSpec_Clone(t *testing.T) {
 		t.Fatal("expected deep copy of X and Y")
 	}
 }
+
+func TestCreateVirtualTableStatement_Clone(t *testing.T) {
+	s := &sql.CreateVirtualTableStatement{
+		Schema:     &sql.Ident{Name: "main"},
+		Name:       &sql.Ident{Name: "tbl"},
+		ModuleName: &sql.Ident{Name: "fts5"},
+	}
+	c := s.Clone()
+	if diff := deep.Equal(s, c); diff != nil {
+		t.Fatal(diff)
+	} else if c.Schema == s.Schema || c.Name == s.Name {
+		t.Fatal("expected deep copy of Schema and Name")
+	}
+}

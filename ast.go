@@ -1298,7 +1298,7 @@ func (s *CreateVirtualTableStatement) Clone() *CreateVirtualTableStatement {
 		return s
 	}
 	other := *s
-	other.Schema = s.Name.Clone()
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	other.ModuleName = s.ModuleName.Clone()
 	other.Arguments = cloneModuleArguments(s.Arguments)
