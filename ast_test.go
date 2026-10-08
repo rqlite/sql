@@ -119,6 +119,23 @@ func TestCreateIndexStatement_String(t *testing.T) {
 }
 
 func TestCreateTableStatement_String(t *testing.T) {
+	// Table options must survive serialization.
+	AssertStatementStringer(t, &sql.CreateTableStatement{
+		Name:    &sql.Ident{Name: "foo"},
+		Columns: []*sql.ColumnDefinition{{Name: &sql.Ident{Name: "bar"}, Type: &sql.Type{Name: &sql.Ident{Name: "INTEGER"}}}},
+		Without: pos(0), Rowid: pos(8),
+	}, `CREATE TABLE "foo" ("bar" INTEGER) WITHOUT ROWID`)
+	AssertStatementStringer(t, &sql.CreateTableStatement{
+		Name:    &sql.Ident{Name: "foo"},
+		Columns: []*sql.ColumnDefinition{{Name: &sql.Ident{Name: "bar"}, Type: &sql.Type{Name: &sql.Ident{Name: "INTEGER"}}}},
+		Strict:  pos(0),
+	}, `CREATE TABLE "foo" ("bar" INTEGER) STRICT`)
+	AssertStatementStringer(t, &sql.CreateTableStatement{
+		Name:    &sql.Ident{Name: "foo"},
+		Columns: []*sql.ColumnDefinition{{Name: &sql.Ident{Name: "bar"}, Type: &sql.Type{Name: &sql.Ident{Name: "INTEGER"}}}},
+		Without: pos(0), Rowid: pos(8), Strict: pos(15),
+	}, `CREATE TABLE "foo" ("bar" INTEGER) WITHOUT ROWID, STRICT`)
+
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name:        &sql.Ident{Name: "foo"},
 		IfNotExists: pos(0),

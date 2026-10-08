@@ -711,6 +711,16 @@ func (s *CreateTableStatement) String() string {
 			buf.WriteString(s.Constraints[i].String())
 		}
 		buf.WriteString(")")
+
+		// Table options.
+		if s.Without.IsValid() {
+			buf.WriteString(" WITHOUT ROWID")
+			if s.Strict.IsValid() {
+				buf.WriteString(", STRICT")
+			}
+		} else if s.Strict.IsValid() {
+			buf.WriteString(" STRICT")
+		}
 	}
 
 	return buf.String()
