@@ -954,6 +954,17 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			}
 		}
 
+	case SelectExpr:
+		// SelectExpr is a value type, so rebuild the node with the walked
+		// statement rather than mutating the local copy.
+		if nn.SelectStatement != nil {
+			if rn, err := walk(v, nn.SelectStatement); err != nil {
+				return nil, err
+			} else {
+				n = SelectExpr{rn.(*SelectStatement)}
+			}
+		}
+
 	case *WithClause:
 		for i, x := range nn.CTEs {
 			if rn, err := walk(v, x); err != nil {

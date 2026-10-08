@@ -51,3 +51,9 @@ func TestWalk_WithClause(t *testing.T) {
 	assertWalkVisits(t, `WITH cte (c1) AS (SELECT a FROM t1) SELECT b FROM cte`, "cte", "c1", "a", "t1", "b")
 	assertWalkVisits(t, `WITH RECURSIVE cte AS (SELECT a FROM t1) INSERT INTO t2 SELECT * FROM cte`, "a", "t1", "t2")
 }
+
+// Ensure Walk descends into scalar subqueries used as expressions.
+func TestWalk_SelectExpr(t *testing.T) {
+	assertWalkVisits(t, `SELECT (SELECT a FROM t1) FROM t2`, "a", "t1", "t2")
+	assertWalkVisits(t, `UPDATE t2 SET x = (SELECT max(a) FROM t1)`, "a", "t1", "x")
+}
