@@ -433,6 +433,43 @@ func TestParser_ParseStatement(t *testing.T) {
 		})
 
 		AssertParseStatementError(t, `CREATE TABLE`, `1:12: expected table name, found 'EOF'`)
+		// TEMP / TEMPORARY tables and views.
+		AssertParseStatement(t, `CREATE TEMP TABLE tbl (col1 TEXT)`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Temp:   pos(7),
+			Table:  pos(12),
+			Name:   &sql.Ident{Name: "tbl", NamePos: pos(18)},
+			Lparen: pos(22),
+			Columns: []*sql.ColumnDefinition{{
+				Name: &sql.Ident{NamePos: pos(23), Name: "col1"},
+				Type: &sql.Type{Name: &sql.Ident{NamePos: pos(28), Name: "TEXT"}},
+			}},
+			Rparen: pos(32),
+		})
+		AssertParseStatement(t, `CREATE TEMPORARY TABLE tbl (col1 TEXT)`, &sql.CreateTableStatement{
+			Create: pos(0),
+			Temp:   pos(7),
+			Table:  pos(17),
+			Name:   &sql.Ident{Name: "tbl", NamePos: pos(23)},
+			Lparen: pos(27),
+			Columns: []*sql.ColumnDefinition{{
+				Name: &sql.Ident{NamePos: pos(28), Name: "col1"},
+				Type: &sql.Type{Name: &sql.Ident{NamePos: pos(33), Name: "TEXT"}},
+			}},
+			Rparen: pos(37),
+		})
+		AssertParseStatement(t, `CREATE TEMP VIEW v AS SELECT 1`, &sql.CreateViewStatement{
+			Create: pos(0),
+			Temp:   pos(7),
+			View:   pos(12),
+			Name:   &sql.Ident{Name: "v", NamePos: pos(17)},
+			As:     pos(19),
+			Select: &sql.SelectStatement{
+				Select:  pos(22),
+				Columns: []*sql.ResultColumn{{Expr: &sql.NumberLit{ValuePos: pos(29), Value: "1"}}},
+			},
+		})
+		AssertParseStatementError(t, `CREATE TEMP INDEX idx ON tbl (x)`, `1:13: expected TABLE, VIEW, or TRIGGER, found 'INDEX'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl `, `1:17: expected AS or left paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (`, `1:18: expected column name, CONSTRAINT, or right paren, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT`, `1:27: expected right paren, found 'EOF'`)

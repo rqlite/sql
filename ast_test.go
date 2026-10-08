@@ -119,6 +119,16 @@ func TestCreateIndexStatement_String(t *testing.T) {
 }
 
 func TestCreateTableStatement_String(t *testing.T) {
+	AssertStatementStringer(t, &sql.CreateTableStatement{
+		Name:    &sql.Ident{Name: "foo"},
+		Temp:    pos(0),
+		Columns: []*sql.ColumnDefinition{{Name: &sql.Ident{Name: "bar"}}},
+	}, `CREATE TEMP TABLE "foo" ("bar")`)
+	AssertStatementStringer(t, &sql.CreateViewStatement{
+		Name:   &sql.Ident{Name: "v"},
+		Temp:   pos(0),
+		Select: &sql.SelectStatement{Columns: []*sql.ResultColumn{{Expr: &sql.NumberLit{Value: "1"}}}},
+	}, `CREATE TEMP VIEW "v" AS SELECT 1`)
 	// Table options must survive serialization.
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name:    &sql.Ident{Name: "foo"},

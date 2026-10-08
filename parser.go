@@ -291,17 +291,29 @@ func (p *Parser) parseCreateStatement() (Statement, error) {
 	assert(p.peek() == CREATE)
 	pos, tok, _ := p.scan()
 
+	// Optional TEMP/TEMPORARY applies to tables, views and triggers only.
+	var tempPos Pos
+	if p.peek() == TEMP || p.peek() == TEMPORARY {
+		tempPos, _, _ = p.scan()
+	}
+
 	switch p.peek() {
 	case TABLE:
-		return p.parseCreateTableStatement(pos)
+		return p.parseCreateTableStatement(pos, tempPos)
+	case VIEW:
+		return p.parseCreateViewStatement(pos, tempPos)
+	case TRIGGER:
+		return p.parseCreateTriggerStatement(pos, tempPos)
+	}
+
+	if tempPos.IsValid() {
+		return nil, p.errorExpected(p.pos, p.tok, "TABLE, VIEW, or TRIGGER")
+	}
+	switch p.peek() {
 	case VIRTUAL:
 		return p.parseCreateVirtualTableStatement(pos)
-	case VIEW:
-		return p.parseCreateViewStatement(pos)
 	case INDEX, UNIQUE:
 		return p.parseCreateIndexStatement(pos)
-	case TRIGGER, TEMP:
-		return p.parseCreateTriggerStatement(pos)
 	default:
 		return nil, p.errorExpected(pos, tok, "TABLE, VIEW, INDEX, TRIGGER")
 	}
@@ -325,11 +337,12 @@ func (p *Parser) parseDropStatement() (Statement, error) {
 	}
 }
 
-func (p *Parser) parseCreateTableStatement(createPos Pos) (_ *CreateTableStatement, err error) {
+func (p *Parser) parseCreateTableStatement(createPos, tempPos Pos) (_ *CreateTableStatement, err error) {
 	assert(p.peek() == TABLE)
 
 	var stmt CreateTableStatement
 	stmt.Create = createPos
+	stmt.Temp = tempPos
 	stmt.Table, _, _ = p.scan()
 
 	// Parse optional "IF NOT EXISTS".
@@ -1121,11 +1134,12 @@ func (p *Parser) parseDropTableStatement(dropPos Pos) (_ *DropTableStatement, er
 	return &stmt, nil
 }
 
-func (p *Parser) parseCreateViewStatement(createPos Pos) (_ *CreateViewStatement, err error) {
+func (p *Parser) parseCreateViewStatement(createPos, tempPos Pos) (_ *CreateViewStatement, err error) {
 	assert(p.peek() == VIEW)
 
 	var stmt CreateViewStatement
 	stmt.Create = createPos
+	stmt.Temp = tempPos
 	stmt.View, _, _ = p.scan()
 
 	// Parse optional "IF NOT EXISTS".
@@ -1330,18 +1344,12 @@ func (p *Parser) parseDropIndexStatement(dropPos Pos) (_ *DropIndexStatement, er
 	return &stmt, nil
 }
 
-func (p *Parser) parseCreateTriggerStatement(createPos Pos) (_ *CreateTriggerStatement, err error) {
-	assert(p.peek() == TRIGGER || p.peek() == TEMP)
+func (p *Parser) parseCreateTriggerStatement(createPos, tempPos Pos) (_ *CreateTriggerStatement, err error) {
+	assert(p.peek() == TRIGGER)
 
 	var stmt CreateTriggerStatement
 	stmt.Create = createPos
-	if p.peek() == TEMP {
-		stmt.Temp, _, _ = p.scan()
-	}
-	if p.peek() != TRIGGER {
-		return &stmt, p.errorExpected(p.pos, p.tok, "TRIGGER")
-	}
-
+	stmt.Temp = tempPos
 	stmt.Trigger, _, _ = p.scan()
 
 	// Parse optional "IF NOT EXISTS".

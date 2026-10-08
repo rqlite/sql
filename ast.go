@@ -648,7 +648,8 @@ func (s *ReleaseStatement) String() string {
 
 type CreateTableStatement struct {
 	Create      Pos    // position of CREATE keyword
-	Table       Pos    // position of CREATE keyword
+	Temp        Pos    // position of TEMP or TEMPORARY keyword (optional)
+	Table       Pos    // position of TABLE keyword
 	If          Pos    // position of IF keyword (optional)
 	IfNot       Pos    // position of NOT keyword (optional)
 	IfNotExists Pos    // position of EXISTS keyword (optional)
@@ -685,7 +686,11 @@ func (s *CreateTableStatement) Clone() *CreateTableStatement {
 // String returns the string representation of the statement.
 func (s *CreateTableStatement) String() string {
 	var buf bytes.Buffer
-	buf.WriteString("CREATE TABLE")
+	buf.WriteString("CREATE")
+	if s.Temp.IsValid() {
+		buf.WriteString(" TEMP")
+	}
+	buf.WriteString(" TABLE")
 	if s.IfNotExists.IsValid() {
 		buf.WriteString(" IF NOT EXISTS")
 	}
@@ -2570,6 +2575,7 @@ func (s *DropTableStatement) String() string {
 
 type CreateViewStatement struct {
 	Create      Pos              // position of CREATE keyword
+	Temp        Pos              // position of TEMP or TEMPORARY keyword (optional)
 	View        Pos              // position of VIEW keyword
 	If          Pos              // position of IF keyword
 	IfNot       Pos              // position of NOT keyword after IF
@@ -2597,7 +2603,11 @@ func (s *CreateViewStatement) Clone() *CreateViewStatement {
 // String returns the string representation of the statement.
 func (s *CreateViewStatement) String() string {
 	var buf bytes.Buffer
-	buf.WriteString("CREATE VIEW")
+	buf.WriteString("CREATE")
+	if s.Temp.IsValid() {
+		buf.WriteString(" TEMP")
+	}
+	buf.WriteString(" VIEW")
 	if s.IfNotExists.IsValid() {
 		buf.WriteString(" IF NOT EXISTS")
 	}
@@ -2757,7 +2767,7 @@ func (s *DropIndexStatement) String() string {
 
 type CreateTriggerStatement struct {
 	Create      Pos    // position of CREATE keyword
-	Temp        Pos    // position of TEMP keyword
+	Temp        Pos    // position of TEMP or TEMPORARY keyword (optional)
 	Trigger     Pos    // position of TRIGGER keyword
 	If          Pos    // position of IF keyword
 	IfNot       Pos    // position of NOT keyword after IF
