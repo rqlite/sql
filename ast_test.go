@@ -128,6 +128,11 @@ func TestAttachStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sql.AttachStatement{Database: pos(0), Expr: &sql.StringLit{Value: "f"}, Schema: &sql.Ident{Name: "d"}, KeyExpr: &sql.StringLit{Value: "k"}}, `ATTACH DATABASE 'f' AS "d" KEY 'k'`)
 }
 
+func TestDetachStatement_String(t *testing.T) {
+	AssertStatementStringer(t, &sql.DetachStatement{Schema: &sql.Ident{Name: "d"}}, `DETACH "d"`)
+	AssertStatementStringer(t, &sql.DetachStatement{Database: pos(0), Schema: &sql.Ident{Name: "d"}}, `DETACH DATABASE "d"`)
+}
+
 func TestCreateTableStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name:    &sql.Ident{Name: "foo"},

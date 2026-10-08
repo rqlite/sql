@@ -156,6 +156,8 @@ func (p *Parser) parseNonExplainStatement() (Statement, error) {
 		return p.parseSavepointStatement()
 	case RELEASE:
 		return p.parseReleaseStatement()
+	case DETACH:
+		return p.parseDetachStatement()
 	case ATTACH:
 		return p.parseAttachStatement()
 	case VACUUM:
@@ -3639,6 +3641,20 @@ func (p *Parser) parseAttachStatement() (_ *AttachStatement, err error) {
 		if stmt.KeyExpr, err = p.ParseExpr(); err != nil {
 			return &stmt, err
 		}
+	}
+	return &stmt, nil
+}
+
+func (p *Parser) parseDetachStatement() (_ *DetachStatement, err error) {
+	assert(p.peek() == DETACH)
+
+	var stmt DetachStatement
+	stmt.Detach, _, _ = p.scan()
+	if p.peek() == DATABASE {
+		stmt.Database, _, _ = p.scan()
+	}
+	if stmt.Schema, err = p.parseIdent("schema name"); err != nil {
+		return &stmt, err
 	}
 	return &stmt, nil
 }

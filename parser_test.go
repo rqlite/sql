@@ -6472,6 +6472,12 @@ func TestParser_Attach(t *testing.T) {
 	AssertParseStatementError(t, `ATTACH 'f' AS`, "1:13: expected schema name, found 'EOF'")
 }
 
+func TestParser_Detach(t *testing.T) {
+	AssertParseStatement(t, `DETACH d`, &sql.DetachStatement{Detach: pos(0), Schema: &sql.Ident{Name: "d", NamePos: pos(7)}})
+	AssertParseStatement(t, `DETACH DATABASE d`, &sql.DetachStatement{Detach: pos(0), Database: pos(7), Schema: &sql.Ident{Name: "d", NamePos: pos(16)}})
+	AssertParseStatementError(t, `DETACH`, "1:6: expected schema name, found 'EOF'")
+}
+
 // Ensure the SELECT of an INSERT may itself begin with a WITH clause.
 func TestParser_InsertWithSelect(t *testing.T) {
 	stmt := ParseStatementOrFail(t, `INSERT INTO t (x) WITH c AS (SELECT 1) SELECT * FROM c`).(*sql.InsertStatement)

@@ -71,6 +71,7 @@ func (*Raise) node()                       {}
 func (*Range) node()                       {}
 func (*ReindexStatement) node()            {}
 func (*ReleaseStatement) node()            {}
+func (*DetachStatement) node()             {}
 func (*AttachStatement) node()             {}
 func (*VacuumStatement) node()             {}
 func (*ResultColumn) node()                {}
@@ -115,6 +116,7 @@ func (*InsertStatement) stmt()             {}
 func (*PragmaStatement) stmt()             {}
 func (*ReindexStatement) stmt()            {}
 func (*ReleaseStatement) stmt()            {}
+func (*DetachStatement) stmt()             {}
 func (*AttachStatement) stmt()             {}
 func (*VacuumStatement) stmt()             {}
 func (*RollbackStatement) stmt()           {}
@@ -166,6 +168,8 @@ func CloneStatement(stmt Statement) Statement {
 	case *ReindexStatement:
 		return stmt.Clone()
 	case *ReleaseStatement:
+		return stmt.Clone()
+	case *DetachStatement:
 		return stmt.Clone()
 	case *AttachStatement:
 		return stmt.Clone()
@@ -718,6 +722,33 @@ func (s *AttachStatement) String() string {
 	if s.KeyExpr != nil {
 		fmt.Fprintf(&buf, " KEY %s", s.KeyExpr.String())
 	}
+	return buf.String()
+}
+
+type DetachStatement struct {
+	Detach   Pos    // position of DETACH keyword
+	Database Pos    // position of DATABASE keyword (optional)
+	Schema   *Ident // schema name to detach
+}
+
+// Clone returns a deep copy of s.
+func (s *DetachStatement) Clone() *DetachStatement {
+	if s == nil {
+		return nil
+	}
+	other := *s
+	other.Schema = s.Schema.Clone()
+	return &other
+}
+
+// String returns the string representation of the statement.
+func (s *DetachStatement) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("DETACH")
+	if s.Database.IsValid() {
+		buf.WriteString(" DATABASE")
+	}
+	fmt.Fprintf(&buf, " %s", s.Schema.String())
 	return buf.String()
 }
 
