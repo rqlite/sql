@@ -161,21 +161,36 @@ func TestCreateTableStatement_String(t *testing.T) {
 			Constraints: []sql.Constraint{&sql.PrimaryKeyConstraint{Asc: pos(0)}},
 		}},
 	}, `CREATE TABLE "foo" ("bar" INTEGER PRIMARY KEY ASC)`)
+	// Conflict clauses on column and table constraints. Each statement is
+	// accepted by SQLite itself.
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name: &sql.Ident{Name: "foo"},
-		Columns: []*sql.ColumnDefinition{{
-			Name: &sql.Ident{Name: "bar"},
-			Constraints: []sql.Constraint{
-				&sql.PrimaryKeyConstraint{Conflict: &sql.ConflictClause{Rollback: pos(0)}, Autoincrement: pos(0)},
-				&sql.NotNullConstraint{Conflict: &sql.ConflictClause{Replace: pos(0)}},
-				&sql.UniqueConstraint{Conflict: &sql.ConflictClause{Ignore: pos(0)}},
+		Columns: []*sql.ColumnDefinition{
+			{
+				Name:        &sql.Ident{Name: "bar"},
+				Type:        &sql.Type{Name: &sql.Ident{Name: "INTEGER"}},
+				Constraints: []sql.Constraint{&sql.PrimaryKeyConstraint{Asc: pos(0), Conflict: &sql.ConflictClause{Rollback: pos(0)}, Autoincrement: pos(0)}},
 			},
-		}},
+			{
+				Name:        &sql.Ident{Name: "baz"},
+				Constraints: []sql.Constraint{&sql.NotNullConstraint{Conflict: &sql.ConflictClause{Replace: pos(0)}}},
+			},
+			{
+				Name:        &sql.Ident{Name: "qux"},
+				Constraints: []sql.Constraint{&sql.UniqueConstraint{Conflict: &sql.ConflictClause{Ignore: pos(0)}}},
+			},
+		},
 		Constraints: []sql.Constraint{
-			&sql.UniqueConstraint{Columns: []*sql.IndexedColumn{{X: &sql.Ident{Name: "bar"}}}, Conflict: &sql.ConflictClause{Fail: pos(0)}},
+			&sql.UniqueConstraint{Columns: []*sql.IndexedColumn{{X: &sql.Ident{Name: "baz"}}}, Conflict: &sql.ConflictClause{Fail: pos(0)}},
+		},
+	}, `CREATE TABLE "foo" ("bar" INTEGER PRIMARY KEY ASC ON CONFLICT ROLLBACK AUTOINCREMENT, "baz" NOT NULL ON CONFLICT REPLACE, "qux" UNIQUE ON CONFLICT IGNORE, UNIQUE ("baz") ON CONFLICT FAIL)`)
+	AssertStatementStringer(t, &sql.CreateTableStatement{
+		Name:    &sql.Ident{Name: "foo"},
+		Columns: []*sql.ColumnDefinition{{Name: &sql.Ident{Name: "bar"}}},
+		Constraints: []sql.Constraint{
 			&sql.PrimaryKeyConstraint{Columns: []*sql.Ident{{Name: "bar"}}, Conflict: &sql.ConflictClause{Abort: pos(0)}},
 		},
-	}, `CREATE TABLE "foo" ("bar" PRIMARY KEY ON CONFLICT ROLLBACK AUTOINCREMENT NOT NULL ON CONFLICT REPLACE UNIQUE ON CONFLICT IGNORE, UNIQUE ("bar") ON CONFLICT FAIL, PRIMARY KEY ("bar") ON CONFLICT ABORT)`)
+	}, `CREATE TABLE "foo" ("bar", PRIMARY KEY ("bar") ON CONFLICT ABORT)`)
 
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name:        &sql.Ident{Name: "foo"},

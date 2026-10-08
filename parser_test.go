@@ -803,40 +803,45 @@ func TestParser_ParseStatement(t *testing.T) {
 						t.Fatal(diff)
 					}
 				})
-				// Constraints may carry an ON CONFLICT clause.
+				// Constraints may carry an ON CONFLICT clause. Both statements are
+				// accepted by SQLite itself.
 				t.Run("OnConflict", func(t *testing.T) {
-					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER PRIMARY KEY DESC ON CONFLICT ROLLBACK AUTOINCREMENT, col2 TEXT NOT NULL ON CONFLICT REPLACE, col3 UNIQUE ON CONFLICT IGNORE, UNIQUE (col2) ON CONFLICT FAIL, PRIMARY KEY (col3) ON CONFLICT ABORT)`).(*sql.CreateTableStatement)
+					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER PRIMARY KEY ASC ON CONFLICT ROLLBACK AUTOINCREMENT, col2 TEXT NOT NULL ON CONFLICT REPLACE, col3 UNIQUE ON CONFLICT IGNORE, UNIQUE (col2) ON CONFLICT FAIL)`).(*sql.CreateTableStatement)
 					if diff := deepEqual(stmt.Columns[0].Constraints[0], &sql.PrimaryKeyConstraint{
 						Primary:       pos(31),
 						Key:           pos(39),
-						Desc:          pos(43),
-						Conflict:      &sql.ConflictClause{On: pos(48), Conflict: pos(51), Rollback: pos(60)},
-						Autoincrement: pos(69),
+						Asc:           pos(43),
+						Conflict:      &sql.ConflictClause{On: pos(47), Conflict: pos(50), Rollback: pos(59)},
+						Autoincrement: pos(68),
 					}); diff != "" {
 						t.Fatal(diff)
 					}
 					if diff := deepEqual(stmt.Columns[1].Constraints[0], &sql.NotNullConstraint{
-						Not:      pos(94),
-						Null:     pos(98),
-						Conflict: &sql.ConflictClause{On: pos(103), Conflict: pos(106), Replace: pos(115)},
+						Not:      pos(93),
+						Null:     pos(97),
+						Conflict: &sql.ConflictClause{On: pos(102), Conflict: pos(105), Replace: pos(114)},
 					}); diff != "" {
 						t.Fatal(diff)
 					}
 					if diff := deepEqual(stmt.Columns[2].Constraints[0], &sql.UniqueConstraint{
-						Unique:   pos(129),
-						Conflict: &sql.ConflictClause{On: pos(136), Conflict: pos(139), Ignore: pos(148)},
+						Unique:   pos(128),
+						Conflict: &sql.ConflictClause{On: pos(135), Conflict: pos(138), Ignore: pos(147)},
 					}); diff != "" {
 						t.Fatal(diff)
 					}
-					if len(stmt.Constraints) != 2 {
-						t.Fatalf("expected 2 table constraints, got %d", len(stmt.Constraints))
-					}
-					if c := stmt.Constraints[0].(*sql.UniqueConstraint).Conflict; c == nil || !c.Fail.IsValid() {
+					if len(stmt.Constraints) != 1 {
+						t.Fatalf("expected 1 table constraint, got %d", len(stmt.Constraints))
+					} else if c := stmt.Constraints[0].(*sql.UniqueConstraint).Conflict; c == nil || !c.Fail.IsValid() {
 						t.Fatalf("expected UNIQUE ... ON CONFLICT FAIL, got %v", c)
 					}
-					if c := stmt.Constraints[1].(*sql.PrimaryKeyConstraint).Conflict; c == nil || !c.Abort.IsValid() {
+
+					stmt = ParseStatementOrFail(t, `CREATE TABLE tbl2 (col1 INTEGER, col2 TEXT NOT NULL, PRIMARY KEY (col1) ON CONFLICT ABORT, UNIQUE (col2) ON CONFLICT FAIL)`).(*sql.CreateTableStatement)
+					if len(stmt.Constraints) != 2 {
+						t.Fatalf("expected 2 table constraints, got %d", len(stmt.Constraints))
+					} else if c := stmt.Constraints[0].(*sql.PrimaryKeyConstraint).Conflict; c == nil || !c.Abort.IsValid() {
 						t.Fatalf("expected PRIMARY KEY ... ON CONFLICT ABORT, got %v", c)
 					}
+
 					AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER NOT NULL ON CONFLICT)`, `1:52: expected ROLLBACK, ABORT, FAIL, IGNORE, or REPLACE, found ')'`)
 					AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER NOT NULL ON DELETE)`, `1:44: expected CONFLICT, found 'DELETE'`)
 				})
