@@ -98,16 +98,24 @@ func TestScanner_Scan(t *testing.T) {
 		t.Run("BadHex", func(t *testing.T) {
 			AssertScan(t, `x'hello`, sql.ILLEGAL, `x'h`)
 		})
+		// A blob literal must contain an even number of hex digits.
+		t.Run("OddDigits", func(t *testing.T) {
+			AssertScan(t, `x'abc'`, sql.ILLEGAL, `x'abc'`)
+			AssertScan(t, `x'0'`, sql.ILLEGAL, `x'0'`)
+		})
+		t.Run("Empty", func(t *testing.T) {
+			AssertScan(t, `x''`, sql.BLOB, ``)
+		})
 	})
 
 	t.Run("INTEGER", func(t *testing.T) {
 		AssertScan(t, `012`, sql.INTEGER, `012`)
 		AssertScan(t, `123`, sql.INTEGER, `123`)
 		AssertScan(t, `0xe3`, sql.INTEGER, `0xe3`)
-		// BUG: see comment in scanner
-		// AssertScanError(t, `0x`, sql.ILLEGAL)
-		// AssertScanError(t, `4xe3`, sql.ILLEGAL)
-		// AssertScanError(t, `0x12345678912345678`, sql.ILLEGAL, ``)
+		AssertScan(t, `0X1F`, sql.INTEGER, `0x1F`)
+		// A hex prefix must be followed by at least one hex digit.
+		AssertScan(t, `0x`, sql.ILLEGAL, `0x`)
+		AssertScan(t, `0xg`, sql.ILLEGAL, `0x`)
 	})
 
 	t.Run("FLOAT", func(t *testing.T) {

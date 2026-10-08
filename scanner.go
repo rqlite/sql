@@ -283,6 +283,10 @@ func (s *Scanner) scanBlob() (Pos, Token, string) {
 	for i := 0; ; i++ {
 		ch, _ := s.read()
 		if ch == '\'' {
+			// Each byte is two hex digits, so an odd count is malformed.
+			if s.buf.Len()%2 != 0 {
+				return pos, ILLEGAL, string(start) + `'` + s.buf.String() + `'`
+			}
 			return pos, BLOB, s.buf.String()
 		} else if ch == -1 {
 			return pos, ILLEGAL, string(start) + `'` + s.buf.String()
@@ -310,11 +314,10 @@ func (s *Scanner) scanNumber() (Pos, Token, string) {
 				ch, _ := s.read()
 				s.buf.WriteRune(ch)
 			}
-			// TODO: error handling:
-			// if len(s.buf.String()) < 2 => invalid
-			// reason: means we scanned '0x'
-			// if len(s.buf.String()) - 2 > 16 => invalid
-			// reason: according to spec maximum of 16 significant digits)
+			// A hex prefix with no digits is not a number.
+			if s.buf.Len() == 2 {
+				return pos, ILLEGAL, s.buf.String()
+			}
 			return pos, tok, s.buf.String()
 		}
 	}
