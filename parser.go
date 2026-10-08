@@ -1249,7 +1249,7 @@ func (p *Parser) parseDropViewStatement(dropPos Pos) (_ *DropViewStatement, err 
 		stmt.IfExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("view name"); err != nil {
+	if stmt.Schema, stmt.Dot, stmt.Name, err = p.parseSchemaQualifiedIdent("view name"); err != nil {
 		return &stmt, err
 	}
 

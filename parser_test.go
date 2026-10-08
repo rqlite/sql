@@ -6389,6 +6389,10 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 			v := st.(*sql.AnalyzeStatement)
 			return v.Schema, v.Name
 		}},
+		{`DROP VIEW IF EXISTS main.v`, func(st sql.Statement) (*sql.Ident, *sql.Ident) {
+			v := st.(*sql.DropViewStatement)
+			return v.Schema, v.Name
+		}},
 		{`CREATE TRIGGER trg AFTER INSERT ON main.t BEGIN SELECT 1; END`, func(st sql.Statement) (*sql.Ident, *sql.Ident) {
 			v := st.(*sql.CreateTriggerStatement)
 			return v.TableSchema, v.Table

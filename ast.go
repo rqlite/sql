@@ -2686,6 +2686,8 @@ type DropViewStatement struct {
 	View     Pos    // position of VIEW keyword
 	If       Pos    // position of IF keyword
 	IfExists Pos    // position of EXISTS keyword after IF
+	Schema   *Ident // schema name (optional)
+	Dot      Pos    // position of DOT token (optional)
 	Name     *Ident // view name
 }
 
@@ -2695,6 +2697,7 @@ func (s *DropViewStatement) Clone() *DropViewStatement {
 		return nil
 	}
 	other := *s
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	return &other
 }
@@ -2706,7 +2709,12 @@ func (s *DropViewStatement) String() string {
 	if s.IfExists.IsValid() {
 		buf.WriteString(" IF EXISTS")
 	}
-	fmt.Fprintf(&buf, " %s", s.Name.String())
+	buf.WriteString(" ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Name.String())
 	return buf.String()
 }
 

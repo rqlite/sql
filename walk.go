@@ -169,6 +169,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *DropViewStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
