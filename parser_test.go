@@ -5228,6 +5228,41 @@ func TestParser_ParseExpr(t *testing.T) {
 			OpPos: pos(2), Op: sql.ISNOT,
 			Y: &sql.NumberLit{ValuePos: pos(9), Value: "2"},
 		})
+		// IS NOT and the NOT-prefixed operators share the precedence of IS/LIKE,
+		// so they must not swallow a following AND/OR.
+		AssertParseExpr(t, `1 IS NOT 2 AND 3`, &sql.BinaryExpr{
+			X: &sql.BinaryExpr{
+				X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+				OpPos: pos(2), Op: sql.ISNOT,
+				Y: &sql.NumberLit{ValuePos: pos(9), Value: "2"},
+			},
+			OpPos: pos(11), Op: sql.AND,
+			Y: &sql.NumberLit{ValuePos: pos(15), Value: "3"},
+		})
+		AssertParseExpr(t, `1 NOT LIKE 2 OR 3`, &sql.BinaryExpr{
+			X: &sql.BinaryExpr{
+				X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+				OpPos: pos(2), Op: sql.NOTLIKE,
+				Y: &sql.NumberLit{ValuePos: pos(11), Value: "2"},
+			},
+			OpPos: pos(13), Op: sql.OR,
+			Y: &sql.NumberLit{ValuePos: pos(16), Value: "3"},
+		})
+		AssertParseExpr(t, `1 NOT GLOB 2 AND 3`, &sql.BinaryExpr{
+			X: &sql.BinaryExpr{
+				X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+				OpPos: pos(2), Op: sql.NOTGLOB,
+				Y: &sql.NumberLit{ValuePos: pos(11), Value: "2"},
+			},
+			OpPos: pos(13), Op: sql.AND,
+			Y: &sql.NumberLit{ValuePos: pos(17), Value: "3"},
+		})
+		// A NOT-prefixed operator binds tighter than a leading unary NOT.
+		AssertParseExpr(t, `NOT 1 NOT LIKE 2`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.NOT, X: &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(4), Value: "1"},
+			OpPos: pos(6), Op: sql.NOTLIKE,
+			Y: &sql.NumberLit{ValuePos: pos(15), Value: "2"},
+		}})
 		AssertParseExpr(t, `1 LIKE 2'`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.LIKE,

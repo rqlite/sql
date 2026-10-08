@@ -555,8 +555,12 @@ func (op Token) Precedence() int {
 	case AND:
 		return 2
 	case NOT:
-		return 3
-	case IS, MATCH, LIKE, GLOB, REGEXP, BETWEEN, IN, ISNULL, NOTNULL, NE, EQ:
+		// In binary position NOT is always the prefix of a compound operator
+		// (NOT IN, NOT LIKE, NOT BETWEEN, ...), so it has that operator's
+		// precedence. Unary NOT is handled by the parser directly.
+		return 4
+	case IS, ISNOT, MATCH, NOTMATCH, LIKE, NOTLIKE, GLOB, NOTGLOB, REGEXP, NOTREGEXP,
+		BETWEEN, NOTBETWEEN, IN, NOTIN, ISNULL, NOTNULL, NE, EQ:
 		return 4
 	case GT, LE, LT, GE:
 		return 5
