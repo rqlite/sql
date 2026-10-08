@@ -3063,6 +3063,7 @@ func (s *UpdateStatement) Clone() *UpdateStatement {
 	other.Assignments = cloneAssignments(s.Assignments)
 	other.Source = CloneSource(s.Source)
 	other.WhereExpr = CloneExpr(s.WhereExpr)
+	other.ReturningClause = s.ReturningClause.Clone()
 	return &other
 }
 
@@ -3123,6 +3124,7 @@ func (c *ReturningClause) Clone() *ReturningClause {
 		return nil
 	}
 	other := *c
+	other.Columns = cloneResultColumns(c.Columns)
 	return &other
 }
 
@@ -3173,6 +3175,7 @@ func (s *DeleteStatement) Clone() *DeleteStatement {
 	other.OrderingTerms = cloneOrderingTerms(s.OrderingTerms)
 	other.LimitExpr = CloneExpr(s.LimitExpr)
 	other.OffsetExpr = CloneExpr(s.OffsetExpr)
+	other.ReturningClause = s.ReturningClause.Clone()
 	return &other
 }
 

@@ -31,3 +31,31 @@ func TestCreateVirtualTableStatement_Clone(t *testing.T) {
 		t.Fatal("expected deep copy of Schema and Name")
 	}
 }
+
+func TestReturningClause_Clone(t *testing.T) {
+	// The clause itself must be deep copied.
+	rc := &sql.ReturningClause{Columns: []*sql.ResultColumn{{Expr: &sql.Ident{Name: "x"}}}}
+	c := rc.Clone()
+	if diff := deep.Equal(rc, c); diff != nil {
+		t.Fatal(diff)
+	} else if c.Columns[0] == rc.Columns[0] {
+		t.Fatal("expected deep copy of Columns")
+	}
+
+	// Statements carrying a RETURNING clause must deep copy it too.
+	u := &sql.UpdateStatement{
+		Table:           &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}},
+		Assignments:     []*sql.Assignment{{Columns: []*sql.Ident{{Name: "x"}}, Expr: &sql.NumberLit{Value: "1"}}},
+		ReturningClause: rc,
+	}
+	if uc := u.Clone(); uc.ReturningClause == u.ReturningClause {
+		t.Fatal("UpdateStatement.Clone() shares ReturningClause")
+	}
+	d := &sql.DeleteStatement{
+		Table:           &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}},
+		ReturningClause: rc,
+	}
+	if dc := d.Clone(); dc.ReturningClause == d.ReturningClause {
+		t.Fatal("DeleteStatement.Clone() shares ReturningClause")
+	}
+}
