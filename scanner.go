@@ -37,6 +37,8 @@ func (s *Scanner) Scan() (pos Pos, token Token, lit string) {
 			return s.scanUnquotedIdent(s.pos, "")
 		} else if ch == '"' || ch == '`' {
 			return s.scanQuotedIdent()
+		} else if ch == '[' {
+			return s.scanBracketIdent()
 		} else if ch == '\'' {
 			return s.scanString()
 		} else if ch == '?' || ch == ':' || ch == '@' || ch == '$' {
@@ -164,6 +166,25 @@ func (s *Scanner) scanQuotedIdent() (Pos, Token, string) {
 				continue
 			}
 			return pos, tok, s.buf.String()
+		}
+		s.buf.WriteRune(ch)
+	}
+}
+
+// scanBracketIdent scans a [bracketed] identifier, which SQLite accepts for
+// compatibility with MS Access and SQL Server. There is no escape sequence;
+// the identifier ends at the first closing bracket.
+func (s *Scanner) scanBracketIdent() (Pos, Token, string) {
+	ch, pos := s.read()
+	assert(ch == '[')
+
+	s.buf.Reset()
+	for {
+		ch, _ := s.read()
+		if ch == -1 {
+			return pos, ILLEGAL, "[" + s.buf.String()
+		} else if ch == ']' {
+			return pos, QIDENT, s.buf.String()
 		}
 		s.buf.WriteRune(ch)
 	}

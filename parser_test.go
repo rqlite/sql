@@ -6286,6 +6286,7 @@ func TestParser_NonKeywordIdents(t *testing.T) {
 		`SELECT function, register, variable FROM tbl`,
 		`CREATE TABLE tbl (vector BLOB, strict INTEGER, stored TEXT)`,
 		`SELECT * FROM vector WHERE span > 1`,
+		`SELECT [a b], [c] FROM [my table]`,
 	} {
 		stmt, err := sql.NewParser(strings.NewReader(s)).ParseStatement()
 		if err != nil {

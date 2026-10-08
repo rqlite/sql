@@ -26,6 +26,14 @@ func TestScanner_Scan(t *testing.T) {
 		t.Run("BacktickQuotedContainingQuote", func(t *testing.T) {
 			AssertScan(t, "`a\"b`", sql.BIDENT, `a"b`)
 		})
+		// SQLite accepts [bracketed] identifiers for MS Access/SQL Server
+		// compatibility.
+		t.Run("Bracketed", func(t *testing.T) {
+			AssertScan(t, `[crazy ~!#*&# column name]`, sql.QIDENT, `crazy ~!#*&# column name`)
+		})
+		t.Run("BracketedNoEnd", func(t *testing.T) {
+			AssertScan(t, `[unfinished`, sql.ILLEGAL, `[unfinished`)
+		})
 		t.Run("QuotedEscapedBacktickNotEscape", func(t *testing.T) {
 			AssertScan(t, "\"a``b\"", sql.QIDENT, "a``b")
 		})
