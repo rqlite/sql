@@ -447,11 +447,15 @@ func (p *Parser) parseColumnDefinitions() (_ []*ColumnDefinition, err error) {
 				return columns, err
 			}
 			// Column definitions must be comma separated. Without a comma the
-			// list is complete and the caller verifies what follows.
+			// list is complete and the caller verifies what follows. After a
+			// comma another column or a table constraint is required.
 			if p.peek() != COMMA {
 				return columns, nil
 			}
 			p.scan()
+			if p.peek() == RP {
+				return columns, p.errorExpected(p.pos, p.tok, "column name or CONSTRAINT")
+			}
 		} else if tok == RP || isConstraintStartToken(tok, true) {
 			return columns, nil
 		} else {

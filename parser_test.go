@@ -480,6 +480,8 @@ func TestParser_ParseStatement(t *testing.T) {
 		// the type is part of a multi-word type name, so a constraint is used
 		// here to end the first definition.)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT NOT NULL col2 INTEGER)`, `1:38: expected right paren, found col2`)
+		// A trailing comma is not valid; something must follow it.
+		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT,)`, `1:29: expected column name or CONSTRAINT, found ')'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, col2 INTEGER PRIMARY KEY col3)`, `1:55: expected right paren, found col3`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT) STRICT,`, `1:36: expected STRICT or WITHOUT ROWID, found 'EOF'`)
 
