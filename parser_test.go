@@ -2536,6 +2536,72 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 			},
 		})
+		// RIGHT and FULL joins must be parsed as join operators, not as a
+		// table alias followed by an inner join.
+		AssertParseStatement(t, `SELECT * FROM foo RIGHT JOIN bar`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.JoinClause{
+				X: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(14), Name: "foo"},
+				},
+				Operator: &sql.JoinOperator{Right: pos(18), Join: pos(24)},
+				Y: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(29), Name: "bar"},
+				},
+			},
+		})
+		AssertParseStatement(t, `SELECT * FROM foo RIGHT OUTER JOIN bar`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.JoinClause{
+				X: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(14), Name: "foo"},
+				},
+				Operator: &sql.JoinOperator{Right: pos(18), Outer: pos(24), Join: pos(30)},
+				Y: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(35), Name: "bar"},
+				},
+			},
+		})
+		AssertParseStatement(t, `SELECT * FROM foo FULL OUTER JOIN bar`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.JoinClause{
+				X: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(14), Name: "foo"},
+				},
+				Operator: &sql.JoinOperator{Full: pos(18), Outer: pos(23), Join: pos(29)},
+				Y: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(34), Name: "bar"},
+				},
+			},
+		})
+		AssertParseStatement(t, `SELECT * FROM foo NATURAL FULL JOIN bar`, &sql.SelectStatement{
+			Select: pos(0),
+			Columns: []*sql.ResultColumn{
+				{Star: pos(7)},
+			},
+			From: pos(9),
+			Source: &sql.JoinClause{
+				X: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(14), Name: "foo"},
+				},
+				Operator: &sql.JoinOperator{Natural: pos(18), Full: pos(26), Join: pos(31)},
+				Y: &sql.QualifiedTableName{
+					Name: &sql.Ident{NamePos: pos(36), Name: "bar"},
+				},
+			},
+		})
 		AssertParseStatement(t, `SELECT * FROM foo CROSS JOIN bar`, &sql.SelectStatement{
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{

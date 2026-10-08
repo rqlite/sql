@@ -2240,7 +2240,7 @@ func (p *Parser) parseSource() (source Source, err error) {
 	for {
 		// Exit immediately if not part of a join operator.
 		switch p.peek() {
-		case COMMA, NATURAL, LEFT, INNER, CROSS, JOIN:
+		case COMMA, NATURAL, LEFT, RIGHT, FULL, INNER, CROSS, JOIN:
 		default:
 			return source, nil
 		}
@@ -2295,10 +2295,18 @@ func (p *Parser) parseJoinOperator() (*JoinOperator, error) {
 		op.Natural, _, _ = p.scan()
 	}
 
-	// Parse "LEFT", "LEFT OUTER", "INNER", or "CROSS"
+	// Parse "LEFT", "RIGHT" or "FULL" (each optionally followed by "OUTER"),
+	// "INNER", or "CROSS".
 	switch p.peek() {
-	case LEFT:
-		op.Left, _, _ = p.scan()
+	case LEFT, RIGHT, FULL:
+		switch pos, tok, _ := p.scan(); tok {
+		case LEFT:
+			op.Left = pos
+		case RIGHT:
+			op.Right = pos
+		default:
+			op.Full = pos
+		}
 		if p.peek() == OUTER {
 			op.Outer, _, _ = p.scan()
 		}

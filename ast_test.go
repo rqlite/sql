@@ -826,6 +826,24 @@ func TestSelectStatement_String(t *testing.T) {
 		Columns: []*sql.ResultColumn{{Star: pos(0)}},
 		Source: &sql.JoinClause{
 			X:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "x"}},
+			Operator: &sql.JoinOperator{Right: pos(0), Outer: pos(0)},
+			Y:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "y"}},
+		},
+	}, `SELECT * FROM "x" RIGHT OUTER JOIN "y"`)
+
+	AssertStatementStringer(t, &sql.SelectStatement{
+		Columns: []*sql.ResultColumn{{Star: pos(0)}},
+		Source: &sql.JoinClause{
+			X:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "x"}},
+			Operator: &sql.JoinOperator{Full: pos(0)},
+			Y:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "y"}},
+		},
+	}, `SELECT * FROM "x" FULL JOIN "y"`)
+
+	AssertStatementStringer(t, &sql.SelectStatement{
+		Columns: []*sql.ResultColumn{{Star: pos(0)}},
+		Source: &sql.JoinClause{
+			X:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "x"}},
 			Operator: &sql.JoinOperator{Cross: pos(0)},
 			Y:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "y"}},
 		},

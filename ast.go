@@ -3658,6 +3658,8 @@ type JoinOperator struct {
 	Comma   Pos // position of comma
 	Natural Pos // position of NATURAL keyword
 	Left    Pos // position of LEFT keyword
+	Right   Pos // position of RIGHT keyword
+	Full    Pos // position of FULL keyword
 	Outer   Pos // position of OUTER keyword
 	Inner   Pos // position of INNER keyword
 	Cross   Pos // position of CROSS keyword
@@ -3683,8 +3685,14 @@ func (op *JoinOperator) String() string {
 	if op.Natural.IsValid() {
 		buf.WriteString(" NATURAL")
 	}
-	if op.Left.IsValid() {
-		buf.WriteString(" LEFT")
+	if op.Left.IsValid() || op.Right.IsValid() || op.Full.IsValid() {
+		if op.Left.IsValid() {
+			buf.WriteString(" LEFT")
+		} else if op.Right.IsValid() {
+			buf.WriteString(" RIGHT")
+		} else {
+			buf.WriteString(" FULL")
+		}
 		if op.Outer.IsValid() {
 			buf.WriteString(" OUTER")
 		}
