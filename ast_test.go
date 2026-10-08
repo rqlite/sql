@@ -135,6 +135,22 @@ func TestCreateTableStatement_String(t *testing.T) {
 		Columns: []*sql.ColumnDefinition{{Name: &sql.Ident{Name: "bar"}, Type: &sql.Type{Name: &sql.Ident{Name: "INTEGER"}}}},
 		Without: pos(0), Rowid: pos(8), Strict: pos(15),
 	}, `CREATE TABLE "foo" ("bar" INTEGER) WITHOUT ROWID, STRICT`)
+	AssertStatementStringer(t, &sql.CreateTableStatement{
+		Name: &sql.Ident{Name: "foo"},
+		Columns: []*sql.ColumnDefinition{{
+			Name:        &sql.Ident{Name: "bar"},
+			Type:        &sql.Type{Name: &sql.Ident{Name: "INTEGER"}},
+			Constraints: []sql.Constraint{&sql.PrimaryKeyConstraint{Desc: pos(0), Autoincrement: pos(0)}},
+		}},
+	}, `CREATE TABLE "foo" ("bar" INTEGER PRIMARY KEY DESC AUTOINCREMENT)`)
+	AssertStatementStringer(t, &sql.CreateTableStatement{
+		Name: &sql.Ident{Name: "foo"},
+		Columns: []*sql.ColumnDefinition{{
+			Name:        &sql.Ident{Name: "bar"},
+			Type:        &sql.Type{Name: &sql.Ident{Name: "INTEGER"}},
+			Constraints: []sql.Constraint{&sql.PrimaryKeyConstraint{Asc: pos(0)}},
+		}},
+	}, `CREATE TABLE "foo" ("bar" INTEGER PRIMARY KEY ASC)`)
 
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name:        &sql.Ident{Name: "foo"},

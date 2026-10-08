@@ -833,6 +833,8 @@ type PrimaryKeyConstraint struct {
 	Columns []*Ident // indexed columns (table only)
 	Rparen  Pos      // position of right paren (table only)
 
+	Asc           Pos // position of ASC keyword (column only)
+	Desc          Pos // position of DESC keyword (column only)
 	Autoincrement Pos // position of AUTOINCREMENT keyword (column only)
 }
 
@@ -869,6 +871,11 @@ func (c *PrimaryKeyConstraint) String() string {
 		buf.WriteString(")")
 	}
 
+	if c.Asc.IsValid() {
+		buf.WriteString(" ASC")
+	} else if c.Desc.IsValid() {
+		buf.WriteString(" DESC")
+	}
 	if c.Autoincrement.IsValid() {
 		buf.WriteString(" AUTOINCREMENT")
 	}

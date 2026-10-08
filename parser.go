@@ -590,6 +590,12 @@ func (p *Parser) parsePrimaryKeyConstraint(constraintPos Pos, name *Ident, isTab
 	}
 
 	if !isTable {
+		switch p.peek() {
+		case ASC:
+			cons.Asc, _, _ = p.scan()
+		case DESC:
+			cons.Desc, _, _ = p.scan()
+		}
 		if p.peek() == AUTOINCREMENT {
 			cons.Autoincrement, _, _ = p.scan()
 		}

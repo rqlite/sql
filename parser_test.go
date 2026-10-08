@@ -738,6 +738,35 @@ func TestParser_ParseStatement(t *testing.T) {
 						t.Fatal(diff)
 					}
 				})
+				// A column PRIMARY KEY may specify a sort order; it must not be
+				// mistaken for the start of another column definition.
+				t.Run("Desc", func(t *testing.T) {
+					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER PRIMARY KEY DESC AUTOINCREMENT)`).(*sql.CreateTableStatement)
+					if len(stmt.Columns) != 1 {
+						t.Fatalf("expected 1 column, got %d", len(stmt.Columns))
+					}
+					if diff := deep.Equal(stmt.Columns[0].Constraints[0], &sql.PrimaryKeyConstraint{
+						Primary:       pos(31),
+						Key:           pos(39),
+						Desc:          pos(43),
+						Autoincrement: pos(48),
+					}); diff != nil {
+						t.Fatal(diff)
+					}
+				})
+				t.Run("Asc", func(t *testing.T) {
+					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER PRIMARY KEY ASC)`).(*sql.CreateTableStatement)
+					if len(stmt.Columns) != 1 {
+						t.Fatalf("expected 1 column, got %d", len(stmt.Columns))
+					}
+					if diff := deep.Equal(stmt.Columns[0].Constraints[0], &sql.PrimaryKeyConstraint{
+						Primary: pos(31),
+						Key:     pos(39),
+						Asc:     pos(43),
+					}); diff != nil {
+						t.Fatal(diff)
+					}
+				})
 				t.Run("ErrNoKey", func(t *testing.T) {
 					AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT PRIMARY`, `1:35: expected KEY, found 'EOF'`)
 				})
