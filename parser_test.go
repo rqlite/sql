@@ -1433,6 +1433,28 @@ func TestParser_ParseStatement(t *testing.T) {
 		})
 
 		t.Run("TableConstraint", func(t *testing.T) {
+			// Table PRIMARY KEY columns are indexed columns and may be followed
+			// by AUTOINCREMENT inside the parentheses.
+			t.Run("PrimaryKeyIndexedColumns", func(t *testing.T) {
+				stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1, col2, PRIMARY KEY (col1 COLLATE NOCASE DESC, col2 ASC AUTOINCREMENT))`).(*sql.CreateTableStatement)
+				if diff := deepEqual(stmt.Constraints[0], &sql.PrimaryKeyConstraint{
+					Primary: pos(30),
+					Key:     pos(38),
+					Lparen:  pos(42),
+					Columns: []*sql.IndexedColumn{
+						{X: &sql.CollateExpr{X: &sql.Ident{Name: "col1", NamePos: pos(43)}, Collation: &sql.CollationClause{Collate: pos(48), Name: &sql.Ident{Name: "NOCASE", NamePos: pos(56)}}}, Desc: pos(63)},
+						{X: &sql.Ident{Name: "col2", NamePos: pos(69)}, Asc: pos(74)},
+					},
+					Autoincrement: pos(78),
+					Rparen:        pos(91),
+				}); diff != "" {
+					t.Fatal(diff)
+				}
+				if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1", "col2", PRIMARY KEY ("col1" COLLATE "NOCASE" DESC, "col2" ASC AUTOINCREMENT))`; got != want {
+					t.Fatalf("String()=%s, want %s", got, want)
+				}
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1, PRIMARY KEY (col1 AUTOINCREMENT, col2))`, `1:56: expected right paren, found ','`)
+			})
 			t.Run("PrimaryKey", func(t *testing.T) {
 				AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (col1, col2))`, &sql.CreateTableStatement{
 					Create: pos(0),
@@ -1452,9 +1474,9 @@ func TestParser_ParseStatement(t *testing.T) {
 							Primary: pos(29),
 							Key:     pos(37),
 							Lparen:  pos(41),
-							Columns: []*sql.Ident{
-								{Name: "col1", NamePos: pos(42)},
-								{Name: "col2", NamePos: pos(48)},
+							Columns: []*sql.IndexedColumn{
+								{X: &sql.Ident{Name: "col1", NamePos: pos(42)}},
+								{X: &sql.Ident{Name: "col2", NamePos: pos(48)}},
 							},
 							Rparen: pos(52),
 						},
@@ -1465,7 +1487,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY`, `1:36: expected KEY, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY`, `1:40: expected left paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (col1)`, `1:47: expected right paren, found 'EOF'`)
-				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (1`, `1:43: expected column name, found 1`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (1`, `1:43: expected comma or right paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (foo x`, `1:47: expected comma or right paren, found x`)
 			})
 			t.Run("Unique", func(t *testing.T) {

@@ -504,7 +504,7 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		} else {
 			nn.Name = ri
 		}
-		if columns, err := walkIdentList(v, nn.Columns); err != nil {
+		if columns, err := walkIndexedColumnList(v, nn.Columns); err != nil {
 			return nil, err
 		} else {
 			nn.Columns = columns

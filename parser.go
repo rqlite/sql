@@ -592,11 +592,19 @@ func (p *Parser) parsePrimaryKeyConstraint(constraintPos Pos, name *Ident, isTab
 		cons.Lparen, _, _ = p.scan()
 
 		for {
-			col, err := p.parseIdent("column name")
+			col, err := p.parseIndexedColumn()
 			if err != nil {
 				return &cons, err
 			}
 			cons.Columns = append(cons.Columns, col)
+
+			// AUTOINCREMENT may follow the last column, inside the parens.
+			if p.peek() == AUTOINCREMENT {
+				cons.Autoincrement, _, _ = p.scan()
+				if p.peek() != RP {
+					return &cons, p.errorExpected(p.pos, p.tok, "right paren")
+				}
+			}
 
 			if p.peek() == RP {
 				break

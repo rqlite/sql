@@ -835,14 +835,14 @@ type PrimaryKeyConstraint struct {
 	Primary    Pos    // position of PRIMARY keyword
 	Key        Pos    // position of KEY keyword
 
-	Lparen  Pos      // position of left paren (table only)
-	Columns []*Ident // indexed columns (table only)
-	Rparen  Pos      // position of right paren (table only)
+	Lparen  Pos              // position of left paren (table only)
+	Columns []*IndexedColumn // indexed columns (table only)
+	Rparen  Pos              // position of right paren (table only)
 
 	Asc           Pos             // position of ASC keyword (column only)
 	Desc          Pos             // position of DESC keyword (column only)
 	Conflict      *ConflictClause // optional ON CONFLICT clause
-	Autoincrement Pos             // position of AUTOINCREMENT keyword (column only)
+	Autoincrement Pos             // position of AUTOINCREMENT keyword (inside the parens for a table constraint)
 }
 
 // Clone returns a deep copy of c.
@@ -852,7 +852,7 @@ func (c *PrimaryKeyConstraint) Clone() *PrimaryKeyConstraint {
 	}
 	other := *c
 	other.Name = c.Name.Clone()
-	other.Columns = cloneIdents(c.Columns)
+	other.Columns = cloneIndexedColumns(c.Columns)
 	other.Conflict = c.Conflict.Clone()
 	return &other
 }
@@ -869,6 +869,7 @@ func (c *PrimaryKeyConstraint) String() string {
 	buf.WriteString("PRIMARY KEY")
 
 	if len(c.Columns) > 0 {
+		// Table constraint: AUTOINCREMENT, if any, sits inside the parens.
 		buf.WriteString(" (")
 		for i := range c.Columns {
 			if i != 0 {
@@ -876,19 +877,22 @@ func (c *PrimaryKeyConstraint) String() string {
 			}
 			buf.WriteString(c.Columns[i].String())
 		}
+		if c.Autoincrement.IsValid() {
+			buf.WriteString(" AUTOINCREMENT")
+		}
 		buf.WriteString(")")
-	}
-
-	if c.Asc.IsValid() {
-		buf.WriteString(" ASC")
-	} else if c.Desc.IsValid() {
-		buf.WriteString(" DESC")
+	} else {
+		if c.Asc.IsValid() {
+			buf.WriteString(" ASC")
+		} else if c.Desc.IsValid() {
+			buf.WriteString(" DESC")
+		}
 	}
 	if c.Conflict != nil {
 		buf.WriteString(" ")
 		buf.WriteString(c.Conflict.String())
 	}
-	if c.Autoincrement.IsValid() {
+	if len(c.Columns) == 0 && c.Autoincrement.IsValid() {
 		buf.WriteString(" AUTOINCREMENT")
 	}
 	return buf.String()
