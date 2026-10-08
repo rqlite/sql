@@ -6452,6 +6452,26 @@ func TestParser_Vacuum(t *testing.T) {
 	AssertParseStatementError(t, `VACUUM INTO`, "1:11: expected expression, found 'EOF'")
 }
 
+func TestParser_Attach(t *testing.T) {
+	AssertParseStatement(t, `ATTACH 'f' AS d`, &sql.AttachStatement{
+		Attach: pos(0),
+		Expr:   &sql.StringLit{Value: "f", ValuePos: pos(7)},
+		As:     pos(11),
+		Schema: &sql.Ident{Name: "d", NamePos: pos(14)},
+	})
+	AssertParseStatement(t, `ATTACH DATABASE 'f' AS d KEY 'k'`, &sql.AttachStatement{
+		Attach:   pos(0),
+		Database: pos(7),
+		Expr:     &sql.StringLit{Value: "f", ValuePos: pos(16)},
+		As:       pos(20),
+		Schema:   &sql.Ident{Name: "d", NamePos: pos(23)},
+		Key:      pos(25),
+		KeyExpr:  &sql.StringLit{Value: "k", ValuePos: pos(29)},
+	})
+	AssertParseStatementError(t, `ATTACH 'f'`, "1:10: expected AS, found 'EOF'")
+	AssertParseStatementError(t, `ATTACH 'f' AS`, "1:13: expected schema name, found 'EOF'")
+}
+
 // Ensure the SELECT of an INSERT may itself begin with a WITH clause.
 func TestParser_InsertWithSelect(t *testing.T) {
 	stmt := ParseStatementOrFail(t, `INSERT INTO t (x) WITH c AS (SELECT 1) SELECT * FROM c`).(*sql.InsertStatement)

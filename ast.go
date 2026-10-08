@@ -71,6 +71,7 @@ func (*Raise) node()                       {}
 func (*Range) node()                       {}
 func (*ReindexStatement) node()            {}
 func (*ReleaseStatement) node()            {}
+func (*AttachStatement) node()             {}
 func (*VacuumStatement) node()             {}
 func (*ResultColumn) node()                {}
 func (*ReturningClause) node()             {}
@@ -114,6 +115,7 @@ func (*InsertStatement) stmt()             {}
 func (*PragmaStatement) stmt()             {}
 func (*ReindexStatement) stmt()            {}
 func (*ReleaseStatement) stmt()            {}
+func (*AttachStatement) stmt()             {}
 func (*VacuumStatement) stmt()             {}
 func (*RollbackStatement) stmt()           {}
 func (*SavepointStatement) stmt()          {}
@@ -164,6 +166,8 @@ func CloneStatement(stmt Statement) Statement {
 	case *ReindexStatement:
 		return stmt.Clone()
 	case *ReleaseStatement:
+		return stmt.Clone()
+	case *AttachStatement:
 		return stmt.Clone()
 	case *VacuumStatement:
 		return stmt.Clone()
@@ -677,6 +681,42 @@ func (s *VacuumStatement) String() string {
 	}
 	if s.Filename != nil {
 		fmt.Fprintf(&buf, " INTO %s", s.Filename.String())
+	}
+	return buf.String()
+}
+
+type AttachStatement struct {
+	Attach   Pos    // position of ATTACH keyword
+	Database Pos    // position of DATABASE keyword (optional)
+	Expr     Expr   // database filename expression
+	As       Pos    // position of AS keyword
+	Schema   *Ident // schema name to attach as
+	Key      Pos    // position of KEY keyword (optional)
+	KeyExpr  Expr   // key expression (optional)
+}
+
+// Clone returns a deep copy of s.
+func (s *AttachStatement) Clone() *AttachStatement {
+	if s == nil {
+		return nil
+	}
+	other := *s
+	other.Expr = CloneExpr(s.Expr)
+	other.Schema = s.Schema.Clone()
+	other.KeyExpr = CloneExpr(s.KeyExpr)
+	return &other
+}
+
+// String returns the string representation of the statement.
+func (s *AttachStatement) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("ATTACH")
+	if s.Database.IsValid() {
+		buf.WriteString(" DATABASE")
+	}
+	fmt.Fprintf(&buf, " %s AS %s", s.Expr.String(), s.Schema.String())
+	if s.KeyExpr != nil {
+		fmt.Fprintf(&buf, " KEY %s", s.KeyExpr.String())
 	}
 	return buf.String()
 }

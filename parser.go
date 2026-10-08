@@ -156,6 +156,8 @@ func (p *Parser) parseNonExplainStatement() (Statement, error) {
 		return p.parseSavepointStatement()
 	case RELEASE:
 		return p.parseReleaseStatement()
+	case ATTACH:
+		return p.parseAttachStatement()
 	case VACUUM:
 		return p.parseVacuumStatement()
 	case CREATE:
@@ -3608,6 +3610,33 @@ func (p *Parser) parseVacuumStatement() (_ *VacuumStatement, err error) {
 	if p.peek() == INTO {
 		stmt.Into, _, _ = p.scan()
 		if stmt.Filename, err = p.ParseExpr(); err != nil {
+			return &stmt, err
+		}
+	}
+	return &stmt, nil
+}
+
+func (p *Parser) parseAttachStatement() (_ *AttachStatement, err error) {
+	assert(p.peek() == ATTACH)
+
+	var stmt AttachStatement
+	stmt.Attach, _, _ = p.scan()
+	if p.peek() == DATABASE {
+		stmt.Database, _, _ = p.scan()
+	}
+	if stmt.Expr, err = p.ParseExpr(); err != nil {
+		return &stmt, err
+	}
+	if p.peek() != AS {
+		return &stmt, p.errorExpected(p.pos, p.tok, "AS")
+	}
+	stmt.As, _, _ = p.scan()
+	if stmt.Schema, err = p.parseIdent("schema name"); err != nil {
+		return &stmt, err
+	}
+	if p.peek() == KEY {
+		stmt.Key, _, _ = p.scan()
+		if stmt.KeyExpr, err = p.ParseExpr(); err != nil {
 			return &stmt, err
 		}
 	}

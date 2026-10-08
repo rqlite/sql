@@ -84,6 +84,23 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Filename = expr
 		}
 
+	case *AttachStatement:
+		if expr, err := walkExpr(v, nn.Expr); err != nil {
+			return nil, err
+		} else {
+			nn.Expr = expr
+		}
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
+		if expr, err := walkExpr(v, nn.KeyExpr); err != nil {
+			return nil, err
+		} else {
+			nn.KeyExpr = expr
+		}
+
 	case *CreateTableStatement:
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err

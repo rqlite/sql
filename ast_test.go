@@ -123,6 +123,11 @@ func TestVacuumStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sql.VacuumStatement{Schema: &sql.Ident{Name: "main"}, Filename: &sql.StringLit{Value: "f"}}, `VACUUM "main" INTO 'f'`)
 }
 
+func TestAttachStatement_String(t *testing.T) {
+	AssertStatementStringer(t, &sql.AttachStatement{Expr: &sql.StringLit{Value: "f"}, Schema: &sql.Ident{Name: "d"}}, `ATTACH 'f' AS "d"`)
+	AssertStatementStringer(t, &sql.AttachStatement{Database: pos(0), Expr: &sql.StringLit{Value: "f"}, Schema: &sql.Ident{Name: "d"}, KeyExpr: &sql.StringLit{Value: "k"}}, `ATTACH DATABASE 'f' AS "d" KEY 'k'`)
+}
+
 func TestCreateTableStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name:    &sql.Ident{Name: "foo"},
