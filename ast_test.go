@@ -343,6 +343,12 @@ func TestCreateViewStatement_String(t *testing.T) {
 
 func TestDeleteStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sql.DeleteStatement{
+		Table:           &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}},
+		WhereExpr:       &sql.BoolLit{Value: true},
+		ReturningClause: &sql.ReturningClause{Columns: []*sql.ResultColumn{{Expr: &sql.Ident{Name: "id"}}}},
+	}, `DELETE FROM "tbl" WHERE TRUE RETURNING "id"`)
+
+	AssertStatementStringer(t, &sql.DeleteStatement{
 		Table: &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}, Alias: &sql.Ident{Name: "tbl2"}},
 	}, `DELETE FROM "tbl" AS "tbl2"`)
 
@@ -941,6 +947,15 @@ func TestSelectStatement_String(t *testing.T) {
 }
 
 func TestUpdateStatement_String(t *testing.T) {
+	AssertStatementStringer(t, &sql.UpdateStatement{
+		Table: &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}},
+		Assignments: []*sql.Assignment{
+			{Columns: []*sql.Ident{{Name: "x"}}, Expr: &sql.NumberLit{Value: "100"}},
+		},
+		WhereExpr:       &sql.BoolLit{Value: true},
+		ReturningClause: &sql.ReturningClause{Columns: []*sql.ResultColumn{{Star: pos(0)}}},
+	}, `UPDATE "tbl" SET "x" = 100 WHERE TRUE RETURNING *`)
+
 	AssertStatementStringer(t, &sql.UpdateStatement{
 		Table: &sql.QualifiedTableName{Name: &sql.Ident{Name: "tbl"}},
 		Assignments: []*sql.Assignment{

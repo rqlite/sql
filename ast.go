@@ -3075,6 +3075,10 @@ func (s *UpdateStatement) String() string {
 		fmt.Fprintf(&buf, " WHERE %s", s.WhereExpr.String())
 	}
 
+	if s.ReturningClause != nil {
+		fmt.Fprintf(&buf, " %s", s.ReturningClause.String())
+	}
+
 	return buf.String()
 }
 
@@ -3172,6 +3176,10 @@ func (s *DeleteStatement) String() string {
 		if s.OffsetExpr != nil {
 			fmt.Fprintf(&buf, " OFFSET %s", s.OffsetExpr.String())
 		}
+	}
+
+	if s.ReturningClause != nil {
+		fmt.Fprintf(&buf, " %s", s.ReturningClause.String())
 	}
 
 	return buf.String()
