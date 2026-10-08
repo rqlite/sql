@@ -2401,7 +2401,7 @@ func (s *FrameSpec) Clone() *FrameSpec {
 	}
 	other := *s
 	other.X = CloneExpr(s.X)
-	other.X = CloneExpr(s.Y)
+	other.Y = CloneExpr(s.Y)
 	return &other
 }
 
