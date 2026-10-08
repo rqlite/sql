@@ -2495,7 +2495,25 @@ func (p *Parser) parseQualifiedTable(schemaOK, aliasOK, indexedOK bool) (_ Sourc
 	}
 	ident, _ := p.parseIdent("table name")
 	if p.peek() == LP {
-		return p.parseQualifiedTableFunctionName(ident)
+		return p.parseQualifiedTableFunctionName(nil, Pos{}, ident)
+	}
+
+	// "schema.name(" is a schema-qualified table-valued function; otherwise
+	// hand the already scanned schema and name to the table name parser.
+	if p.peek() == DOT && schemaOK {
+		dot, _, _ := p.scan()
+		name, err := p.parseIdent("table name")
+		if err != nil {
+			return nil, err
+		}
+		if p.peek() == LP {
+			return p.parseQualifiedTableFunctionName(ident, dot, name)
+		}
+		tbl, err := p.parseQualifiedTableName(name, false, aliasOK, indexedOK)
+		if tbl != nil {
+			tbl.Schema, tbl.Dot = ident, dot
+		}
+		return tbl, err
 	}
 	return p.parseQualifiedTableName(ident, schemaOK, aliasOK, indexedOK)
 }
@@ -2558,11 +2576,11 @@ func (p *Parser) parseQualifiedTableName(ident *Ident, schemaOK, aliasOK, indexe
 	return &tbl, nil
 }
 
-func (p *Parser) parseQualifiedTableFunctionName(ident *Ident) (_ *QualifiedTableFunctionName, err error) {
+func (p *Parser) parseQualifiedTableFunctionName(schema *Ident, dot Pos, name *Ident) (_ *QualifiedTableFunctionName, err error) {
 	assert(p.peek() == LP)
 
 	var tbl QualifiedTableFunctionName
-	tbl.Name = ident
+	tbl.Schema, tbl.Dot, tbl.Name = schema, dot, name
 
 	tbl.Lparen, _, _ = p.scan()
 	for {
@@ -2715,7 +2733,7 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 	case isExprIdentToken(tok):
 		ident := &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 		if p.peek() == DOT {
-			return p.parseQualifiedRef(ident)
+			return p.parseQualifiedRefOrCall(ident)
 		} else if p.peek() == LP {
 			return p.parseCall(ident)
 		}
@@ -2917,10 +2935,9 @@ func (p *Parser) parseInExpr() (Expr, error) {
 			return &ref, err
 		}
 
-		// Check if the qualified name is followed by a function call
+		// "schema.func(...)" is a schema-qualified table-valued function.
 		if p.peek() == LP {
-			// Schema-qualified function calls like "schema.func()" are not supported in IN clauses
-			return &ref, fmt.Errorf("schema-qualified function calls are not supported in IN/NOT IN expressions")
+			return p.parseSchemaQualifiedCall(ref.Table, ref.Dot, ref.Column)
 		}
 
 		return &ref, nil
@@ -2928,6 +2945,29 @@ func (p *Parser) parseInExpr() (Expr, error) {
 
 	// Just a simple table name - return as Ident
 	return ident, nil
+}
+
+// parseQualifiedRefOrCall parses "table.column", "schema.table.column" or a
+// schema-qualified function call "schema.func(...)".
+func (p *Parser) parseQualifiedRefOrCall(table *Ident) (Expr, error) {
+	ref, err := p.parseQualifiedRef(table)
+	if err != nil {
+		return ref, err
+	}
+	if ref.Schema == nil && ref.Column != nil && p.peek() == LP {
+		return p.parseSchemaQualifiedCall(ref.Table, ref.Dot, ref.Column)
+	}
+	return ref, nil
+}
+
+// parseSchemaQualifiedCall parses the argument list of "schema.name(...)".
+func (p *Parser) parseSchemaQualifiedCall(schema *Ident, dot Pos, name *Ident) (*Call, error) {
+	call, err := p.parseCall(name)
+	if err != nil {
+		return call, err
+	}
+	call.Schema, call.Dot = schema, dot
+	return call, nil
 }
 
 func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {

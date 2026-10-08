@@ -5646,7 +5646,17 @@ func TestParser_ParseExpr(t *testing.T) {
 			},
 		})
 		// Test error case: schema-qualified function calls are not supported
-		AssertParseExprError(t, `1 IN schema.func()`, `schema-qualified function calls are not supported in IN/NOT IN expressions`)
+		AssertParseExpr(t, `1 IN schema.func()`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.IN,
+			Y: &sql.Call{
+				Schema: &sql.Ident{NamePos: pos(5), Name: "schema"},
+				Dot:    pos(11),
+				Name:   &sql.Ident{NamePos: pos(12), Name: "func"},
+				Lparen: pos(16),
+				Rparen: pos(17),
+			},
+		})
 		AssertParseExpr(t, `1 BETWEEN 2 AND 3'`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.BETWEEN,
@@ -6249,6 +6259,43 @@ func TestParser_DepthLimit(t *testing.T) {
 	t.Run("MultipleStatements", func(t *testing.T) {
 		stmt := `SELECT ` + strings.Repeat("(", 800) + `1` + strings.Repeat(")", 800) + `; `
 		AssertParseStatements(t, strings.Repeat(stmt, 3), 3)
+	})
+}
+
+// Ensure schema-qualified function calls are accepted in expressions, IN
+// clauses and as table-valued functions.
+func TestParser_SchemaQualifiedFunctions(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `SELECT main.func(1) FROM main.json_each('[1]') AS j WHERE 2 IN main.tf()`).(*sql.SelectStatement)
+	if call, ok := stmt.Columns[0].Expr.(*sql.Call); !ok {
+		t.Fatalf("column: expected *sql.Call, got %T", stmt.Columns[0].Expr)
+	} else if diff := deepEqual(call, &sql.Call{
+		Schema: &sql.Ident{Name: "main", NamePos: pos(7)},
+		Dot:    pos(11),
+		Name:   &sql.Ident{Name: "func", NamePos: pos(12)},
+		Lparen: pos(16),
+		Args:   []sql.Expr{&sql.NumberLit{Value: "1", ValuePos: pos(17)}},
+		Rparen: pos(18),
+	}); diff != "" {
+		t.Fatal(diff)
+	}
+	if fn, ok := stmt.Source.(*sql.QualifiedTableFunctionName); !ok {
+		t.Fatalf("source: expected *sql.QualifiedTableFunctionName, got %T", stmt.Source)
+	} else if fn.Schema == nil || fn.Schema.Name != "main" || fn.Name.Name != "json_each" || fn.Alias.Name != "j" {
+		t.Fatalf("unexpected table function: %s", fn.String())
+	}
+	if in, ok := stmt.WhereExpr.(*sql.BinaryExpr); !ok || in.Op != sql.IN {
+		t.Fatalf("where: expected IN expression, got %s", stmt.WhereExpr.String())
+	} else if call, ok := in.Y.(*sql.Call); !ok || call.Schema == nil || call.Schema.Name != "main" || call.Name.Name != "tf" {
+		t.Fatalf("where: expected schema-qualified call, got %s", in.Y.String())
+	}
+	if got, want := stmt.String(), `SELECT "main".func(1) FROM "main"."json_each"('[1]') AS "j" WHERE 2 IN "main".tf()`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	// Plain column references are unaffected.
+	AssertParseExpr(t, `tbl.col`, &sql.QualifiedRef{
+		Table:  &sql.Ident{Name: "tbl", NamePos: pos(0)},
+		Dot:    pos(3),
+		Column: &sql.Ident{Name: "col", NamePos: pos(4)},
 	})
 }
 

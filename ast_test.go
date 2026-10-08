@@ -1206,6 +1206,7 @@ func TestCall_String(t *testing.T) {
 	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "select"}}, `"select"()`)
 	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "replace"}, Args: []sql.Expr{&sql.NumberLit{Value: "1"}}}, `replace(1)`)
 	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}, Star: pos(0)}, `foo(*)`)
+	AssertExprStringer(t, &sql.Call{Schema: &sql.Ident{Name: "main"}, Name: &sql.Ident{Name: "foo"}, Args: []sql.Expr{&sql.NumberLit{Value: "1"}}}, `"main".foo(1)`)
 
 	AssertExprStringer(t, &sql.Call{
 		Name:     &sql.Ident{Name: "foo"},
