@@ -66,6 +66,3 @@ check the exit code directly.
 - Prefer a parse error over a silent misparse. Never let an unexpected token
   be consumed as something else (a phantom column, an alias, a comment).
 
-## Branch
-
-Fix work lands on the `claude-fixes` branch, not master, unless told otherwise.
