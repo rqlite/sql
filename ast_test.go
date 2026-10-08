@@ -118,6 +118,11 @@ func TestCreateIndexStatement_String(t *testing.T) {
 	}, `CREATE UNIQUE INDEX IF NOT EXISTS "foo" ON "bar" ("baz", "bat") WHERE TRUE`)
 }
 
+func TestVacuumStatement_String(t *testing.T) {
+	AssertStatementStringer(t, &sql.VacuumStatement{}, `VACUUM`)
+	AssertStatementStringer(t, &sql.VacuumStatement{Schema: &sql.Ident{Name: "main"}, Filename: &sql.StringLit{Value: "f"}}, `VACUUM "main" INTO 'f'`)
+}
+
 func TestCreateTableStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name:    &sql.Ident{Name: "foo"},

@@ -71,6 +71,7 @@ func (*Raise) node()                       {}
 func (*Range) node()                       {}
 func (*ReindexStatement) node()            {}
 func (*ReleaseStatement) node()            {}
+func (*VacuumStatement) node()             {}
 func (*ResultColumn) node()                {}
 func (*ReturningClause) node()             {}
 func (*RollbackStatement) node()           {}
@@ -113,6 +114,7 @@ func (*InsertStatement) stmt()             {}
 func (*PragmaStatement) stmt()             {}
 func (*ReindexStatement) stmt()            {}
 func (*ReleaseStatement) stmt()            {}
+func (*VacuumStatement) stmt()             {}
 func (*RollbackStatement) stmt()           {}
 func (*SavepointStatement) stmt()          {}
 func (*SelectStatement) stmt()             {}
@@ -162,6 +164,8 @@ func CloneStatement(stmt Statement) Statement {
 	case *ReindexStatement:
 		return stmt.Clone()
 	case *ReleaseStatement:
+		return stmt.Clone()
+	case *VacuumStatement:
 		return stmt.Clone()
 	case *RollbackStatement:
 		return stmt.Clone()
@@ -643,6 +647,37 @@ func (s *ReleaseStatement) String() string {
 		buf.WriteString(" SAVEPOINT")
 	}
 	fmt.Fprintf(&buf, " %s", s.Name.String())
+	return buf.String()
+}
+
+type VacuumStatement struct {
+	Vacuum   Pos    // position of VACUUM keyword
+	Schema   *Ident // schema name (optional)
+	Into     Pos    // position of INTO keyword (optional)
+	Filename Expr   // target filename expression after INTO (optional)
+}
+
+// Clone returns a deep copy of s.
+func (s *VacuumStatement) Clone() *VacuumStatement {
+	if s == nil {
+		return nil
+	}
+	other := *s
+	other.Schema = s.Schema.Clone()
+	other.Filename = CloneExpr(s.Filename)
+	return &other
+}
+
+// String returns the string representation of the statement.
+func (s *VacuumStatement) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("VACUUM")
+	if s.Schema != nil {
+		fmt.Fprintf(&buf, " %s", s.Schema.String())
+	}
+	if s.Filename != nil {
+		fmt.Fprintf(&buf, " INTO %s", s.Filename.String())
+	}
 	return buf.String()
 }
 

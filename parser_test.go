@@ -6439,6 +6439,19 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 	}
 }
 
+func TestParser_Vacuum(t *testing.T) {
+	AssertParseStatement(t, `VACUUM`, &sql.VacuumStatement{Vacuum: pos(0)})
+	AssertParseStatement(t, `VACUUM main`, &sql.VacuumStatement{Vacuum: pos(0), Schema: &sql.Ident{Name: "main", NamePos: pos(7)}})
+	AssertParseStatement(t, `VACUUM INTO 'f'`, &sql.VacuumStatement{Vacuum: pos(0), Into: pos(7), Filename: &sql.StringLit{Value: "f", ValuePos: pos(12)}})
+	AssertParseStatement(t, `VACUUM main INTO 'f'`, &sql.VacuumStatement{
+		Vacuum:   pos(0),
+		Schema:   &sql.Ident{Name: "main", NamePos: pos(7)},
+		Into:     pos(12),
+		Filename: &sql.StringLit{Value: "f", ValuePos: pos(17)},
+	})
+	AssertParseStatementError(t, `VACUUM INTO`, "1:11: expected expression, found 'EOF'")
+}
+
 // Ensure the SELECT of an INSERT may itself begin with a WITH clause.
 func TestParser_InsertWithSelect(t *testing.T) {
 	stmt := ParseStatementOrFail(t, `INSERT INTO t (x) WITH c AS (SELECT 1) SELECT * FROM c`).(*sql.InsertStatement)

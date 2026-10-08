@@ -156,6 +156,8 @@ func (p *Parser) parseNonExplainStatement() (Statement, error) {
 		return p.parseSavepointStatement()
 	case RELEASE:
 		return p.parseReleaseStatement()
+	case VACUUM:
+		return p.parseVacuumStatement()
 	case CREATE:
 		return p.parseCreateStatement()
 	case DROP:
@@ -3590,6 +3592,26 @@ func (p *Parser) parseSignedNumber(desc string) (*NumberLit, error) {
 	default:
 		return nil, p.errorExpected(p.pos, p.tok, desc)
 	}
+}
+
+func (p *Parser) parseVacuumStatement() (_ *VacuumStatement, err error) {
+	assert(p.peek() == VACUUM)
+
+	var stmt VacuumStatement
+	stmt.Vacuum, _, _ = p.scan()
+
+	if isNameToken(p.peek()) {
+		if stmt.Schema, err = p.parseIdent("schema name"); err != nil {
+			return &stmt, err
+		}
+	}
+	if p.peek() == INTO {
+		stmt.Into, _, _ = p.scan()
+		if stmt.Filename, err = p.ParseExpr(); err != nil {
+			return &stmt, err
+		}
+	}
+	return &stmt, nil
 }
 
 func (p *Parser) parseAlterTableStatement() (_ *AlterTableStatement, err error) {
