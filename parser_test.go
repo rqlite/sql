@@ -2016,7 +2016,7 @@ func TestParser_ParseStatement(t *testing.T) {
 			End: pos(83),
 		})
 
-		AssertParseStatementError(t, `CREATE TRIGGER`, `1:14: expected index name, found 'EOF'`)
+		AssertParseStatementError(t, `CREATE TRIGGER`, `1:14: expected trigger name, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TRIGGER IF`, `1:17: expected NOT, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TRIGGER IF NOT`, `1:21: expected EXISTS, found 'EOF'`)
 		AssertParseStatementError(t, `CREATE TRIGGER trig INSTEAD`, `1:27: expected OF, found 'EOF'`)
@@ -6234,6 +6234,49 @@ func TestParser_DepthLimit(t *testing.T) {
 		stmt := `SELECT ` + strings.Repeat("(", 800) + `1` + strings.Repeat(")", 800) + `; `
 		AssertParseStatements(t, strings.Repeat(stmt, 3), 3)
 	})
+}
+
+// Ensure schema-qualified object names are accepted wherever SQLite allows them.
+func TestParser_SchemaQualifiedNames(t *testing.T) {
+	for _, tt := range []struct {
+		s      string
+		schema func(sql.Statement) (*sql.Ident, *sql.Ident)
+	}{
+		{`CREATE VIEW main.v AS SELECT 1`, func(st sql.Statement) (*sql.Ident, *sql.Ident) {
+			v := st.(*sql.CreateViewStatement)
+			return v.Schema, v.Name
+		}},
+		{`CREATE TRIGGER main.trg BEFORE DELETE ON t BEGIN SELECT 1; END`, func(st sql.Statement) (*sql.Ident, *sql.Ident) {
+			v := st.(*sql.CreateTriggerStatement)
+			return v.Schema, v.Name
+		}},
+		{`DROP TRIGGER IF EXISTS main.trg`, func(st sql.Statement) (*sql.Ident, *sql.Ident) {
+			v := st.(*sql.DropTriggerStatement)
+			return v.Schema, v.Name
+		}},
+		{`ANALYZE main.t`, func(st sql.Statement) (*sql.Ident, *sql.Ident) {
+			v := st.(*sql.AnalyzeStatement)
+			return v.Schema, v.Name
+		}},
+	} {
+		stmt, err := sql.NewParser(strings.NewReader(tt.s)).ParseStatement()
+		if err != nil {
+			t.Errorf("%s: %v", tt.s, err)
+			continue
+		}
+		schema, name := tt.schema(stmt)
+		if schema == nil || schema.Name != "main" {
+			t.Errorf("%s: schema=%v, want main", tt.s, schema)
+		} else if name == nil || name.Name == "main" {
+			t.Errorf("%s: name=%v", tt.s, name)
+		}
+		// Round trip.
+		if stmt2, err := sql.NewParser(strings.NewReader(stmt.String())).ParseStatement(); err != nil {
+			t.Errorf("%s: cannot re-parse %q: %v", tt.s, stmt.String(), err)
+		} else if stmt2.String() != stmt.String() {
+			t.Errorf("%s: unstable: %q != %q", tt.s, stmt.String(), stmt2.String())
+		}
+	}
 }
 
 // Ensure names that are not SQLite keywords can be used as identifiers.

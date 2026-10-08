@@ -1134,6 +1134,22 @@ func (p *Parser) parseDropTableStatement(dropPos Pos) (_ *DropTableStatement, er
 	return &stmt, nil
 }
 
+// parseSchemaQualifiedIdent parses "name" or "schema.name". desc describes the
+// name for error messages.
+func (p *Parser) parseSchemaQualifiedIdent(desc string) (schema *Ident, dot Pos, name *Ident, err error) {
+	if name, err = p.parseIdent(desc); err != nil {
+		return nil, Pos{}, nil, err
+	}
+	if p.peek() == DOT {
+		schema = name
+		dot, _, _ = p.scan()
+		if name, err = p.parseIdent(desc); err != nil {
+			return schema, dot, nil, err
+		}
+	}
+	return schema, dot, name, nil
+}
+
 func (p *Parser) parseCreateViewStatement(createPos, tempPos Pos) (_ *CreateViewStatement, err error) {
 	assert(p.peek() == VIEW)
 
@@ -1157,7 +1173,7 @@ func (p *Parser) parseCreateViewStatement(createPos, tempPos Pos) (_ *CreateView
 		stmt.IfNotExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("view name"); err != nil {
+	if stmt.Schema, stmt.Dot, stmt.Name, err = p.parseSchemaQualifiedIdent("view name"); err != nil {
 		return &stmt, err
 	}
 
@@ -1367,7 +1383,7 @@ func (p *Parser) parseCreateTriggerStatement(createPos, tempPos Pos) (_ *CreateT
 		stmt.IfNotExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("index name"); err != nil {
+	if stmt.Schema, stmt.Dot, stmt.Name, err = p.parseSchemaQualifiedIdent("trigger name"); err != nil {
 		return &stmt, err
 	}
 
@@ -1508,7 +1524,7 @@ func (p *Parser) parseDropTriggerStatement(dropPos Pos) (_ *DropTriggerStatement
 		stmt.IfExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("trigger name"); err != nil {
+	if stmt.Schema, stmt.Dot, stmt.Name, err = p.parseSchemaQualifiedIdent("trigger name"); err != nil {
 		return &stmt, err
 	}
 
@@ -3657,8 +3673,7 @@ func (p *Parser) parseAnalyzeStatement() (_ *AnalyzeStatement, err error) {
 	stmt.Analyze, _, _ = p.scan()
 
 	if isIdentToken(p.peek()) {
-		stmt.Name, err = p.parseIdent("table or index name")
-		if err != nil {
+		if stmt.Schema, stmt.Dot, stmt.Name, err = p.parseSchemaQualifiedIdent("table or index name"); err != nil {
 			return nil, err
 		}
 	}

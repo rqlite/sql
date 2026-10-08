@@ -1448,7 +1448,9 @@ func cloneModuleArguments(a []*ModuleArgument) []*ModuleArgument {
 
 type AnalyzeStatement struct {
 	Analyze Pos    // position of ANALYZE keyword
-	Name    *Ident // table name
+	Schema  *Ident // schema name (optional)
+	Dot     Pos    // position of DOT token (optional)
+	Name    *Ident // table or index name
 }
 
 // Clone returns a deep copy of s.
@@ -1457,6 +1459,7 @@ func (s *AnalyzeStatement) Clone() *AnalyzeStatement {
 		return nil
 	}
 	other := *s
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	return &other
 }
@@ -1465,6 +1468,9 @@ func (s *AnalyzeStatement) Clone() *AnalyzeStatement {
 func (s *AnalyzeStatement) String() string {
 	if s.Name == nil {
 		return "ANALYZE"
+	}
+	if s.Schema != nil {
+		return fmt.Sprintf("ANALYZE %s.%s", s.Schema.String(), s.Name.String())
 	}
 	return fmt.Sprintf("ANALYZE %s", s.Name.String())
 }
@@ -2580,6 +2586,8 @@ type CreateViewStatement struct {
 	If          Pos              // position of IF keyword
 	IfNot       Pos              // position of NOT keyword after IF
 	IfNotExists Pos              // position of EXISTS keyword after IF NOT
+	Schema      *Ident           // schema name (optional)
+	Dot         Pos              // position of DOT token (optional)
 	Name        *Ident           // view name
 	Lparen      Pos              // position of column list left paren
 	Columns     []*Ident         // column list
@@ -2594,6 +2602,7 @@ func (s *CreateViewStatement) Clone() *CreateViewStatement {
 		return nil
 	}
 	other := *s
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	other.Columns = cloneIdents(s.Columns)
 	other.Select = s.Select.Clone()
@@ -2611,7 +2620,12 @@ func (s *CreateViewStatement) String() string {
 	if s.IfNotExists.IsValid() {
 		buf.WriteString(" IF NOT EXISTS")
 	}
-	fmt.Fprintf(&buf, " %s", s.Name.String())
+	buf.WriteString(" ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Name.String())
 
 	if len(s.Columns) > 0 {
 		buf.WriteString(" (")
@@ -2772,7 +2786,9 @@ type CreateTriggerStatement struct {
 	If          Pos    // position of IF keyword
 	IfNot       Pos    // position of NOT keyword after IF
 	IfNotExists Pos    // position of EXISTS keyword after IF NOT
-	Name        *Ident // index name
+	Schema      *Ident // schema name (optional)
+	Dot         Pos    // position of DOT token (optional)
+	Name        *Ident // trigger name
 
 	Before    Pos // position of BEFORE keyword
 	After     Pos // position of AFTER keyword
@@ -2805,6 +2821,7 @@ func (s *CreateTriggerStatement) Clone() *CreateTriggerStatement {
 		return nil
 	}
 	other := *s
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	other.UpdateOfColumns = cloneIdents(s.UpdateOfColumns)
 	other.Table = s.Table.Clone()
@@ -2824,7 +2841,12 @@ func (s *CreateTriggerStatement) String() string {
 	if s.IfNotExists.IsValid() {
 		buf.WriteString(" IF NOT EXISTS")
 	}
-	fmt.Fprintf(&buf, " %s", s.Name.String())
+	buf.WriteString(" ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Name.String())
 
 	if s.Before.IsValid() {
 		buf.WriteString(" BEFORE")
@@ -2875,6 +2897,8 @@ type DropTriggerStatement struct {
 	Trigger  Pos    // position of TRIGGER keyword
 	If       Pos    // position of IF keyword
 	IfExists Pos    // position of EXISTS keyword after IF
+	Schema   *Ident // schema name (optional)
+	Dot      Pos    // position of DOT token (optional)
 	Name     *Ident // trigger name
 }
 
@@ -2884,6 +2908,7 @@ func (s *DropTriggerStatement) Clone() *DropTriggerStatement {
 		return nil
 	}
 	other := *s
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	return &other
 }
@@ -2895,7 +2920,12 @@ func (s *DropTriggerStatement) String() string {
 	if s.IfExists.IsValid() {
 		buf.WriteString(" IF EXISTS")
 	}
-	fmt.Fprintf(&buf, " %s", s.Name.String())
+	buf.WriteString(" ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Name.String())
 	return buf.String()
 }
 
