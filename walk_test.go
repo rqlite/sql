@@ -57,3 +57,9 @@ func TestWalk_SelectExpr(t *testing.T) {
 	assertWalkVisits(t, `SELECT (SELECT a FROM t1) FROM t2`, "a", "t1", "t2")
 	assertWalkVisits(t, `UPDATE t2 SET x = (SELECT max(a) FROM t1)`, "a", "t1", "x")
 }
+
+// Ensure Walk visits the operand of IS NULL / NOT NULL.
+func TestWalk_Null(t *testing.T) {
+	assertWalkVisits(t, `SELECT * FROM t1 WHERE a IS NULL`, "a", "t1")
+	assertWalkVisits(t, `SELECT * FROM t1 WHERE b NOT NULL AND c ISNULL`, "b", "c", "t1")
+}

@@ -954,6 +954,13 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			}
 		}
 
+	case *Null:
+		if expr, err := walkExpr(v, nn.X); err != nil {
+			return nil, err
+		} else {
+			nn.X = expr
+		}
+
 	case SelectExpr:
 		// SelectExpr is a value type, so rebuild the node with the walked
 		// statement rather than mutating the local copy.
