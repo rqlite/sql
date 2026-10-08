@@ -1028,6 +1028,9 @@ func TestUnaryExpr_String(t *testing.T) {
 	AssertExprStringer(t, &sql.UnaryExpr{Op: sql.PLUS, X: &sql.NumberLit{Value: "100"}}, `+100`)
 	AssertExprStringer(t, &sql.UnaryExpr{Op: sql.MINUS, X: &sql.NumberLit{Value: "100"}}, `-100`)
 	AssertExprStringer(t, &sql.UnaryExpr{Op: sql.NOT, X: &sql.NumberLit{Value: "100"}}, `NOT 100`)
+	// A doubly negated operand must not serialize as "--", which starts a line comment.
+	AssertExprStringer(t, &sql.UnaryExpr{Op: sql.MINUS, X: &sql.UnaryExpr{Op: sql.MINUS, X: &sql.NumberLit{Value: "1"}}}, `- -1`)
+	AssertExprStringer(t, &sql.UnaryExpr{Op: sql.MINUS, X: &sql.UnaryExpr{Op: sql.PLUS, X: &sql.NumberLit{Value: "1"}}}, `-+1`)
 	AssertNodeStringerPanic(t, &sql.UnaryExpr{X: &sql.NumberLit{Value: "100"}}, `sql.UnaryExpr.String(): invalid op ILLEGAL`)
 }
 

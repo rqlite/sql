@@ -1703,7 +1703,12 @@ func (expr *UnaryExpr) String() string {
 	case PLUS:
 		return "+" + expr.X.String()
 	case MINUS:
-		return "-" + expr.X.String()
+		// Separate a nested minus so the output does not start a "--" comment.
+		if x := expr.X.String(); strings.HasPrefix(x, "-") {
+			return "- " + x
+		} else {
+			return "-" + x
+		}
 	case NOT:
 		return "NOT " + expr.X.String()
 	case BITNOT:
