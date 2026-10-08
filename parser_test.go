@@ -1192,6 +1192,28 @@ func TestParser_ParseStatement(t *testing.T) {
 						Rparen: pos(49),
 					})
 				})
+				// MATCH clauses may appear among the ON clauses in any order.
+				t.Run("Match", func(t *testing.T) {
+					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other (y) MATCH SIMPLE ON DELETE CASCADE MATCH FULL)`).(*sql.CreateTableStatement)
+					if diff := deepEqual(stmt.Columns[0].Constraints[0], &sql.ForeignKeyConstraint{
+						References:     pos(31),
+						ForeignTable:   &sql.Ident{Name: "other", NamePos: pos(42)},
+						ForeignLparen:  pos(48),
+						ForeignColumns: []*sql.Ident{{Name: "y", NamePos: pos(49)}},
+						ForeignRparen:  pos(50),
+						Args: []*sql.ForeignKeyArg{
+							{Match: pos(52), MatchName: &sql.Ident{Name: "SIMPLE", NamePos: pos(58)}},
+							{On: pos(65), OnDelete: pos(68), Cascade: pos(75)},
+							{Match: pos(83), MatchName: &sql.Ident{Name: "FULL", NamePos: pos(89)}},
+						},
+					}); diff != "" {
+						t.Fatal(diff)
+					}
+					if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1" INTEGER REFERENCES "other" ("y") MATCH SIMPLE ON DELETE CASCADE MATCH FULL)`; got != want {
+						t.Fatalf("String()=%s, want %s", got, want)
+					}
+					AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other MATCH)`, `1:54: expected match type, found ')'`)
+				})
 				// The foreign column list is optional; the parent table's primary
 				// key is used when it is omitted.
 				t.Run("NoColumnList", func(t *testing.T) {

@@ -1288,6 +1288,9 @@ func (c *ForeignKeyConstraint) String() string {
 }
 
 type ForeignKeyArg struct {
+	Match     Pos    // position of MATCH keyword (MATCH clause only)
+	MatchName *Ident // match type name (MATCH clause only)
+
 	On         Pos // position of ON keyword
 	OnUpdate   Pos // position of the UPDATE keyword
 	OnDelete   Pos // position of the DELETE keyword
@@ -1306,6 +1309,7 @@ func (arg *ForeignKeyArg) Clone() *ForeignKeyArg {
 		return nil
 	}
 	other := *arg
+	other.MatchName = arg.MatchName.Clone()
 	return &other
 }
 
@@ -1323,6 +1327,15 @@ func cloneForeignKeyArgs(a []*ForeignKeyArg) []*ForeignKeyArg {
 // String returns the string representation of the argument.
 func (c *ForeignKeyArg) String() string {
 	var buf bytes.Buffer
+	if c.Match.IsValid() {
+		buf.WriteString("MATCH ")
+		if isBareIdentName(c.MatchName.Name) {
+			buf.WriteString(c.MatchName.Name)
+		} else {
+			buf.WriteString(c.MatchName.String())
+		}
+		return buf.String()
+	}
 	buf.WriteString("ON")
 	if c.OnUpdate.IsValid() {
 		buf.WriteString(" UPDATE")

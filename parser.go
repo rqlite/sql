@@ -924,9 +924,17 @@ func (p *Parser) parseForeignKeyConstraint(constraintPos Pos, name *Ident, isTab
 		cons.ForeignRparen, _, _ = p.scan()
 	}
 
-	// Parse foreign key args.
-	for p.peek() == ON {
+	// Parse foreign key args: any mix of "MATCH name" and "ON UPDATE|DELETE action".
+	for p.peek() == ON || p.peek() == MATCH {
 		var arg ForeignKeyArg
+		if p.peek() == MATCH {
+			arg.Match, _, _ = p.scan()
+			if arg.MatchName, err = p.parseIdent("match type"); err != nil {
+				return &cons, err
+			}
+			cons.Args = append(cons.Args, &arg)
+			continue
+		}
 		arg.On, _, _ = p.scan()
 
 		// Parse foreign key type.
