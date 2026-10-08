@@ -3705,15 +3705,8 @@ func (p *Parser) parsePragmaStatement() (_ *PragmaStatement, err error) {
 	case EQ:
 		// Parse as binary expression: pragma-name = value
 		opPos, _, _ := p.scan()
-
-		// Pragma values are frequently keywords (ON, OFF, DELETE, WAL, FULL,
-		// NORMAL ...). Accept any keyword that is not already usable as an
-		// identifier as a plain name.
-		var rhs Expr
-		if tok := p.peek(); tok.IsKeyword() && !isExprIdentToken(tok) {
-			pos, _, lit := p.scan()
-			rhs = &Ident{Name: lit, NamePos: pos}
-		} else if rhs, err = p.ParseExpr(); err != nil {
+		rhs, err := p.parsePragmaValue()
+		if err != nil {
 			return &stmt, err
 		}
 		stmt.Expr = &BinaryExpr{
@@ -3723,17 +3716,43 @@ func (p *Parser) parsePragmaStatement() (_ *PragmaStatement, err error) {
 			Y:     rhs,
 		}
 	case LP:
-		// Parse as function call: pragma-name(args)
-		call, err := p.parseCall(lit)
+		// Parse as function call with exactly one value: pragma-name(value)
+		call := &Call{Name: lit}
+		call.Lparen, _, _ = p.scan()
+		arg, err := p.parsePragmaValue()
 		if err != nil {
 			return &stmt, err
 		}
+		call.Args = []Expr{arg}
+		if p.peek() != RP {
+			return &stmt, p.errorExpected(p.pos, p.tok, "right paren")
+		}
+		call.Rparen, _, _ = p.scan()
 		stmt.Expr = call
 	default:
 		stmt.Expr = lit
 	}
 
 	return &stmt, nil
+}
+
+// parsePragmaValue parses a pragma value: a signed number, a literal, or a
+// name. Names are frequently keywords (ON, OFF, DELETE, WAL, FULL, NORMAL ...)
+// so any keyword is accepted as an identifier here.
+func (p *Parser) parsePragmaValue() (Expr, error) {
+	switch tok := p.peek(); {
+	case tok == PLUS || tok == MINUS:
+		return p.parseSignedNumber("pragma value")
+	case isLiteralToken(tok):
+		return p.mustParseLiteral(), nil
+	case isNameToken(tok):
+		return p.parseIdent("pragma value")
+	case tok.IsKeyword():
+		pos, _, lit := p.scan()
+		return &Ident{Name: lit, NamePos: pos}, nil
+	default:
+		return nil, p.errorExpected(p.pos, p.tok, "pragma value")
+	}
 }
 
 func (p *Parser) parseAnalyzeStatement() (_ *AnalyzeStatement, err error) {

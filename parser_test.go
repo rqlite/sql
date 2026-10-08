@@ -65,11 +65,32 @@ func TestParser_ParseStatement(t *testing.T) {
 				Y: &sql.Ident{Name: "DELETE", NamePos: pos(27)},
 			},
 		})
+		// A pragma value is a signed number, literal or name; the call form
+		// takes exactly one value.
+		AssertParseStatement(t, `PRAGMA foo(ON)`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Expr: &sql.Call{
+				Name:   &sql.Ident{Name: "foo", NamePos: pos(7)},
+				Lparen: pos(10),
+				Args:   []sql.Expr{&sql.Ident{Name: "ON", NamePos: pos(11)}},
+				Rparen: pos(13),
+			},
+		})
+		AssertParseStatement(t, `PRAGMA foo = -1`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Expr: &sql.BinaryExpr{
+				X:     &sql.Ident{Name: "foo", NamePos: pos(7)},
+				OpPos: pos(11), Op: sql.EQ,
+				Y: &sql.NumberLit{Value: "-1", ValuePos: pos(13)},
+			},
+		})
+		AssertParseStatementError(t, `PRAGMA foo = 1 + 1`, "1:16: expected semicolon or EOF, found '+'")
+		AssertParseStatementError(t, `PRAGMA foo(1, 2)`, "1:13: expected right paren, found ','")
 		AssertParseStatementError(t, `PRAGMA schema.`, "1:14: expected pragma name, found 'EOF'")
 		AssertParseStatementError(t, `PRAGMA .name`, "1:8: expected schema name, found '.'")
-		AssertParseStatementError(t, `PRAGMA schema.name=`, "1:19: expected expression, found 'EOF'")
-		AssertParseStatementError(t, `PRAGMA schema.name(`, "1:19: expected expression, found 'EOF'")
-		AssertParseStatementError(t, `PRAGMA schema.name(arg`, "1:22: expected comma or right paren, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA schema.name=`, "1:19: expected pragma value, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA schema.name(`, "1:19: expected pragma value, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA schema.name(arg`, "1:22: expected right paren, found 'EOF'")
 	})
 
 	t.Run("Explain", func(t *testing.T) {
