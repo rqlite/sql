@@ -3705,10 +3705,9 @@ func (s *SelectStatement) String() string {
 				}
 				buf.WriteString(expr.String())
 			}
-
-			if s.HavingExpr != nil {
-				fmt.Fprintf(&buf, " HAVING %s", s.HavingExpr.String())
-			}
+		}
+		if s.HavingExpr != nil {
+			fmt.Fprintf(&buf, " HAVING %s", s.HavingExpr.String())
 		}
 
 		if len(s.Windows) != 0 {

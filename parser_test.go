@@ -6437,6 +6437,17 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 	}
 }
 
+// Ensure HAVING is accepted without GROUP BY, as SQLite 3.39+ allows.
+func TestParser_HavingWithoutGroupBy(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `SELECT x FROM t HAVING count(*) > 1`).(*sql.SelectStatement)
+	if stmt.HavingExpr == nil || stmt.GroupByExprs != nil {
+		t.Fatalf("expected HAVING without GROUP BY, got %s", stmt.String())
+	}
+	if got, want := stmt.String(), `SELECT "x" FROM "t" HAVING count(*) > 1`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
 // Ensure empty statements (stray semicolons) are skipped, as sqlite3 does.
 func TestParser_EmptyStatements(t *testing.T) {
 	AssertParseStatements(t, `;`, 0)

@@ -2214,12 +2214,13 @@ func (p *Parser) parseSelectStatement(compounded bool, withClause *WithClause) (
 				p.scan()
 			}
 
-			// Parse optional HAVING clause.
-			if p.peek() == HAVING {
-				stmt.Having, _, _ = p.scan()
-				if stmt.HavingExpr, err = p.ParseExpr(); err != nil {
-					return &stmt, err
-				}
+		}
+
+		// Parse optional HAVING clause. SQLite allows it without GROUP BY.
+		if p.peek() == HAVING {
+			stmt.Having, _, _ = p.scan()
+			if stmt.HavingExpr, err = p.ParseExpr(); err != nil {
+				return &stmt, err
 			}
 		}
 
