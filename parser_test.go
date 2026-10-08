@@ -6123,6 +6123,23 @@ func TestParser_DepthLimit(t *testing.T) {
 	})
 }
 
+// Ensure names that are not SQLite keywords can be used as identifiers.
+func TestParser_NonKeywordIdents(t *testing.T) {
+	for _, s := range []string{
+		`SELECT vector, span, truth FROM tbl`,
+		`SELECT function, register, variable FROM tbl`,
+		`CREATE TABLE tbl (vector BLOB, strict INTEGER, stored TEXT)`,
+		`SELECT * FROM vector WHERE span > 1`,
+	} {
+		stmt, err := sql.NewParser(strings.NewReader(s)).ParseStatement()
+		if err != nil {
+			t.Errorf("%s: %v", s, err)
+		} else if _, err := sql.NewParser(strings.NewReader(stmt.String())).ParseStatement(); err != nil {
+			t.Errorf("%s: cannot re-parse %q: %v", s, stmt.String(), err)
+		}
+	}
+}
+
 // Ensure operators that are not valid binary operators are rejected rather
 // than accepted as expressions that cannot be re-serialized.
 func TestParser_InvalidBinaryOp(t *testing.T) {
