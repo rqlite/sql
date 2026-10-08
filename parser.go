@@ -402,6 +402,9 @@ func (p *Parser) parseCreateTableStatement(createPos, tempPos Pos) (_ *CreateTab
 
 		if stmt.Columns, err = p.parseColumnDefinitions(); err != nil {
 			return &stmt, err
+		} else if len(stmt.Columns) == 0 {
+			// SQLite requires at least one column definition.
+			return &stmt, p.errorExpected(p.pos, p.tok, "column name")
 		} else if stmt.Constraints, err = p.parseTableConstraints(); err != nil {
 			return &stmt, err
 		}
