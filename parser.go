@@ -766,9 +766,14 @@ func (p *Parser) parseDefaultConstraint(constraintPos Pos, name *Ident) (_ *Defa
 		if cons.Expr, err = p.parseSignedNumber("signed number"); err != nil {
 			return &cons, err
 		}
+	} else if isNameToken(p.peek()) {
+		// A bare identifier, which SQLite treats as a string value.
+		if cons.Expr, err = p.parseIdent("default value"); err != nil {
+			return &cons, err
+		}
 	} else {
 		if p.peek() != LP {
-			return &cons, p.errorExpected(p.pos, p.tok, "literal value or left paren")
+			return &cons, p.errorExpected(p.pos, p.tok, "literal value, identifier or left paren")
 		}
 		cons.Lparen, _, _ = p.scan()
 

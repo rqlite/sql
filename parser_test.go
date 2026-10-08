@@ -1048,7 +1048,7 @@ func TestParser_ParseStatement(t *testing.T) {
 
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT +`, `1:37: expected signed number, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT -`, `1:37: expected signed number, found 'EOF'`)
-				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT `, `1:36: expected literal value or left paren, found 'EOF'`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT `, `1:36: expected literal value, identifier or left paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT (TABLE`, `1:38: expected expression, found 'TABLE'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT (true`, `1:41: expected right paren, found 'EOF'`)
 			})
@@ -6364,6 +6364,22 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 			t.Errorf("%s: unstable: %q != %q", tt.s, stmt.String(), stmt2.String())
 		}
 	}
+}
+
+// Ensure a DEFAULT value may be a bare identifier, which SQLite stores as a
+// string: `DEFAULT abc` is the same as `DEFAULT 'abc'`.
+func TestParser_DefaultIdent(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 TEXT DEFAULT abc, col2 TEXT DEFAULT key)`).(*sql.CreateTableStatement)
+	if diff := deepEqual(stmt.Columns[0].Constraints[0], &sql.DefaultConstraint{
+		Default: pos(28),
+		Expr:    &sql.Ident{NamePos: pos(36), Name: "abc"},
+	}); diff != "" {
+		t.Fatal(diff)
+	}
+	if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1" TEXT DEFAULT abc, "col2" TEXT DEFAULT key)`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT)`, `1:36: expected literal value, identifier or left paren, found ')'`)
 }
 
 // Ensure type names may be quoted identifiers, string literals or fallback

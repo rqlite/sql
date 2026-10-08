@@ -1102,6 +1102,10 @@ func (c *DefaultConstraint) String() string {
 		buf.WriteString("(")
 		buf.WriteString(c.Expr.String())
 		buf.WriteString(")")
+	} else if ident, ok := c.Expr.(*Ident); ok && isBareIdentName(ident.Name) {
+		// Keep a bare identifier default bare so that it round-trips; a
+		// quoted form would be read back as a string literal.
+		buf.WriteString(ident.Name)
 	} else {
 		buf.WriteString(c.Expr.String())
 	}
