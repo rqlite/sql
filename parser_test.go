@@ -5247,6 +5247,40 @@ func TestParser_ParseExpr(t *testing.T) {
 			OpPos: pos(2), Op: sql.NOTMATCH,
 			Y: &sql.NumberLit{ValuePos: pos(12), Value: "2"},
 		})
+		AssertParseExpr(t, `1 LIKE 2 ESCAPE '@'`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.LIKE,
+			Y:          &sql.NumberLit{ValuePos: pos(7), Value: "2"},
+			Escape:     pos(9),
+			EscapeExpr: &sql.StringLit{ValuePos: pos(16), Value: "@"},
+		})
+		AssertParseExpr(t, `1 NOT LIKE 2 ESCAPE '@'`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.NOTLIKE,
+			Y:          &sql.NumberLit{ValuePos: pos(11), Value: "2"},
+			Escape:     pos(13),
+			EscapeExpr: &sql.StringLit{ValuePos: pos(20), Value: "@"},
+		})
+		AssertParseExpr(t, `1 GLOB 2 ESCAPE '@'`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.GLOB,
+			Y:          &sql.NumberLit{ValuePos: pos(7), Value: "2"},
+			Escape:     pos(9),
+			EscapeExpr: &sql.StringLit{ValuePos: pos(16), Value: "@"},
+		})
+		// ESCAPE binds to the LIKE, not to a following AND/OR condition.
+		AssertParseExpr(t, `1 LIKE 2 ESCAPE '@' AND 3`, &sql.BinaryExpr{
+			X: &sql.BinaryExpr{
+				X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+				OpPos: pos(2), Op: sql.LIKE,
+				Y:          &sql.NumberLit{ValuePos: pos(7), Value: "2"},
+				Escape:     pos(9),
+				EscapeExpr: &sql.StringLit{ValuePos: pos(16), Value: "@"},
+			},
+			OpPos: pos(20), Op: sql.AND,
+			Y: &sql.NumberLit{ValuePos: pos(24), Value: "3"},
+		})
+		AssertParseExprError(t, `1 LIKE 2 ESCAPE`, `1:15: expected expression, found 'EOF'`)
 		AssertParseExprError(t, `1 NOT TABLE`, `1:7: expected IN, LIKE, GLOB, REGEXP, MATCH, BETWEEN, IS/NOT NULL, found 'TABLE'`)
 		AssertParseExpr(t, `1 IN (2, 3)'`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
@@ -5857,6 +5891,43 @@ func TestParser_ParseExpr(t *testing.T) {
 		AssertParseExprError(t, `RAISE(ROLLBACK`, `1:14: expected comma, found 'EOF'`)
 		AssertParseExprError(t, `RAISE(ROLLBACK,`, `1:15: expected error message, found 'EOF'`)
 	})
+}
+
+// Ensure the parser returns an error on pathologically nested input instead
+// of overflowing the stack.
+func TestParser_DepthLimit(t *testing.T) {
+	t.Run("NestedExprOK", func(t *testing.T) {
+		AssertParseStatements(t, `SELECT `+strings.Repeat("(", 900)+`1`+strings.Repeat(")", 900), 1)
+	})
+	t.Run("NestedExpr", func(t *testing.T) {
+		s := `SELECT ` + strings.Repeat("(", 2000) + `1` + strings.Repeat(")", 2000)
+		AssertParseStatementsError(t, s, `parse tree is too deep (maximum depth 1000)`)
+	})
+	t.Run("NestedUnary", func(t *testing.T) {
+		s := `SELECT ` + strings.Repeat("NOT ", 2000) + `1`
+		AssertParseStatementsError(t, s, `parse tree is too deep (maximum depth 1000)`)
+	})
+	t.Run("NestedSourceOK", func(t *testing.T) {
+		AssertParseStatements(t, `SELECT * FROM `+strings.Repeat("(", 500)+`tbl`+strings.Repeat(")", 500), 1)
+	})
+	t.Run("NestedSource", func(t *testing.T) {
+		s := `SELECT * FROM ` + strings.Repeat("(", 2000) + `tbl` + strings.Repeat(")", 2000)
+		AssertParseStatementsError(t, s, `parse tree is too deep (maximum depth 1000)`)
+	})
+
+	// The depth counter must reset between statements.
+	t.Run("MultipleStatements", func(t *testing.T) {
+		stmt := `SELECT ` + strings.Repeat("(", 800) + `1` + strings.Repeat(")", 800) + `; `
+		AssertParseStatements(t, strings.Repeat(stmt, 3), 3)
+	})
+}
+
+// Ensure operators that are not valid binary operators are rejected rather
+// than accepted as expressions that cannot be re-serialized.
+func TestParser_InvalidBinaryOp(t *testing.T) {
+	AssertParseStatementError(t, `SELECT 1 ~ 2`, `1:10: expected semicolon or EOF, found '~'`)
+	AssertParseStatementError(t, `SELECT 1 ESCAPE 2`, `1:10: expected semicolon or EOF, found 'ESCAPE'`)
+	AssertParseStatementError(t, `SELECT * FROM tbl WHERE x = 'y' ESCAPE '@'`, `1:33: expected semicolon or EOF, found 'ESCAPE'`)
 }
 
 func TestError_Error(t *testing.T) {

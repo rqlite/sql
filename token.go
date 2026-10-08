@@ -560,8 +560,6 @@ func (op Token) Precedence() int {
 		return 4
 	case GT, LE, LT, GE:
 		return 5
-	case ESCAPE:
-		return 6
 	case BITAND, BITOR, LSHIFT, RSHIFT:
 		return 7
 	case PLUS, MINUS:
@@ -570,10 +568,19 @@ func (op Token) Precedence() int {
 		return 9
 	case CONCAT, JSON_EXTRACT_JSON, JSON_EXTRACT_SQL:
 		return 10
-	case BITNOT:
-		return 11
 	}
 	return LowestPrec
+}
+
+// isLikeOp returns true if tok is an operator that may be followed by an
+// ESCAPE clause.
+func isLikeOp(tok Token) bool {
+	switch tok {
+	case LIKE, NOTLIKE, GLOB, NOTGLOB, REGEXP, NOTREGEXP, MATCH, NOTMATCH:
+		return true
+	default:
+		return false
+	}
 }
 
 type Pos struct {

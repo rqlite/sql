@@ -1718,6 +1718,9 @@ type BinaryExpr struct {
 	OpPos Pos   // position of Op
 	Op    Token // operator
 	Y     Expr  // rhs
+
+	Escape     Pos  // position of ESCAPE keyword (optional; LIKE, GLOB, REGEXP & MATCH only)
+	EscapeExpr Expr // escape expression (optional)
 }
 
 // Clone returns a deep copy of expr.
@@ -1728,6 +1731,7 @@ func (expr *BinaryExpr) Clone() *BinaryExpr {
 	other := *expr
 	other.X = CloneExpr(expr.X)
 	other.Y = CloneExpr(expr.Y)
+	other.EscapeExpr = CloneExpr(expr.EscapeExpr)
 	return &other
 }
 
@@ -1783,21 +1787,21 @@ func (expr *BinaryExpr) String() string {
 	case NOTIN:
 		return expr.X.String() + " NOT IN " + expr.Y.String()
 	case LIKE:
-		return expr.X.String() + " LIKE " + expr.Y.String()
+		return expr.X.String() + " LIKE " + expr.Y.String() + expr.escapeString()
 	case NOTLIKE:
-		return expr.X.String() + " NOT LIKE " + expr.Y.String()
+		return expr.X.String() + " NOT LIKE " + expr.Y.String() + expr.escapeString()
 	case GLOB:
-		return expr.X.String() + " GLOB " + expr.Y.String()
+		return expr.X.String() + " GLOB " + expr.Y.String() + expr.escapeString()
 	case NOTGLOB:
-		return expr.X.String() + " NOT GLOB " + expr.Y.String()
+		return expr.X.String() + " NOT GLOB " + expr.Y.String() + expr.escapeString()
 	case MATCH:
-		return expr.X.String() + " MATCH " + expr.Y.String()
+		return expr.X.String() + " MATCH " + expr.Y.String() + expr.escapeString()
 	case NOTMATCH:
-		return expr.X.String() + " NOT MATCH " + expr.Y.String()
+		return expr.X.String() + " NOT MATCH " + expr.Y.String() + expr.escapeString()
 	case REGEXP:
-		return expr.X.String() + " REGEXP " + expr.Y.String()
+		return expr.X.String() + " REGEXP " + expr.Y.String() + expr.escapeString()
 	case NOTREGEXP:
-		return expr.X.String() + " NOT REGEXP " + expr.Y.String()
+		return expr.X.String() + " NOT REGEXP " + expr.Y.String() + expr.escapeString()
 	case AND:
 		return expr.X.String() + " AND " + expr.Y.String()
 	case OR:
@@ -1805,6 +1809,14 @@ func (expr *BinaryExpr) String() string {
 	default:
 		panic(fmt.Sprintf("sql.BinaryExpr.String(): invalid op %s", expr.Op))
 	}
+}
+
+// escapeString returns the string representation of the ESCAPE clause, if set.
+func (expr *BinaryExpr) escapeString() string {
+	if expr.EscapeExpr == nil {
+		return ""
+	}
+	return " ESCAPE " + expr.EscapeExpr.String()
 }
 
 type CastExpr struct {

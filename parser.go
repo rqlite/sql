@@ -6,14 +6,35 @@ import (
 	"strings"
 )
 
+// maxParseDepth is the maximum nesting depth of expressions and sources.
+// It bounds parser recursion so that pathologically nested input returns an
+// error instead of overflowing the stack. It matches SQLite's default
+// SQLITE_MAX_EXPR_DEPTH.
+const maxParseDepth = 1000
+
 // Parser represents a SQL parser.
 type Parser struct {
 	s *Scanner
 
-	pos  Pos    // current position
-	tok  Token  // current token
-	lit  string // current literal value
-	full bool   // buffer full
+	pos   Pos    // current position
+	tok   Token  // current token
+	lit   string // current literal value
+	full  bool   // buffer full
+	depth int    // expression & source nesting depth
+}
+
+// incDepth increments the nesting depth, returning an error at pos if the
+// maximum is exceeded. Each call must be paired with a call to decDepth.
+func (p *Parser) incDepth(pos Pos) error {
+	p.depth++
+	if p.depth > maxParseDepth {
+		return &Error{Pos: pos, Msg: fmt.Sprintf("parse tree is too deep (maximum depth %d)", maxParseDepth)}
+	}
+	return nil
+}
+
+func (p *Parser) decDepth() {
+	p.depth--
 }
 
 // NewParser returns a new instance of Parser that reads from r.
@@ -2244,6 +2265,11 @@ func (p *Parser) parseSource() (source Source, err error) {
 
 // parseUnarySource parses a qualified table name, table function name, or subquery but not a JOIN.
 func (p *Parser) parseUnarySource() (source Source, err error) {
+	if err := p.incDepth(p.pos); err != nil {
+		return nil, err
+	}
+	defer p.decDepth()
+
 	switch p.peek() {
 	case LP:
 		return p.parseParenSource()
@@ -2593,6 +2619,11 @@ func (p *Parser) ParseExpr() (expr Expr, err error) {
 
 func (p *Parser) parseOperand() (expr Expr, err error) {
 	pos, tok, lit := p.scan()
+	if err := p.incDepth(pos); err != nil {
+		return nil, err
+	}
+	defer p.decDepth()
+
 	switch {
 	case isExprIdentToken(tok):
 		ident := &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
@@ -2709,7 +2740,18 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 			if err != nil {
 				return nil, err
 			}
-			x = &BinaryExpr{X: x, OpPos: pos, Op: op, Y: y}
+			bin := &BinaryExpr{X: x, OpPos: pos, Op: op, Y: y}
+
+			// LIKE-family operators may be followed by an optional ESCAPE
+			// clause. Its expression binds tighter than the comparison
+			// operators, matching SQLite's precedence for ESCAPE.
+			if isLikeOp(op) && p.peek() == ESCAPE {
+				bin.Escape, _, _ = p.scan()
+				if bin.EscapeExpr, err = p.parseBinaryExpr(BITAND.Precedence()); err != nil {
+					return nil, err
+				}
+			}
+			x = bin
 		}
 	}
 }

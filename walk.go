@@ -599,6 +599,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		} else {
 			nn.Y = expr
 		}
+		if expr, err := walkExpr(v, nn.EscapeExpr); err != nil {
+			return nil, err
+		} else {
+			nn.EscapeExpr = expr
+		}
 
 	case *CastExpr:
 		if expr, err := walkExpr(v, nn.X); err != nil {
