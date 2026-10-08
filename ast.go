@@ -3670,6 +3670,7 @@ func (c *JoinClause) Clone() *JoinClause {
 	}
 	other := *c
 	other.X = CloneSource(c.X)
+	other.Operator = c.Operator.Clone()
 	other.Y = CloneSource(c.Y)
 	other.Constraint = CloneJoinConstraint(c.Constraint)
 	return &other

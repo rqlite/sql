@@ -59,3 +59,17 @@ func TestReturningClause_Clone(t *testing.T) {
 		t.Fatal("DeleteStatement.Clone() shares ReturningClause")
 	}
 }
+
+func TestJoinClause_Clone(t *testing.T) {
+	j := &sql.JoinClause{
+		X:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "a"}},
+		Operator: &sql.JoinOperator{Left: pos(0)},
+		Y:        &sql.QualifiedTableName{Name: &sql.Ident{Name: "b"}},
+	}
+	c := j.Clone()
+	if diff := deep.Equal(j, c); diff != nil {
+		t.Fatal(diff)
+	} else if c.Operator == j.Operator {
+		t.Fatal("expected deep copy of Operator")
+	}
+}
