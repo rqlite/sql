@@ -5647,7 +5647,7 @@ func TestParser_ParseExpr(t *testing.T) {
 				Rparen: pos(26),
 			},
 		})
-		// Test error case: schema-qualified function calls are not supported
+		// Schema-qualified function calls are accepted in IN expressions.
 		AssertParseExpr(t, `1 IN schema.func()`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.IN,
