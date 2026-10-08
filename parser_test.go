@@ -5268,10 +5268,8 @@ func TestParser_ParseStatements(t *testing.T) {
 	})
 
 	t.Run("EmptySemicolons", func(t *testing.T) {
-		_, err := sql.NewParser(strings.NewReader(`;;`)).ParseStatements()
-		if err == nil {
-			t.Fatal("ParseStatements() expected error, got nil")
-		}
+		// Empty statements are skipped, as sqlite3 does.
+		AssertParseStatements(t, `;;`, 0)
 	})
 
 	t.Run("CreateIndexStatements", func(t *testing.T) {
@@ -6437,6 +6435,14 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 			t.Errorf("%s: unstable: %q != %q", tt.s, stmt.String(), stmt2.String())
 		}
 	}
+}
+
+// Ensure empty statements (stray semicolons) are skipped, as sqlite3 does.
+func TestParser_EmptyStatements(t *testing.T) {
+	AssertParseStatements(t, `;`, 0)
+	AssertParseStatements(t, `;;`, 0)
+	AssertParseStatements(t, `SELECT 1;; SELECT 2`, 2)
+	AssertParseStatements(t, `; SELECT 1;`, 1)
 }
 
 func TestParser_Vacuum(t *testing.T) {

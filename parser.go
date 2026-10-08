@@ -86,6 +86,10 @@ func (p *Parser) ParseStatement() (stmt Statement, err error) {
 
 func (p *Parser) ParseStatements() (stmts []Statement, err error) {
 	for {
+		// Skip empty statements.
+		for p.peek() == SEMI {
+			p.scan()
+		}
 		switch tok := p.peek(); tok {
 		case EOF:
 			return stmts, nil
