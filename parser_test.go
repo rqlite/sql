@@ -6437,6 +6437,12 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 	}
 }
 
+// Ensure a bind parameter prefix without a name is rejected.
+func TestParser_EmptyBindName(t *testing.T) {
+	AssertParseStatementError(t, `SELECT $`, `1:8: expected expression, found 'ILLEGAL'`)
+	AssertParseStatementError(t, `SELECT * FROM t WHERE x = :`, `1:27: expected expression, found 'ILLEGAL'`)
+}
+
 // Ensure HAVING is accepted without GROUP BY, as SQLite 3.39+ allows.
 func TestParser_HavingWithoutGroupBy(t *testing.T) {
 	stmt := ParseStatementOrFail(t, `SELECT x FROM t HAVING count(*) > 1`).(*sql.SelectStatement)

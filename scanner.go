@@ -257,11 +257,14 @@ func (s *Scanner) scanBind() (Pos, Token, string) {
 		return pos, BIND, s.buf.String()
 	}
 
-	// All other characters start an alphanumeric bind.
+	// All other characters start a named bind, which requires a name.
 	assert(start == ':' || start == '@' || start == '$')
 	for isUnquotedIdent(s.peek()) {
 		ch, _ := s.read()
 		s.buf.WriteRune(ch)
+	}
+	if s.buf.Len() == 1 {
+		return pos, ILLEGAL, s.buf.String()
 	}
 	return pos, BIND, s.buf.String()
 }
