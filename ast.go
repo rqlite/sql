@@ -834,9 +834,10 @@ type PrimaryKeyConstraint struct {
 	Columns []*Ident // indexed columns (table only)
 	Rparen  Pos      // position of right paren (table only)
 
-	Asc           Pos // position of ASC keyword (column only)
-	Desc          Pos // position of DESC keyword (column only)
-	Autoincrement Pos // position of AUTOINCREMENT keyword (column only)
+	Asc           Pos             // position of ASC keyword (column only)
+	Desc          Pos             // position of DESC keyword (column only)
+	Conflict      *ConflictClause // optional ON CONFLICT clause
+	Autoincrement Pos             // position of AUTOINCREMENT keyword (column only)
 }
 
 // Clone returns a deep copy of c.
@@ -847,6 +848,7 @@ func (c *PrimaryKeyConstraint) Clone() *PrimaryKeyConstraint {
 	other := *c
 	other.Name = c.Name.Clone()
 	other.Columns = cloneIdents(c.Columns)
+	other.Conflict = c.Conflict.Clone()
 	return &other
 }
 
@@ -877,6 +879,10 @@ func (c *PrimaryKeyConstraint) String() string {
 	} else if c.Desc.IsValid() {
 		buf.WriteString(" DESC")
 	}
+	if c.Conflict != nil {
+		buf.WriteString(" ")
+		buf.WriteString(c.Conflict.String())
+	}
 	if c.Autoincrement.IsValid() {
 		buf.WriteString(" AUTOINCREMENT")
 	}
@@ -888,6 +894,8 @@ type NotNullConstraint struct {
 	Name       *Ident // constraint name
 	Not        Pos    // position of NOT keyword
 	Null       Pos    // position of NULL keyword
+
+	Conflict *ConflictClause // optional ON CONFLICT clause
 }
 
 // Clone returns a deep copy of c.
@@ -897,6 +905,7 @@ func (c *NotNullConstraint) Clone() *NotNullConstraint {
 	}
 	other := *c
 	other.Name = c.Name.Clone()
+	other.Conflict = c.Conflict.Clone()
 	return &other
 }
 
@@ -911,6 +920,11 @@ func (c *NotNullConstraint) String() string {
 
 	buf.WriteString("NOT NULL")
 
+	if c.Conflict != nil {
+		buf.WriteString(" ")
+		buf.WriteString(c.Conflict.String())
+	}
+
 	return buf.String()
 }
 
@@ -922,6 +936,8 @@ type UniqueConstraint struct {
 	Lparen  Pos              // position of left paren (table only)
 	Columns []*IndexedColumn // indexed columns (table only)
 	Rparen  Pos              // position of right paren (table only)
+
+	Conflict *ConflictClause // optional ON CONFLICT clause
 }
 
 // Clone returns a deep copy of c.
@@ -935,6 +951,7 @@ func (c *UniqueConstraint) Clone() *UniqueConstraint {
 	for i := range c.Columns {
 		other.Columns[i] = c.Columns[i].Clone()
 	}
+	other.Conflict = c.Conflict.Clone()
 
 	return &other
 }
@@ -961,7 +978,53 @@ func (c *UniqueConstraint) String() string {
 		buf.WriteString(")")
 	}
 
+	if c.Conflict != nil {
+		buf.WriteString(" ")
+		buf.WriteString(c.Conflict.String())
+	}
+
 	return buf.String()
+}
+
+// ConflictClause represents an ON CONFLICT clause attached to a PRIMARY KEY,
+// NOT NULL or UNIQUE constraint. Exactly one of the resolution positions is
+// set.
+type ConflictClause struct {
+	On       Pos // position of ON keyword
+	Conflict Pos // position of CONFLICT keyword
+
+	Rollback Pos // position of ROLLBACK keyword
+	Abort    Pos // position of ABORT keyword
+	Fail     Pos // position of FAIL keyword
+	Ignore   Pos // position of IGNORE keyword
+	Replace  Pos // position of REPLACE keyword
+}
+
+// Clone returns a deep copy of c.
+func (c *ConflictClause) Clone() *ConflictClause {
+	if c == nil {
+		return nil
+	}
+	other := *c
+	return &other
+}
+
+// String returns the string representation of the clause.
+func (c *ConflictClause) String() string {
+	switch {
+	case c.Rollback.IsValid():
+		return "ON CONFLICT ROLLBACK"
+	case c.Abort.IsValid():
+		return "ON CONFLICT ABORT"
+	case c.Fail.IsValid():
+		return "ON CONFLICT FAIL"
+	case c.Ignore.IsValid():
+		return "ON CONFLICT IGNORE"
+	case c.Replace.IsValid():
+		return "ON CONFLICT REPLACE"
+	default:
+		panic("sql.ConflictClause.String(): no resolution algorithm set")
+	}
 }
 
 type CheckConstraint struct {

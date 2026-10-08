@@ -599,11 +599,45 @@ func (p *Parser) parsePrimaryKeyConstraint(constraintPos Pos, name *Ident, isTab
 		case DESC:
 			cons.Desc, _, _ = p.scan()
 		}
-		if p.peek() == AUTOINCREMENT {
-			cons.Autoincrement, _, _ = p.scan()
+	}
+	if p.peek() == ON {
+		if cons.Conflict, err = p.parseConflictClause(); err != nil {
+			return &cons, err
 		}
 	}
+	if !isTable && p.peek() == AUTOINCREMENT {
+		cons.Autoincrement, _, _ = p.scan()
+	}
 	return &cons, nil
+}
+
+// parseConflictClause parses "ON CONFLICT <algorithm>" following a constraint.
+func (p *Parser) parseConflictClause() (_ *ConflictClause, err error) {
+	assert(p.peek() == ON)
+
+	var clause ConflictClause
+	clause.On, _, _ = p.scan()
+
+	if p.peek() != CONFLICT {
+		return &clause, p.errorExpected(p.pos, p.tok, "CONFLICT")
+	}
+	clause.Conflict, _, _ = p.scan()
+
+	switch p.peek() {
+	case ROLLBACK:
+		clause.Rollback, _, _ = p.scan()
+	case ABORT:
+		clause.Abort, _, _ = p.scan()
+	case FAIL:
+		clause.Fail, _, _ = p.scan()
+	case IGNORE:
+		clause.Ignore, _, _ = p.scan()
+	case REPLACE:
+		clause.Replace, _, _ = p.scan()
+	default:
+		return &clause, p.errorExpected(p.pos, p.tok, "ROLLBACK, ABORT, FAIL, IGNORE, or REPLACE")
+	}
+	return &clause, nil
 }
 
 func (p *Parser) parseNotNullConstraint(constraintPos Pos, name *Ident) (_ *NotNullConstraint, err error) {
@@ -618,6 +652,12 @@ func (p *Parser) parseNotNullConstraint(constraintPos Pos, name *Ident) (_ *NotN
 		return &cons, p.errorExpected(p.pos, p.tok, "NULL")
 	}
 	cons.Null, _, _ = p.scan()
+
+	if p.peek() == ON {
+		if cons.Conflict, err = p.parseConflictClause(); err != nil {
+			return &cons, err
+		}
+	}
 
 	return &cons, nil
 }
@@ -651,6 +691,12 @@ func (p *Parser) parseUniqueConstraint(constraintPos Pos, name *Ident, isTable b
 			p.scan()
 		}
 		cons.Rparen, _, _ = p.scan()
+	}
+
+	if p.peek() == ON {
+		if cons.Conflict, err = p.parseConflictClause(); err != nil {
+			return &cons, err
+		}
 	}
 
 	return &cons, nil
