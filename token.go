@@ -554,8 +554,9 @@ func isExprIdentToken(tok Token) bool {
 }
 
 const (
-	LowestPrec  = 0 // non-operators
-	UnaryPrec   = 13
+	LowestPrec  = 0  // non-operators
+	NotPrec     = 3  // unary NOT: looser than the comparison operators, tighter than AND
+	UnaryPrec   = 13 // other unary operators (-, +, ~)
 	HighestPrec = 14
 )
 
@@ -568,7 +569,8 @@ func (op Token) Precedence() int {
 	case NOT:
 		// In binary position NOT is always the prefix of a compound operator
 		// (NOT IN, NOT LIKE, NOT BETWEEN, ...), so it has that operator's
-		// precedence. Unary NOT is handled by the parser directly.
+		// precedence. Unary NOT has its own level, NotPrec, and is handled
+		// by the parser directly.
 		return 4
 	case IS, ISNOT, MATCH, NOTMATCH, LIKE, NOTLIKE, GLOB, NOTGLOB, REGEXP, NOTREGEXP,
 		BETWEEN, NOTBETWEEN, IN, NOTIN, ISNULL, NOTNULL, NE, EQ:

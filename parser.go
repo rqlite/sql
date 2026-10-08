@@ -2685,9 +2685,10 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 			return p.parseExists(pos)
 		}
 
-		// Unary NOT binds looser than the comparison operators but tighter
-		// than AND/OR, so its operand is the whole comparison that follows.
-		expr, err = p.parseBinaryExpr(IS.Precedence())
+		// Unary NOT sits at NotPrec, between AND and the comparison
+		// operators. Its operand therefore extends over every operator that
+		// binds tighter than NOT itself, i.e. everything above NotPrec.
+		expr, err = p.parseBinaryExpr(NotPrec + 1)
 		if err != nil {
 			return nil, err
 		}
