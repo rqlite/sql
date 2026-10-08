@@ -1132,7 +1132,7 @@ func TestBinaryExpr_String(t *testing.T) {
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.REGEXP, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 REGEXP 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.NOTREGEXP, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 NOT REGEXP 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.LIKE, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}, EscapeExpr: &sql.StringLit{Value: "@"}}, `1 LIKE 2 ESCAPE '@'`)
-	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.NOTGLOB, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}, EscapeExpr: &sql.StringLit{Value: "@"}}, `1 NOT GLOB 2 ESCAPE '@'`)
+	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.NOTLIKE, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}, EscapeExpr: &sql.StringLit{Value: "@"}}, `1 NOT LIKE 2 ESCAPE '@'`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.AND, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 AND 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.OR, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 OR 2`)
 	AssertExprStringer(t, &sql.BinaryExpr{Op: sql.JSON_EXTRACT_JSON, X: &sql.NumberLit{Value: "1"}, Y: &sql.NumberLit{Value: "2"}}, `1 -> 2`)

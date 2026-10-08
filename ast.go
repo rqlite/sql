@@ -1761,7 +1761,7 @@ type BinaryExpr struct {
 	Op    Token // operator
 	Y     Expr  // rhs
 
-	Escape     Pos  // position of ESCAPE keyword (optional; LIKE, GLOB, REGEXP & MATCH only)
+	Escape     Pos  // position of ESCAPE keyword (optional; LIKE & NOT LIKE only)
 	EscapeExpr Expr // escape expression (optional)
 }
 
@@ -1833,17 +1833,17 @@ func (expr *BinaryExpr) String() string {
 	case NOTLIKE:
 		return expr.X.String() + " NOT LIKE " + expr.Y.String() + expr.escapeString()
 	case GLOB:
-		return expr.X.String() + " GLOB " + expr.Y.String() + expr.escapeString()
+		return expr.X.String() + " GLOB " + expr.Y.String()
 	case NOTGLOB:
-		return expr.X.String() + " NOT GLOB " + expr.Y.String() + expr.escapeString()
+		return expr.X.String() + " NOT GLOB " + expr.Y.String()
 	case MATCH:
-		return expr.X.String() + " MATCH " + expr.Y.String() + expr.escapeString()
+		return expr.X.String() + " MATCH " + expr.Y.String()
 	case NOTMATCH:
-		return expr.X.String() + " NOT MATCH " + expr.Y.String() + expr.escapeString()
+		return expr.X.String() + " NOT MATCH " + expr.Y.String()
 	case REGEXP:
-		return expr.X.String() + " REGEXP " + expr.Y.String() + expr.escapeString()
+		return expr.X.String() + " REGEXP " + expr.Y.String()
 	case NOTREGEXP:
-		return expr.X.String() + " NOT REGEXP " + expr.Y.String() + expr.escapeString()
+		return expr.X.String() + " NOT REGEXP " + expr.Y.String()
 	case AND:
 		return expr.X.String() + " AND " + expr.Y.String()
 	case OR:

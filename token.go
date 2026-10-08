@@ -588,14 +588,10 @@ func (op Token) Precedence() int {
 }
 
 // isLikeOp returns true if tok is an operator that may be followed by an
-// ESCAPE clause.
+// ESCAPE clause. Per https://www.sqlite.org/lang_expr.html the ESCAPE clause
+// binds only to a preceding [NOT] LIKE expression.
 func isLikeOp(tok Token) bool {
-	switch tok {
-	case LIKE, NOTLIKE, GLOB, NOTGLOB, REGEXP, NOTREGEXP, MATCH, NOTMATCH:
-		return true
-	default:
-		return false
-	}
+	return tok == LIKE || tok == NOTLIKE
 }
 
 type Pos struct {

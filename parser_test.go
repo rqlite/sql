@@ -5422,13 +5422,10 @@ func TestParser_ParseExpr(t *testing.T) {
 			Escape:     pos(13),
 			EscapeExpr: &sql.StringLit{ValuePos: pos(20), Value: "@"},
 		})
-		AssertParseExpr(t, `1 GLOB 2 ESCAPE '@'`, &sql.BinaryExpr{
-			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
-			OpPos: pos(2), Op: sql.GLOB,
-			Y:          &sql.NumberLit{ValuePos: pos(7), Value: "2"},
-			Escape:     pos(9),
-			EscapeExpr: &sql.StringLit{ValuePos: pos(16), Value: "@"},
-		})
+		// ESCAPE binds only to LIKE, not to GLOB, REGEXP or MATCH.
+		AssertParseStatementError(t, `SELECT 1 GLOB 2 ESCAPE '@'`, `1:17: expected semicolon or EOF, found 'ESCAPE'`)
+		AssertParseStatementError(t, `SELECT 1 REGEXP 2 ESCAPE '@'`, `1:19: expected semicolon or EOF, found 'ESCAPE'`)
+		AssertParseStatementError(t, `SELECT 1 NOT MATCH 2 ESCAPE '@'`, `1:22: expected semicolon or EOF, found 'ESCAPE'`)
 		// ESCAPE binds to the LIKE, not to a following AND/OR condition.
 		AssertParseExpr(t, `1 LIKE 2 ESCAPE '@' AND 3`, &sql.BinaryExpr{
 			X: &sql.BinaryExpr{
