@@ -1540,7 +1540,7 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 	switch tok {
 	case IDENT, QIDENT, BIDENT:
 		return &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}, nil
-	case NULL:
+	case NULL, ROWID:
 		return &Ident{Name: lit, NamePos: pos}, nil
 	default:
 		if isBareToken(tok) {
@@ -2026,8 +2026,8 @@ func (p *Parser) parseDeleteStatement(inTrigger bool, withClause *WithClause) (_
 func (p *Parser) parseAssignment() (_ *Assignment, err error) {
 	var assignment Assignment
 
-	// Parse either a single column (IDENT or bare keyword) or a column list (LP IDENT COMMA IDENT RP)
-	if isIdentToken(p.peek()) || isBareToken(p.peek()) {
+	// Parse either a single column name or a column list (LP name COMMA name RP)
+	if isNameToken(p.peek()) {
 		col, _ := p.parseIdent("column name")
 		assignment.Columns = []*Ident{col}
 	} else if p.peek() == LP {
@@ -2973,7 +2973,7 @@ func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {
 
 	if p.peek() == STAR {
 		expr.Star, _, _ = p.scan()
-	} else if isIdentToken(p.peek()) {
+	} else if isNameToken(p.peek()) {
 		pos, tok, lit := p.scan()
 		expr.Column = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 
@@ -2990,7 +2990,7 @@ func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {
 			if p.peek() == STAR {
 				expr.Column = nil
 				expr.Star, _, _ = p.scan()
-			} else if isIdentToken(p.peek()) {
+			} else if isNameToken(p.peek()) {
 				pos, tok, lit := p.scan()
 				expr.Column = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 			} else {

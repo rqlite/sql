@@ -541,6 +541,12 @@ func isIdentToken(tok Token) bool {
 	return tok == IDENT || tok == QIDENT || tok == BIDENT
 }
 
+// isNameToken returns true if tok can be used as an object name: an
+// identifier, a fallback keyword, or ROWID.
+func isNameToken(tok Token) bool {
+	return isIdentToken(tok) || isBareToken(tok) || tok == ROWID
+}
+
 // isExprIdentToken returns true if tok can be used as an identifier in an expression.
 // It includes IDENT, QIDENT, BIDENT, bare tokens (keywords that can be used as identifiers),
 // and certain other keywords like ROWID.

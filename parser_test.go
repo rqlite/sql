@@ -6357,6 +6357,35 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 	}
 }
 
+// Ensure rowid and fallback keywords are accepted as column names after a dot
+// and in INSERT column lists, as sqlite3 does.
+func TestParser_RowidAndKeywordColumns(t *testing.T) {
+	AssertParseExpr(t, `t.rowid`, &sql.QualifiedRef{
+		Table:  &sql.Ident{Name: "t", NamePos: pos(0)},
+		Dot:    pos(1),
+		Column: &sql.Ident{Name: "rowid", NamePos: pos(2)},
+	})
+	AssertParseExpr(t, `main.t.key`, &sql.QualifiedRef{
+		Schema:    &sql.Ident{Name: "main", NamePos: pos(0)},
+		SchemaPos: pos(4),
+		Table:     &sql.Ident{Name: "t", NamePos: pos(5)},
+		Dot:       pos(6),
+		Column:    &sql.Ident{Name: "key", NamePos: pos(7)},
+	})
+	for _, s := range []string{
+		`INSERT INTO t (rowid, x) VALUES (1, 2)`,
+		`UPDATE t SET rowid = 1`,
+		`SELECT t.rowid, t.key FROM t`,
+	} {
+		stmt, err := sql.NewParser(strings.NewReader(s)).ParseStatement()
+		if err != nil {
+			t.Errorf("%s: %v", s, err)
+		} else if _, err := sql.NewParser(strings.NewReader(stmt.String())).ParseStatement(); err != nil {
+			t.Errorf("%s: cannot re-parse %q: %v", s, stmt.String(), err)
+		}
+	}
+}
+
 // Ensure names that are not SQLite keywords can be used as identifiers.
 func TestParser_NonKeywordIdents(t *testing.T) {
 	for _, s := range []string{
