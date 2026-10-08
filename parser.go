@@ -2499,25 +2499,7 @@ func (p *Parser) parseQualifiedTable(schemaOK, aliasOK, indexedOK bool) (_ Sourc
 	}
 	ident, _ := p.parseIdent("table name")
 	if p.peek() == LP {
-		return p.parseQualifiedTableFunctionName(nil, Pos{}, ident)
-	}
-
-	// "schema.name(" is a schema-qualified table-valued function; otherwise
-	// hand the already scanned schema and name to the table name parser.
-	if p.peek() == DOT && schemaOK {
-		dot, _, _ := p.scan()
-		name, err := p.parseIdent("table name")
-		if err != nil {
-			return nil, err
-		}
-		if p.peek() == LP {
-			return p.parseQualifiedTableFunctionName(ident, dot, name)
-		}
-		tbl, err := p.parseQualifiedTableName(name, false, aliasOK, indexedOK)
-		if tbl != nil {
-			tbl.Schema, tbl.Dot = ident, dot
-		}
-		return tbl, err
+		return p.parseQualifiedTableFunctionName(ident)
 	}
 	return p.parseQualifiedTableName(ident, schemaOK, aliasOK, indexedOK)
 }
@@ -2580,11 +2562,11 @@ func (p *Parser) parseQualifiedTableName(ident *Ident, schemaOK, aliasOK, indexe
 	return &tbl, nil
 }
 
-func (p *Parser) parseQualifiedTableFunctionName(schema *Ident, dot Pos, name *Ident) (_ *QualifiedTableFunctionName, err error) {
+func (p *Parser) parseQualifiedTableFunctionName(ident *Ident) (_ *QualifiedTableFunctionName, err error) {
 	assert(p.peek() == LP)
 
 	var tbl QualifiedTableFunctionName
-	tbl.Schema, tbl.Dot, tbl.Name = schema, dot, name
+	tbl.Name = ident
 
 	tbl.Lparen, _, _ = p.scan()
 	for {
@@ -2737,7 +2719,7 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 	case isExprIdentToken(tok):
 		ident := &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 		if p.peek() == DOT {
-			return p.parseQualifiedRefOrCall(ident)
+			return p.parseQualifiedRef(ident)
 		} else if p.peek() == LP {
 			return p.parseCall(ident)
 		}
@@ -2951,20 +2933,9 @@ func (p *Parser) parseInExpr() (Expr, error) {
 	return ident, nil
 }
 
-// parseQualifiedRefOrCall parses "table.column", "schema.table.column" or a
-// schema-qualified function call "schema.func(...)".
-func (p *Parser) parseQualifiedRefOrCall(table *Ident) (Expr, error) {
-	ref, err := p.parseQualifiedRef(table)
-	if err != nil {
-		return ref, err
-	}
-	if ref.Schema == nil && ref.Column != nil && p.peek() == LP {
-		return p.parseSchemaQualifiedCall(ref.Table, ref.Dot, ref.Column)
-	}
-	return ref, nil
-}
-
 // parseSchemaQualifiedCall parses the argument list of "schema.name(...)".
+// SQLite only allows a schema-qualified table-valued function as the right
+// hand side of IN, so this is not used for ordinary function calls.
 func (p *Parser) parseSchemaQualifiedCall(schema *Ident, dot Pos, name *Ident) (*Call, error) {
 	call, err := p.parseCall(name)
 	if err != nil {

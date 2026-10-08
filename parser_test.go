@@ -6269,35 +6269,32 @@ func TestParser_DepthLimit(t *testing.T) {
 	})
 }
 
-// Ensure schema-qualified function calls are accepted in expressions, IN
-// clauses and as table-valued functions.
+// Ensure a schema-qualified table-valued function is accepted only where the
+// SQLite grammar allows it: as the right hand side of IN
+// (https://www.sqlite.org/syntax/expr.html). It is not permitted in FROM
+// (https://www.sqlite.org/syntax/table-or-subquery.html) nor as an ordinary
+// function call.
 func TestParser_SchemaQualifiedFunctions(t *testing.T) {
-	stmt := ParseStatementOrFail(t, `SELECT main.func(1) FROM main.json_each('[1]') AS j WHERE 2 IN main.tf()`).(*sql.SelectStatement)
-	if call, ok := stmt.Columns[0].Expr.(*sql.Call); !ok {
-		t.Fatalf("column: expected *sql.Call, got %T", stmt.Columns[0].Expr)
-	} else if diff := deepEqual(call, &sql.Call{
-		Schema: &sql.Ident{Name: "main", NamePos: pos(7)},
-		Dot:    pos(11),
-		Name:   &sql.Ident{Name: "func", NamePos: pos(12)},
-		Lparen: pos(16),
-		Args:   []sql.Expr{&sql.NumberLit{Value: "1", ValuePos: pos(17)}},
-		Rparen: pos(18),
+	stmt := ParseStatementOrFail(t, `SELECT 1 FROM t WHERE 2 IN main.tf(3)`).(*sql.SelectStatement)
+	if in, ok := stmt.WhereExpr.(*sql.BinaryExpr); !ok || in.Op != sql.IN {
+		t.Fatalf("where: expected IN expression, got %s", stmt.WhereExpr.String())
+	} else if diff := deepEqual(in.Y, &sql.Call{
+		Schema: &sql.Ident{Name: "main", NamePos: pos(27)},
+		Dot:    pos(31),
+		Name:   &sql.Ident{Name: "tf", NamePos: pos(32)},
+		Lparen: pos(34),
+		Args:   []sql.Expr{&sql.NumberLit{Value: "3", ValuePos: pos(35)}},
+		Rparen: pos(36),
 	}); diff != "" {
 		t.Fatal(diff)
 	}
-	if fn, ok := stmt.Source.(*sql.QualifiedTableFunctionName); !ok {
-		t.Fatalf("source: expected *sql.QualifiedTableFunctionName, got %T", stmt.Source)
-	} else if fn.Schema == nil || fn.Schema.Name != "main" || fn.Name.Name != "json_each" || fn.Alias.Name != "j" {
-		t.Fatalf("unexpected table function: %s", fn.String())
-	}
-	if in, ok := stmt.WhereExpr.(*sql.BinaryExpr); !ok || in.Op != sql.IN {
-		t.Fatalf("where: expected IN expression, got %s", stmt.WhereExpr.String())
-	} else if call, ok := in.Y.(*sql.Call); !ok || call.Schema == nil || call.Schema.Name != "main" || call.Name.Name != "tf" {
-		t.Fatalf("where: expected schema-qualified call, got %s", in.Y.String())
-	}
-	if got, want := stmt.String(), `SELECT "main".func(1) FROM "main"."json_each"('[1]') AS "j" WHERE 2 IN "main".tf()`; got != want {
+	if got, want := stmt.String(), `SELECT 1 FROM "t" WHERE 2 IN "main".tf(3)`; got != want {
 		t.Fatalf("String()=%s, want %s", got, want)
 	}
+
+	AssertParseStatementError(t, `SELECT main.func(1)`, `1:17: expected semicolon or EOF, found '('`)
+	AssertParseStatementError(t, `SELECT * FROM main.json_each('[1]')`, `1:29: expected semicolon or EOF, found '('`)
+
 	// Plain column references are unaffected.
 	AssertParseExpr(t, `tbl.col`, &sql.QualifiedRef{
 		Table:  &sql.Ident{Name: "tbl", NamePos: pos(0)},
