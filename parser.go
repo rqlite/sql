@@ -833,28 +833,28 @@ func (p *Parser) parseForeignKeyConstraint(constraintPos Pos, name *Ident, isTab
 		return &cons, err
 	}
 
-	// Parse column list.
-	if p.peek() != LP {
-		return &cons, p.errorExpected(p.pos, p.tok, "left paren")
-	}
-	cons.ForeignLparen, _, _ = p.scan()
+	// Parse optional column list. When omitted, the parent table's primary
+	// key is the referenced column set.
+	if p.peek() == LP {
+		cons.ForeignLparen, _, _ = p.scan()
 
-	for {
-		col, err := p.parseIdent("foreign column name")
-		if err != nil {
-			return &cons, err
+		for {
+			col, err := p.parseIdent("foreign column name")
+			if err != nil {
+				return &cons, err
+			}
+			cons.ForeignColumns = append(cons.ForeignColumns, col)
+
+			if p.peek() == RP {
+				break
+			} else if p.peek() != COMMA {
+				return &cons, p.errorExpected(p.pos, p.tok, "comma or right paren")
+			}
+			p.scan()
 		}
-		cons.ForeignColumns = append(cons.ForeignColumns, col)
 
-		if p.peek() == RP {
-			break
-		} else if p.peek() != COMMA {
-			return &cons, p.errorExpected(p.pos, p.tok, "comma or right paren")
-		}
-		p.scan()
+		cons.ForeignRparen, _, _ = p.scan()
 	}
-
-	cons.ForeignRparen, _, _ = p.scan()
 
 	// Parse foreign key args.
 	for p.peek() == ON {

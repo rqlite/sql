@@ -1111,6 +1111,22 @@ func TestParser_ParseStatement(t *testing.T) {
 						Rparen: pos(49),
 					})
 				})
+				// The foreign column list is optional; the parent table's primary
+				// key is used when it is omitted.
+				t.Run("NoColumnList", func(t *testing.T) {
+					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other ON DELETE CASCADE)`).(*sql.CreateTableStatement)
+					if diff := deepEqual(stmt.Columns[0].Constraints[0], &sql.ForeignKeyConstraint{
+						References:   pos(31),
+						ForeignTable: &sql.Ident{Name: "other", NamePos: pos(42)},
+						Args: []*sql.ForeignKeyArg{{
+							On:       pos(48),
+							OnDelete: pos(51),
+							Cascade:  pos(58),
+						}},
+					}); diff != "" {
+						t.Fatal(diff)
+					}
+				})
 				t.Run("OnDeleteSetNull", func(t *testing.T) {
 					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 TEXT REFERENCES foo (col2) ON DELETE SET NULL)`).(*sql.CreateTableStatement)
 					if diff := deepEqual(stmt.Columns[0].Constraints[0], &sql.ForeignKeyConstraint{
@@ -1466,7 +1482,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, FOREIGN KEY (x`, `1:43: expected comma or right paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, FOREIGN KEY (x)`, `1:44: expected REFERENCES, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, FOREIGN KEY (x) REFERENCES`, `1:55: expected foreign table name, found 'EOF'`)
-				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, FOREIGN KEY (x) REFERENCES tbl`, `1:59: expected left paren, found 'EOF'`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, FOREIGN KEY (x) REFERENCES tbl`, `1:59: expected right paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, FOREIGN KEY (x) REFERENCES tbl (`, `1:61: expected foreign column name, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, FOREIGN KEY (x) REFERENCES tbl (x`, `1:62: expected comma or right paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, FOREIGN KEY (x) REFERENCES tbl (x) ON`, `1:66: expected UPDATE or DELETE, found 'EOF'`)
