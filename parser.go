@@ -2721,21 +2721,22 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 			x = &BinaryExpr{X: x, OpPos: pos, Op: op, Y: y}
 
 		case BETWEEN, NOTBETWEEN:
-			// Parsing the expression should yield a binary expression with AND op.
-			// However, we don't want to conflate the boolean AND and the ranged AND
-			// so we convert the expression to a Range.
-			if rng, err := p.parseBinaryExpr(LowestPrec + 1); err != nil {
-				return x, err
-			} else if rng, ok := rng.(*BinaryExpr); !ok || rng.Op != AND {
-				return x, p.errorExpected(p.pos, p.tok, "range expression")
-			} else {
-				x = &BinaryExpr{
-					X:     x,
-					OpPos: pos,
-					Op:    op,
-					Y:     &Range{X: rng.X, And: rng.OpPos, Y: rng.Y},
-				}
+			// The bounds of a BETWEEN bind tighter than the comparison
+			// operators, so parse each one above BETWEEN's own precedence. This
+			// keeps the AND that separates the bounds distinct from a boolean
+			// AND that follows the whole expression.
+			rng := &Range{}
+			if rng.X, err = p.parseBinaryExpr(op.Precedence() + 1); err != nil {
+				return nil, err
 			}
+			if p.peek() != AND {
+				return nil, p.errorExpected(p.pos, p.tok, "AND")
+			}
+			rng.And, _, _ = p.scan()
+			if rng.Y, err = p.parseBinaryExpr(op.Precedence() + 1); err != nil {
+				return nil, err
+			}
+			x = &BinaryExpr{X: x, OpPos: pos, Op: op, Y: rng}
 
 		default:
 			y, err := p.parseBinaryExpr(op.Precedence() + 1)

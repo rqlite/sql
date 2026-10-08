@@ -5447,9 +5447,55 @@ func TestParser_ParseExpr(t *testing.T) {
 			OpPos: pos(2), Op: sql.JSON_EXTRACT_SQL,
 			Y: &sql.NumberLit{ValuePos: pos(6), Value: "2"},
 		})
+		// The bounds of BETWEEN bind tighter than AND/OR, so a trailing
+		// boolean operator applies to the whole BETWEEN expression.
+		AssertParseExpr(t, `1 BETWEEN 2 AND 3 AND 4`, &sql.BinaryExpr{
+			X: &sql.BinaryExpr{
+				X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+				OpPos: pos(2), Op: sql.BETWEEN,
+				Y: &sql.Range{
+					X:   &sql.NumberLit{ValuePos: pos(10), Value: "2"},
+					And: pos(12),
+					Y:   &sql.NumberLit{ValuePos: pos(16), Value: "3"},
+				},
+			},
+			OpPos: pos(18), Op: sql.AND,
+			Y: &sql.NumberLit{ValuePos: pos(22), Value: "4"},
+		})
+		AssertParseExpr(t, `1 BETWEEN 2 AND 3 OR 4`, &sql.BinaryExpr{
+			X: &sql.BinaryExpr{
+				X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+				OpPos: pos(2), Op: sql.BETWEEN,
+				Y: &sql.Range{
+					X:   &sql.NumberLit{ValuePos: pos(10), Value: "2"},
+					And: pos(12),
+					Y:   &sql.NumberLit{ValuePos: pos(16), Value: "3"},
+				},
+			},
+			OpPos: pos(18), Op: sql.OR,
+			Y: &sql.NumberLit{ValuePos: pos(21), Value: "4"},
+		})
+		AssertParseExpr(t, `1 BETWEEN 2 + 1 AND 3 * 2`, &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
+			OpPos: pos(2), Op: sql.BETWEEN,
+			Y: &sql.Range{
+				X: &sql.BinaryExpr{
+					X:     &sql.NumberLit{ValuePos: pos(10), Value: "2"},
+					OpPos: pos(12), Op: sql.PLUS,
+					Y: &sql.NumberLit{ValuePos: pos(14), Value: "1"},
+				},
+				And: pos(16),
+				Y: &sql.BinaryExpr{
+					X:     &sql.NumberLit{ValuePos: pos(20), Value: "3"},
+					OpPos: pos(22), Op: sql.STAR,
+					Y: &sql.NumberLit{ValuePos: pos(24), Value: "2"},
+				},
+			},
+		})
 		AssertParseExprError(t, `1 BETWEEN`, `1:9: expected expression, found 'EOF'`)
-		AssertParseExprError(t, `1 BETWEEN 2`, `1:11: expected range expression, found 'EOF'`)
-		AssertParseExprError(t, `1 BETWEEN 2 + 3`, `1:15: expected range expression, found 'EOF'`)
+		AssertParseExprError(t, `1 BETWEEN 2`, `1:11: expected AND, found 'EOF'`)
+		AssertParseExprError(t, `1 BETWEEN 2 + 3`, `1:15: expected AND, found 'EOF'`)
+		AssertParseExprError(t, `1 BETWEEN 2 AND`, `1:15: expected expression, found 'EOF'`)
 		AssertParseExprError(t, `1 + `, `1:4: expected expression, found 'EOF'`)
 	})
 	t.Run("Call", func(t *testing.T) {
