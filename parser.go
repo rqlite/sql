@@ -2499,7 +2499,26 @@ func (p *Parser) parseQualifiedTable(schemaOK, aliasOK, indexedOK bool) (_ Sourc
 	}
 	ident, _ := p.parseIdent("table name")
 	if p.peek() == LP {
-		return p.parseQualifiedTableFunctionName(ident)
+		return p.parseQualifiedTableFunctionName(nil, Pos{}, ident)
+	}
+
+	// "schema.name(" is a schema-qualified table-valued function, which
+	// sqlite3 accepts in FROM. Otherwise hand the already scanned schema and
+	// name to the table name parser.
+	if p.peek() == DOT && schemaOK {
+		dot, _, _ := p.scan()
+		name, err := p.parseIdent("table name")
+		if err != nil {
+			return nil, err
+		}
+		if p.peek() == LP {
+			return p.parseQualifiedTableFunctionName(ident, dot, name)
+		}
+		tbl, err := p.parseQualifiedTableName(name, false, aliasOK, indexedOK)
+		if tbl != nil {
+			tbl.Schema, tbl.Dot = ident, dot
+		}
+		return tbl, err
 	}
 	return p.parseQualifiedTableName(ident, schemaOK, aliasOK, indexedOK)
 }
@@ -2562,11 +2581,11 @@ func (p *Parser) parseQualifiedTableName(ident *Ident, schemaOK, aliasOK, indexe
 	return &tbl, nil
 }
 
-func (p *Parser) parseQualifiedTableFunctionName(ident *Ident) (_ *QualifiedTableFunctionName, err error) {
+func (p *Parser) parseQualifiedTableFunctionName(schema *Ident, dot Pos, name *Ident) (_ *QualifiedTableFunctionName, err error) {
 	assert(p.peek() == LP)
 
 	var tbl QualifiedTableFunctionName
-	tbl.Name = ident
+	tbl.Schema, tbl.Dot, tbl.Name = schema, dot, name
 
 	tbl.Lparen, _, _ = p.scan()
 	for {
@@ -2934,8 +2953,8 @@ func (p *Parser) parseInExpr() (Expr, error) {
 }
 
 // parseSchemaQualifiedCall parses the argument list of "schema.name(...)".
-// SQLite only allows a schema-qualified table-valued function as the right
-// hand side of IN, so this is not used for ordinary function calls.
+// SQLite allows a schema-qualified table-valued function as the right hand
+// side of IN but not as an ordinary function call, so this is only used there.
 func (p *Parser) parseSchemaQualifiedCall(schema *Ident, dot Pos, name *Ident) (*Call, error) {
 	call, err := p.parseCall(name)
 	if err != nil {

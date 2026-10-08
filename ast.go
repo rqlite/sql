@@ -2252,7 +2252,7 @@ func (r *QualifiedRef) String() string {
 }
 
 type Call struct {
-	Schema   *Ident        // schema name (optional; only valid for a table-valued function in an IN expression)
+	Schema   *Ident        // schema name (optional; only valid for a table-valued function in IN)
 	Dot      Pos           // position of DOT token (optional)
 	Name     *Ident        // function name
 	Lparen   Pos           // position of left paren
@@ -3696,6 +3696,8 @@ func (n *QualifiedTableName) String() string {
 }
 
 type QualifiedTableFunctionName struct {
+	Schema *Ident // schema name (optional)
+	Dot    Pos    // position of DOT token (optional)
 	Name   *Ident // table function name
 	Lparen Pos    // position of left paren
 	Args   []Expr // argument list
@@ -3719,6 +3721,7 @@ func (n *QualifiedTableFunctionName) Clone() *QualifiedTableFunctionName {
 		return nil
 	}
 	other := *n
+	other.Schema = n.Schema.Clone()
 	other.Name = n.Name.Clone()
 	other.Args = cloneExprs(n.Args)
 	other.Alias = n.Alias.Clone()
@@ -3728,6 +3731,10 @@ func (n *QualifiedTableFunctionName) Clone() *QualifiedTableFunctionName {
 // String returns the string representation of the table name.
 func (n *QualifiedTableFunctionName) String() string {
 	var buf bytes.Buffer
+	if n.Schema != nil {
+		buf.WriteString(n.Schema.String())
+		buf.WriteString(".")
+	}
 	buf.WriteString(n.Name.String())
 	buf.WriteString("(")
 	for i, arg := range n.Args {
