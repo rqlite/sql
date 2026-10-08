@@ -5744,6 +5744,15 @@ func TestParser_ParseExpr(t *testing.T) {
 		AssertParseExprError(t, `1 + `, `1:4: expected expression, found 'EOF'`)
 	})
 	t.Run("Call", func(t *testing.T) {
+		// ALL is accepted before the arguments like DISTINCT.
+		AssertParseExpr(t, `count(ALL x)`, &sql.Call{
+			Name:   &sql.Ident{NamePos: pos(0), Name: "count"},
+			Lparen: pos(5),
+			All:    pos(6),
+			Args:   []sql.Expr{&sql.Ident{NamePos: pos(10), Name: "x"}},
+			Rparen: pos(11),
+		})
+		AssertParseExprError(t, `f(1,)`, `1:5: expected expression, found ')'`)
 		AssertParseExpr(t, `sum()`, &sql.Call{
 			Name:   &sql.Ident{NamePos: pos(0), Name: "sum"},
 			Lparen: pos(3),

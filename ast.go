@@ -2258,6 +2258,7 @@ type Call struct {
 	Lparen   Pos           // position of left paren
 	Star     Pos           // position of *
 	Distinct Pos           // position of DISTINCT keyword
+	All      Pos           // position of ALL keyword
 	Args     []Expr        // argument list
 	Rparen   Pos           // position of right paren
 	Filter   *FilterClause // filter clause
@@ -2296,6 +2297,11 @@ func (c *Call) String() string {
 	} else {
 		if c.Distinct.IsValid() {
 			buf.WriteString("DISTINCT")
+			if len(c.Args) != 0 {
+				buf.WriteString(" ")
+			}
+		} else if c.All.IsValid() {
+			buf.WriteString("ALL")
 			if len(c.Args) != 0 {
 				buf.WriteString(" ")
 			}

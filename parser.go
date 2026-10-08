@@ -3017,8 +3017,11 @@ func (p *Parser) parseCall(name *Ident) (_ *Call, err error) {
 	if p.peek() == STAR {
 		expr.Star, _, _ = p.scan()
 	} else {
-		if p.peek() == DISTINCT {
+		switch p.peek() {
+		case DISTINCT:
 			expr.Distinct, _, _ = p.scan()
+		case ALL:
+			expr.All, _, _ = p.scan()
 		}
 		for p.peek() != RP {
 			arg, err := p.ParseExpr()
@@ -3029,10 +3032,13 @@ func (p *Parser) parseCall(name *Ident) (_ *Call, err error) {
 
 			if tok := p.peek(); tok == COMMA {
 				p.scan()
+				// A trailing comma is not allowed; another argument must follow.
+				if p.peek() == RP {
+					return &expr, p.errorExpected(p.pos, p.tok, "expression")
+				}
 			} else if tok != RP {
 				return &expr, p.errorExpected(p.pos, p.tok, "comma or right paren")
 			}
-
 		}
 	}
 
