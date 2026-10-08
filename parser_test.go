@@ -5039,6 +5039,27 @@ func TestParser_ParseExpr(t *testing.T) {
 	t.Run("UnaryExpr", func(t *testing.T) {
 		AssertParseExpr(t, `-123`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.MINUS, X: &sql.NumberLit{ValuePos: pos(1), Value: `123`}})
 		AssertParseExpr(t, `NOT foo`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.NOT, X: &sql.Ident{NamePos: pos(4), Name: "foo"}})
+		// Unary NOT binds looser than comparison operators but tighter than AND/OR.
+		AssertParseExpr(t, `NOT 1 = 2`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.NOT, X: &sql.BinaryExpr{
+			X:     &sql.NumberLit{ValuePos: pos(4), Value: "1"},
+			OpPos: pos(6), Op: sql.EQ,
+			Y: &sql.NumberLit{ValuePos: pos(8), Value: "2"},
+		}})
+		AssertParseExpr(t, `NOT a LIKE b`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.NOT, X: &sql.BinaryExpr{
+			X:     &sql.Ident{NamePos: pos(4), Name: "a"},
+			OpPos: pos(6), Op: sql.LIKE,
+			Y: &sql.Ident{NamePos: pos(11), Name: "b"},
+		}})
+		AssertParseExpr(t, `NOT 1 = 2 AND 3`, &sql.BinaryExpr{
+			X: &sql.UnaryExpr{OpPos: pos(0), Op: sql.NOT, X: &sql.BinaryExpr{
+				X:     &sql.NumberLit{ValuePos: pos(4), Value: "1"},
+				OpPos: pos(6), Op: sql.EQ,
+				Y: &sql.NumberLit{ValuePos: pos(8), Value: "2"},
+			}},
+			OpPos: pos(10), Op: sql.AND,
+			Y: &sql.NumberLit{ValuePos: pos(14), Value: "3"},
+		})
+		AssertParseExpr(t, `NOT NOT 1`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.NOT, X: &sql.UnaryExpr{OpPos: pos(4), Op: sql.NOT, X: &sql.NumberLit{ValuePos: pos(8), Value: "1"}}})
 		AssertParseExpr(t, `~1`, &sql.UnaryExpr{OpPos: pos(0), Op: sql.BITNOT, X: &sql.NumberLit{ValuePos: pos(1), Value: "1"}})
 		AssertParseExprError(t, `-`, `1:1: expected expression, found 'EOF'`)
 	})
