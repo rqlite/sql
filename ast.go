@@ -87,6 +87,7 @@ func (*UsingConstraint) node()             {}
 func (*Window) node()                      {}
 func (*WindowDefinition) node()            {}
 func (*WithClause) node()                  {}
+func (*CTE) node()                         {}
 
 type Statement interface {
 	Node

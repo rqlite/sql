@@ -954,6 +954,34 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			}
 		}
 
+	case *WithClause:
+		for i, x := range nn.CTEs {
+			if rn, err := walk(v, x); err != nil {
+				return nil, err
+			} else {
+				nn.CTEs[i] = rn.(*CTE)
+			}
+		}
+
+	case *CTE:
+		if ri, err := walkIdent(v, nn.TableName); err != nil {
+			return nil, err
+		} else {
+			nn.TableName = ri
+		}
+		if columns, err := walkIdentList(v, nn.Columns); err != nil {
+			return nil, err
+		} else {
+			nn.Columns = columns
+		}
+		if nn.Select != nil {
+			if rn, err := walk(v, nn.Select); err != nil {
+				return nil, err
+			} else {
+				nn.Select = rn.(*SelectStatement)
+			}
+		}
+
 	case *Type:
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
