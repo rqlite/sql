@@ -1742,10 +1742,16 @@ func (p *Parser) parseInsertStatement(inTrigger bool, withClause *WithClause) (_
 		return &stmt, p.errorExpected(p.pos, p.tok, "VALUES, SELECT, or DEFAULT VALUES")
 	}
 
-	// Parse optional upsert clause.
-	if p.peek() == ON {
-		if stmt.UpsertClause, err = p.parseUpsertClause(); err != nil {
+	// Parse optional upsert clauses. A clause without a conflict target must
+	// be the last one, so stop looking for more after it.
+	for p.peek() == ON {
+		clause, err := p.parseUpsertClause()
+		if err != nil {
 			return &stmt, err
+		}
+		stmt.UpsertClauses = append(stmt.UpsertClauses, clause)
+		if !clause.Lparen.IsValid() {
+			break
 		}
 	}
 

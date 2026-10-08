@@ -2998,7 +2998,7 @@ type InsertStatement struct {
 	Default       Pos // position of DEFAULT keyword
 	DefaultValues Pos // position of VALUES keyword after DEFAULT
 
-	UpsertClause    *UpsertClause    // optional upsert clause
+	UpsertClauses   []*UpsertClause  // optional upsert clauses; only the last may lack a conflict target
 	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
@@ -3015,7 +3015,7 @@ func (s *InsertStatement) Clone() *InsertStatement {
 	other.Columns = cloneIdents(s.Columns)
 	other.ValueLists = cloneExprLists(s.ValueLists)
 	other.Select = s.Select.Clone()
-	other.UpsertClause = s.UpsertClause.Clone()
+	other.UpsertClauses = cloneUpsertClauses(s.UpsertClauses)
 	other.ReturningClause = s.ReturningClause.Clone()
 	return &other
 }
@@ -3087,8 +3087,8 @@ func (s *InsertStatement) String() string {
 		}
 	}
 
-	if s.UpsertClause != nil {
-		fmt.Fprintf(&buf, " %s", s.UpsertClause.String())
+	for _, clause := range s.UpsertClauses {
+		fmt.Fprintf(&buf, " %s", clause.String())
 	}
 	if s.ReturningClause != nil {
 		fmt.Fprintf(&buf, " %s", s.ReturningClause.String())
@@ -3117,6 +3117,17 @@ type UpsertClause struct {
 }
 
 // Clone returns a deep copy of c.
+func cloneUpsertClauses(a []*UpsertClause) []*UpsertClause {
+	if a == nil {
+		return nil
+	}
+	other := make([]*UpsertClause, len(a))
+	for i := range a {
+		other[i] = a[i].Clone()
+	}
+	return other
+}
+
 func (c *UpsertClause) Clone() *UpsertClause {
 	if c == nil {
 		return nil

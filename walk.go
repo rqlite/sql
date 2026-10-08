@@ -363,11 +363,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 				nn.Select = rn.(*SelectStatement)
 			}
 		}
-		if nn.UpsertClause != nil {
-			if rn, err := walk(v, nn.UpsertClause); err != nil {
+		for i, x := range nn.UpsertClauses {
+			if rn, err := walk(v, x); err != nil {
 				return nil, err
 			} else {
-				nn.UpsertClause = rn.(*UpsertClause)
+				nn.UpsertClauses[i] = rn.(*UpsertClause)
 			}
 		}
 		if nn.ReturningClause != nil {

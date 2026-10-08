@@ -4028,7 +4028,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 				Rparen: pos(29),
 			}},
-			UpsertClause: &sql.UpsertClause{
+			UpsertClauses: []*sql.UpsertClause{{
 				On:         pos(31),
 				OnConflict: pos(34),
 				Lparen:     pos(43),
@@ -4039,7 +4039,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				Rparen:    pos(57),
 				Do:        pos(59),
 				DoNothing: pos(62),
-			},
+			}},
 		})
 		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) RETURNING *`, &sql.InsertStatement{
 			Insert:        pos(0),
@@ -4184,7 +4184,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 				Rparen: pos(29),
 			}},
-			UpsertClause: &sql.UpsertClause{
+			UpsertClauses: []*sql.UpsertClause{{
 				On:         pos(31),
 				OnConflict: pos(34),
 				Lparen:     pos(43),
@@ -4218,7 +4218,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 				UpdateWhere:     pos(96),
 				UpdateWhereExpr: &sql.BoolLit{ValuePos: pos(102), Value: false},
-			},
+			}},
 		})
 
 		// Test schema-qualified table name
@@ -6408,6 +6408,22 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 			t.Errorf("%s: unstable: %q != %q", tt.s, stmt.String(), stmt2.String())
 		}
 	}
+}
+
+// Ensure an INSERT may carry several ON CONFLICT clauses. Only the last may
+// omit the conflict target, as in sqlite3.
+func TestParser_MultipleUpsertClauses(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `INSERT INTO t VALUES (1, 2) ON CONFLICT (x) DO NOTHING ON CONFLICT (y) DO UPDATE SET x = 1 ON CONFLICT DO NOTHING`).(*sql.InsertStatement)
+	if len(stmt.UpsertClauses) != 3 {
+		t.Fatalf("expected 3 upsert clauses, got %d", len(stmt.UpsertClauses))
+	}
+	if got, want := stmt.String(), `INSERT INTO "t" VALUES (1, 2) ON CONFLICT ("x") DO NOTHING ON CONFLICT ("y") DO UPDATE SET "x" = 1 ON CONFLICT DO NOTHING`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	if c := stmt.Clone(); len(c.UpsertClauses) != 3 || c.UpsertClauses[0] == stmt.UpsertClauses[0] {
+		t.Fatal("Clone() did not deep copy upsert clauses")
+	}
+	AssertParseStatementError(t, `INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING ON CONFLICT (x) DO NOTHING`, `1:49: expected semicolon or EOF, found 'ON'`)
 }
 
 // Ensure a DEFAULT value may be a bare identifier, which SQLite stores as a

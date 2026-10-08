@@ -634,15 +634,15 @@ func TestInsertStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sql.InsertStatement{
 		Table:         &sql.Ident{Name: "tbl"},
 		DefaultValues: pos(0),
-		UpsertClause: &sql.UpsertClause{
+		UpsertClauses: []*sql.UpsertClause{{
 			DoNothing: pos(0),
-		},
+		}},
 	}, `INSERT INTO "tbl" DEFAULT VALUES ON CONFLICT DO NOTHING`)
 
 	AssertStatementStringer(t, &sql.InsertStatement{
 		Table:         &sql.Ident{Name: "tbl"},
 		DefaultValues: pos(0),
-		UpsertClause: &sql.UpsertClause{
+		UpsertClauses: []*sql.UpsertClause{{
 			Columns: []*sql.IndexedColumn{
 				{X: &sql.Ident{Name: "x"}, Asc: pos(0)},
 				{X: &sql.Ident{Name: "y"}, Desc: pos(0)},
@@ -653,7 +653,7 @@ func TestInsertStatement_String(t *testing.T) {
 				{Columns: []*sql.Ident{{Name: "y"}, {Name: "z"}}, Expr: &sql.NumberLit{Value: "200"}},
 			},
 			UpdateWhereExpr: &sql.BoolLit{Value: false},
-		},
+		}},
 	}, `INSERT INTO "tbl" DEFAULT VALUES ON CONFLICT ("x" ASC, "y" DESC) WHERE TRUE DO UPDATE SET "x" = 100, ("y", "z") = 200 WHERE FALSE`)
 }
 
