@@ -1524,6 +1524,25 @@ func (i *Ident) String() string {
 	return `"` + strings.Replace(i.Name, `"`, `""`, -1) + `"`
 }
 
+// isBareIdentName returns true if name can be written as an identifier
+// without quoting: it consists only of letters, digits and underscores, does
+// not start with a digit, and is not a reserved keyword.
+func isBareIdentName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i, ch := range name {
+		switch {
+		case ch == '_', ch >= 'a' && ch <= 'z', ch >= 'A' && ch <= 'Z':
+		case ch >= '0' && ch <= '9' && i > 0:
+		default:
+			return false
+		}
+	}
+	tok := Lookup(name)
+	return tok == IDENT || isBareToken(tok)
+}
+
 // IdentName returns the name of ident. Returns a blank string if ident is nil.
 func IdentName(ident *Ident) string {
 	if ident == nil {
@@ -2180,7 +2199,11 @@ func (c *Call) Clone() *Call {
 // String returns the string representation of the expression.
 func (c *Call) String() string {
 	var buf bytes.Buffer
-	buf.WriteString(c.Name.Name)
+	if isBareIdentName(c.Name.Name) {
+		buf.WriteString(c.Name.Name)
+	} else {
+		buf.WriteString(c.Name.String())
+	}
 	buf.WriteString("(")
 	if c.Star.IsValid() {
 		buf.WriteString("*")

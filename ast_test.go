@@ -1173,6 +1173,11 @@ func TestQualifiedRef_String(t *testing.T) {
 
 func TestCall_String(t *testing.T) {
 	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}}, `foo()`)
+	// Function names that are not plain identifiers must be quoted.
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo bar", Quoted: true}}, `"foo bar"()`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: `say "hi"`}}, `"say ""hi"""()`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "select"}}, `"select"()`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "replace"}, Args: []sql.Expr{&sql.NumberLit{Value: "1"}}}, `replace(1)`)
 	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}, Star: pos(0)}, `foo(*)`)
 
 	AssertExprStringer(t, &sql.Call{
