@@ -3565,8 +3565,15 @@ func (p *Parser) parsePragmaStatement() (_ *PragmaStatement, err error) {
 	case EQ:
 		// Parse as binary expression: pragma-name = value
 		opPos, _, _ := p.scan()
-		rhs, err := p.ParseExpr()
-		if err != nil {
+
+		// Pragma values are frequently keywords (ON, OFF, DELETE, WAL, FULL,
+		// NORMAL ...). Accept any keyword that is not already usable as an
+		// identifier as a plain name.
+		var rhs Expr
+		if tok := p.peek(); tok.IsKeyword() && !isExprIdentToken(tok) {
+			pos, _, lit := p.scan()
+			rhs = &Ident{Name: lit, NamePos: pos}
+		} else if rhs, err = p.ParseExpr(); err != nil {
 			return &stmt, err
 		}
 		stmt.Expr = &BinaryExpr{

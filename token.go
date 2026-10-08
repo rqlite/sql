@@ -510,6 +510,11 @@ func isBareToken(tok Token) bool {
 	return ok
 }
 
+// IsKeyword returns true if tok is a SQL keyword.
+func (tok Token) IsKeyword() bool {
+	return tok > keyword_beg && tok < keyword_end
+}
+
 func (tok Token) IsLiteral() bool {
 	return tok > literal_beg && tok < literal_end
 }

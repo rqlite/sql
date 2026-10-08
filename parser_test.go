@@ -45,6 +45,26 @@ func TestParser_ParseStatement(t *testing.T) {
 			Expr:   &sql.Ident{NamePos: pos(14), Name: "pragma_name"},
 		})
 
+		// Pragma values are commonly keywords (ON, OFF, DELETE, WAL, FULL ...)
+		// and must be accepted as names.
+		AssertParseStatement(t, `PRAGMA foreign_keys = ON`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Expr: &sql.BinaryExpr{
+				X:     &sql.Ident{Name: "foreign_keys", NamePos: pos(7)},
+				OpPos: pos(20), Op: sql.EQ,
+				Y: &sql.Ident{Name: "ON", NamePos: pos(22)},
+			},
+		})
+		AssertParseStatement(t, `PRAGMA main.journal_mode = DELETE`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Schema: &sql.Ident{Name: "main", NamePos: pos(7)},
+			Dot:    pos(11),
+			Expr: &sql.BinaryExpr{
+				X:     &sql.Ident{Name: "journal_mode", NamePos: pos(12)},
+				OpPos: pos(25), Op: sql.EQ,
+				Y: &sql.Ident{Name: "DELETE", NamePos: pos(27)},
+			},
+		})
 		AssertParseStatementError(t, `PRAGMA schema.`, "1:14: expected pragma name, found 'EOF'")
 		AssertParseStatementError(t, `PRAGMA .name`, "1:8: expected schema name, found '.'")
 		AssertParseStatementError(t, `PRAGMA schema.name=`, "1:19: expected expression, found 'EOF'")
