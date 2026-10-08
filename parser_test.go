@@ -5218,6 +5218,10 @@ func TestParser_ParseExpr(t *testing.T) {
 			Rparen: pos(6),
 		})
 		AssertParseExprError(t, `(`, `1:1: expected expression, found 'EOF'`)
+		// A parenthesized expression must be closed; stray tokens are an error.
+		AssertParseExprError(t, `(1 2)`, `1:4: expected right paren, found 2`)
+		AssertParseExprError(t, `(1`, `1:2: expected right paren, found 'EOF'`)
+		AssertParseStatementError(t, `SELECT (1 2`, `1:11: expected right paren, found 2`)
 		AssertParseExpr(t, `1 IS 2'`, &sql.BinaryExpr{
 			X:     &sql.NumberLit{ValuePos: pos(0), Value: "1"},
 			OpPos: pos(2), Op: sql.IS,

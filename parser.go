@@ -3221,6 +3221,9 @@ func (p *Parser) parseParenExpr() (Expr, error) {
 
 	// If there's no comma after the first expression, treat it as a normal parenthesized expression
 	if p.peek() != COMMA {
+		if p.peek() != RP {
+			return nil, p.errorExpected(p.pos, p.tok, "right paren")
+		}
 		rparen, _, _ := p.scan()
 		return &ParenExpr{Lparen: lparen, X: x, Rparen: rparen}, nil
 	}
