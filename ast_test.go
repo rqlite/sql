@@ -118,6 +118,21 @@ func TestCreateIndexStatement_String(t *testing.T) {
 	}, `CREATE UNIQUE INDEX IF NOT EXISTS "foo" ON "bar" ("baz", "bat") WHERE TRUE`)
 }
 
+func TestVacuumStatement_String(t *testing.T) {
+	AssertStatementStringer(t, &sql.VacuumStatement{}, `VACUUM`)
+	AssertStatementStringer(t, &sql.VacuumStatement{Schema: &sql.Ident{Name: "main"}, Filename: &sql.StringLit{Value: "f"}}, `VACUUM "main" INTO 'f'`)
+}
+
+func TestAttachStatement_String(t *testing.T) {
+	AssertStatementStringer(t, &sql.AttachStatement{Expr: &sql.StringLit{Value: "f"}, Schema: &sql.Ident{Name: "d"}}, `ATTACH 'f' AS "d"`)
+	AssertStatementStringer(t, &sql.AttachStatement{Database: pos(0), Expr: &sql.StringLit{Value: "f"}, Schema: &sql.Ident{Name: "d"}, KeyExpr: &sql.StringLit{Value: "k"}}, `ATTACH DATABASE 'f' AS "d" KEY 'k'`)
+}
+
+func TestDetachStatement_String(t *testing.T) {
+	AssertStatementStringer(t, &sql.DetachStatement{Schema: &sql.Ident{Name: "d"}}, `DETACH "d"`)
+	AssertStatementStringer(t, &sql.DetachStatement{Database: pos(0), Schema: &sql.Ident{Name: "d"}}, `DETACH DATABASE "d"`)
+}
+
 func TestCreateTableStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name:    &sql.Ident{Name: "foo"},
@@ -188,7 +203,7 @@ func TestCreateTableStatement_String(t *testing.T) {
 		Name:    &sql.Ident{Name: "foo"},
 		Columns: []*sql.ColumnDefinition{{Name: &sql.Ident{Name: "bar"}}},
 		Constraints: []sql.Constraint{
-			&sql.PrimaryKeyConstraint{Columns: []*sql.Ident{{Name: "bar"}}, Conflict: &sql.ConflictClause{Abort: pos(0)}},
+			&sql.PrimaryKeyConstraint{Columns: []*sql.IndexedColumn{{X: &sql.Ident{Name: "bar"}}}, Conflict: &sql.ConflictClause{Abort: pos(0)}},
 		},
 	}, `CREATE TABLE "foo" ("bar", PRIMARY KEY ("bar") ON CONFLICT ABORT)`)
 
@@ -280,16 +295,20 @@ func TestCreateTableStatement_String(t *testing.T) {
 
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name: &sql.Ident{Name: "foo"},
-		Columns: []*sql.ColumnDefinition{{
-			Name: &sql.Ident{Name: "bar"},
-			Type: &sql.Type{Name: &sql.Ident{Name: "DECIMAL"}, Precision: &sql.NumberLit{Value: "100"}},
-		}},
+		Columns: []*sql.ColumnDefinition{
+			{
+				Name: &sql.Ident{Name: "bar"},
+				Type: &sql.Type{Name: &sql.Ident{Name: "DECIMAL"}, Precision: &sql.NumberLit{Value: "100"}},
+			},
+			{Name: &sql.Ident{Name: "x"}},
+			{Name: &sql.Ident{Name: "y"}},
+		},
 		Constraints: []sql.Constraint{
 			&sql.PrimaryKeyConstraint{
 				Name: &sql.Ident{Name: "pk"},
-				Columns: []*sql.Ident{
-					{Name: "x"},
-					{Name: "y"},
+				Columns: []*sql.IndexedColumn{
+					{X: &sql.Ident{Name: "x"}},
+					{X: &sql.Ident{Name: "y"}, Desc: pos(0)},
 				},
 			},
 			&sql.UniqueConstraint{
@@ -304,7 +323,7 @@ func TestCreateTableStatement_String(t *testing.T) {
 				Expr: &sql.BoolLit{Value: true},
 			},
 		},
-	}, `CREATE TABLE "foo" ("bar" DECIMAL(100), CONSTRAINT "pk" PRIMARY KEY ("x", "y"), CONSTRAINT "uniq" UNIQUE ("x", "y"), CONSTRAINT "chk" CHECK (TRUE))`)
+	}, `CREATE TABLE "foo" ("bar" DECIMAL(100), "x", "y", CONSTRAINT "pk" PRIMARY KEY ("x", "y" DESC), CONSTRAINT "uniq" UNIQUE ("x", "y"), CONSTRAINT "chk" CHECK (TRUE))`)
 
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name: &sql.Ident{Name: "foo"},
@@ -633,15 +652,15 @@ func TestInsertStatement_String(t *testing.T) {
 	AssertStatementStringer(t, &sql.InsertStatement{
 		Table:         &sql.Ident{Name: "tbl"},
 		DefaultValues: pos(0),
-		UpsertClause: &sql.UpsertClause{
+		UpsertClauses: []*sql.UpsertClause{{
 			DoNothing: pos(0),
-		},
+		}},
 	}, `INSERT INTO "tbl" DEFAULT VALUES ON CONFLICT DO NOTHING`)
 
 	AssertStatementStringer(t, &sql.InsertStatement{
 		Table:         &sql.Ident{Name: "tbl"},
 		DefaultValues: pos(0),
-		UpsertClause: &sql.UpsertClause{
+		UpsertClauses: []*sql.UpsertClause{{
 			Columns: []*sql.IndexedColumn{
 				{X: &sql.Ident{Name: "x"}, Asc: pos(0)},
 				{X: &sql.Ident{Name: "y"}, Desc: pos(0)},
@@ -652,7 +671,7 @@ func TestInsertStatement_String(t *testing.T) {
 				{Columns: []*sql.Ident{{Name: "y"}, {Name: "z"}}, Expr: &sql.NumberLit{Value: "200"}},
 			},
 			UpdateWhereExpr: &sql.BoolLit{Value: false},
-		},
+		}},
 	}, `INSERT INTO "tbl" DEFAULT VALUES ON CONFLICT ("x" ASC, "y" DESC) WHERE TRUE DO UPDATE SET "x" = 100, ("y", "z") = 200 WHERE FALSE`)
 }
 
@@ -1221,6 +1240,7 @@ func TestCall_String(t *testing.T) {
 	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "select"}}, `"select"()`)
 	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "replace"}, Args: []sql.Expr{&sql.NumberLit{Value: "1"}}}, `replace(1)`)
 	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}, Star: pos(0)}, `foo(*)`)
+	AssertExprStringer(t, &sql.Call{Name: &sql.Ident{Name: "foo"}, All: pos(0), Args: []sql.Expr{&sql.NumberLit{Value: "1"}}}, `foo(ALL 1)`)
 	AssertExprStringer(t, &sql.Call{Schema: &sql.Ident{Name: "main"}, Name: &sql.Ident{Name: "foo"}, Args: []sql.Expr{&sql.NumberLit{Value: "1"}}}, `"main".foo(1)`)
 
 	AssertExprStringer(t, &sql.Call{

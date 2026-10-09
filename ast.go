@@ -71,6 +71,9 @@ func (*Raise) node()                       {}
 func (*Range) node()                       {}
 func (*ReindexStatement) node()            {}
 func (*ReleaseStatement) node()            {}
+func (*DetachStatement) node()             {}
+func (*AttachStatement) node()             {}
+func (*VacuumStatement) node()             {}
 func (*ResultColumn) node()                {}
 func (*ReturningClause) node()             {}
 func (*RollbackStatement) node()           {}
@@ -113,6 +116,9 @@ func (*InsertStatement) stmt()             {}
 func (*PragmaStatement) stmt()             {}
 func (*ReindexStatement) stmt()            {}
 func (*ReleaseStatement) stmt()            {}
+func (*DetachStatement) stmt()             {}
+func (*AttachStatement) stmt()             {}
+func (*VacuumStatement) stmt()             {}
 func (*RollbackStatement) stmt()           {}
 func (*SavepointStatement) stmt()          {}
 func (*SelectStatement) stmt()             {}
@@ -162,6 +168,12 @@ func CloneStatement(stmt Statement) Statement {
 	case *ReindexStatement:
 		return stmt.Clone()
 	case *ReleaseStatement:
+		return stmt.Clone()
+	case *DetachStatement:
+		return stmt.Clone()
+	case *AttachStatement:
+		return stmt.Clone()
+	case *VacuumStatement:
 		return stmt.Clone()
 	case *RollbackStatement:
 		return stmt.Clone()
@@ -646,6 +658,100 @@ func (s *ReleaseStatement) String() string {
 	return buf.String()
 }
 
+type VacuumStatement struct {
+	Vacuum   Pos    // position of VACUUM keyword
+	Schema   *Ident // schema name (optional)
+	Into     Pos    // position of INTO keyword (optional)
+	Filename Expr   // target filename expression after INTO (optional)
+}
+
+// Clone returns a deep copy of s.
+func (s *VacuumStatement) Clone() *VacuumStatement {
+	if s == nil {
+		return nil
+	}
+	other := *s
+	other.Schema = s.Schema.Clone()
+	other.Filename = CloneExpr(s.Filename)
+	return &other
+}
+
+// String returns the string representation of the statement.
+func (s *VacuumStatement) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("VACUUM")
+	if s.Schema != nil {
+		fmt.Fprintf(&buf, " %s", s.Schema.String())
+	}
+	if s.Filename != nil {
+		fmt.Fprintf(&buf, " INTO %s", s.Filename.String())
+	}
+	return buf.String()
+}
+
+type AttachStatement struct {
+	Attach   Pos    // position of ATTACH keyword
+	Database Pos    // position of DATABASE keyword (optional)
+	Expr     Expr   // database filename expression
+	As       Pos    // position of AS keyword
+	Schema   *Ident // schema name to attach as
+	Key      Pos    // position of KEY keyword (optional)
+	KeyExpr  Expr   // key expression (optional)
+}
+
+// Clone returns a deep copy of s.
+func (s *AttachStatement) Clone() *AttachStatement {
+	if s == nil {
+		return nil
+	}
+	other := *s
+	other.Expr = CloneExpr(s.Expr)
+	other.Schema = s.Schema.Clone()
+	other.KeyExpr = CloneExpr(s.KeyExpr)
+	return &other
+}
+
+// String returns the string representation of the statement.
+func (s *AttachStatement) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("ATTACH")
+	if s.Database.IsValid() {
+		buf.WriteString(" DATABASE")
+	}
+	fmt.Fprintf(&buf, " %s AS %s", s.Expr.String(), s.Schema.String())
+	if s.KeyExpr != nil {
+		fmt.Fprintf(&buf, " KEY %s", s.KeyExpr.String())
+	}
+	return buf.String()
+}
+
+type DetachStatement struct {
+	Detach   Pos    // position of DETACH keyword
+	Database Pos    // position of DATABASE keyword (optional)
+	Schema   *Ident // schema name to detach
+}
+
+// Clone returns a deep copy of s.
+func (s *DetachStatement) Clone() *DetachStatement {
+	if s == nil {
+		return nil
+	}
+	other := *s
+	other.Schema = s.Schema.Clone()
+	return &other
+}
+
+// String returns the string representation of the statement.
+func (s *DetachStatement) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("DETACH")
+	if s.Database.IsValid() {
+		buf.WriteString(" DATABASE")
+	}
+	fmt.Fprintf(&buf, " %s", s.Schema.String())
+	return buf.String()
+}
+
 type CreateTableStatement struct {
 	Create      Pos    // position of CREATE keyword
 	Temp        Pos    // position of TEMP or TEMPORARY keyword (optional)
@@ -835,14 +941,14 @@ type PrimaryKeyConstraint struct {
 	Primary    Pos    // position of PRIMARY keyword
 	Key        Pos    // position of KEY keyword
 
-	Lparen  Pos      // position of left paren (table only)
-	Columns []*Ident // indexed columns (table only)
-	Rparen  Pos      // position of right paren (table only)
+	Lparen  Pos              // position of left paren (table only)
+	Columns []*IndexedColumn // indexed columns (table only)
+	Rparen  Pos              // position of right paren (table only)
 
 	Asc           Pos             // position of ASC keyword (column only)
 	Desc          Pos             // position of DESC keyword (column only)
 	Conflict      *ConflictClause // optional ON CONFLICT clause
-	Autoincrement Pos             // position of AUTOINCREMENT keyword (column only)
+	Autoincrement Pos             // position of AUTOINCREMENT keyword (inside the parens for a table constraint)
 }
 
 // Clone returns a deep copy of c.
@@ -852,7 +958,7 @@ func (c *PrimaryKeyConstraint) Clone() *PrimaryKeyConstraint {
 	}
 	other := *c
 	other.Name = c.Name.Clone()
-	other.Columns = cloneIdents(c.Columns)
+	other.Columns = cloneIndexedColumns(c.Columns)
 	other.Conflict = c.Conflict.Clone()
 	return &other
 }
@@ -869,6 +975,7 @@ func (c *PrimaryKeyConstraint) String() string {
 	buf.WriteString("PRIMARY KEY")
 
 	if len(c.Columns) > 0 {
+		// Table constraint: AUTOINCREMENT, if any, sits inside the parens.
 		buf.WriteString(" (")
 		for i := range c.Columns {
 			if i != 0 {
@@ -876,19 +983,22 @@ func (c *PrimaryKeyConstraint) String() string {
 			}
 			buf.WriteString(c.Columns[i].String())
 		}
+		if c.Autoincrement.IsValid() {
+			buf.WriteString(" AUTOINCREMENT")
+		}
 		buf.WriteString(")")
-	}
-
-	if c.Asc.IsValid() {
-		buf.WriteString(" ASC")
-	} else if c.Desc.IsValid() {
-		buf.WriteString(" DESC")
+	} else {
+		if c.Asc.IsValid() {
+			buf.WriteString(" ASC")
+		} else if c.Desc.IsValid() {
+			buf.WriteString(" DESC")
+		}
 	}
 	if c.Conflict != nil {
 		buf.WriteString(" ")
 		buf.WriteString(c.Conflict.String())
 	}
-	if c.Autoincrement.IsValid() {
+	if len(c.Columns) == 0 && c.Autoincrement.IsValid() {
 		buf.WriteString(" AUTOINCREMENT")
 	}
 	return buf.String()
@@ -1102,6 +1212,10 @@ func (c *DefaultConstraint) String() string {
 		buf.WriteString("(")
 		buf.WriteString(c.Expr.String())
 		buf.WriteString(")")
+	} else if ident, ok := c.Expr.(*Ident); ok && isBareIdentName(ident.Name) {
+		// Keep a bare identifier default bare so that it round-trips; a
+		// quoted form would be read back as a string literal.
+		buf.WriteString(ident.Name)
 	} else {
 		buf.WriteString(c.Expr.String())
 	}
@@ -1284,6 +1398,9 @@ func (c *ForeignKeyConstraint) String() string {
 }
 
 type ForeignKeyArg struct {
+	Match     Pos    // position of MATCH keyword (MATCH clause only)
+	MatchName *Ident // match type name (MATCH clause only)
+
 	On         Pos // position of ON keyword
 	OnUpdate   Pos // position of the UPDATE keyword
 	OnDelete   Pos // position of the DELETE keyword
@@ -1302,6 +1419,7 @@ func (arg *ForeignKeyArg) Clone() *ForeignKeyArg {
 		return nil
 	}
 	other := *arg
+	other.MatchName = arg.MatchName.Clone()
 	return &other
 }
 
@@ -1319,6 +1437,15 @@ func cloneForeignKeyArgs(a []*ForeignKeyArg) []*ForeignKeyArg {
 // String returns the string representation of the argument.
 func (c *ForeignKeyArg) String() string {
 	var buf bytes.Buffer
+	if c.Match.IsValid() {
+		buf.WriteString("MATCH ")
+		if isBareIdentName(c.MatchName.Name) {
+			buf.WriteString(c.MatchName.Name)
+		} else {
+			buf.WriteString(c.MatchName.String())
+		}
+		return buf.String()
+	}
 	buf.WriteString("ON")
 	if c.OnUpdate.IsValid() {
 		buf.WriteString(" UPDATE")
@@ -1424,7 +1551,14 @@ func (a *ModuleArgument) Clone() *ModuleArgument {
 func (a *ModuleArgument) String() string {
 	var buf bytes.Buffer
 
-	buf.WriteString(a.Name.String())
+	// Modules receive arguments as raw text and, unlike SQLite itself, do not
+	// necessarily strip quotes (FTS5 rejects "tokenize"=...), so write a plain
+	// name unquoted.
+	if isBareIdentName(a.Name.Name) {
+		buf.WriteString(a.Name.Name)
+	} else {
+		buf.WriteString(a.Name.String())
+	}
 	if a.Assign.IsValid() {
 		buf.WriteString("=")
 		buf.WriteString(a.Literal.String())
@@ -2258,6 +2392,7 @@ type Call struct {
 	Lparen   Pos           // position of left paren
 	Star     Pos           // position of *
 	Distinct Pos           // position of DISTINCT keyword
+	All      Pos           // position of ALL keyword
 	Args     []Expr        // argument list
 	Rparen   Pos           // position of right paren
 	Filter   *FilterClause // filter clause
@@ -2296,6 +2431,11 @@ func (c *Call) String() string {
 	} else {
 		if c.Distinct.IsValid() {
 			buf.WriteString("DISTINCT")
+			if len(c.Args) != 0 {
+				buf.WriteString(" ")
+			}
+		} else if c.All.IsValid() {
+			buf.WriteString("ALL")
 			if len(c.Args) != 0 {
 				buf.WriteString(" ")
 			}
@@ -2659,6 +2799,8 @@ type DropViewStatement struct {
 	View     Pos    // position of VIEW keyword
 	If       Pos    // position of IF keyword
 	IfExists Pos    // position of EXISTS keyword after IF
+	Schema   *Ident // schema name (optional)
+	Dot      Pos    // position of DOT token (optional)
 	Name     *Ident // view name
 }
 
@@ -2668,6 +2810,7 @@ func (s *DropViewStatement) Clone() *DropViewStatement {
 		return nil
 	}
 	other := *s
+	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	return &other
 }
@@ -2679,7 +2822,12 @@ func (s *DropViewStatement) String() string {
 	if s.IfExists.IsValid() {
 		buf.WriteString(" IF EXISTS")
 	}
-	fmt.Fprintf(&buf, " %s", s.Name.String())
+	buf.WriteString(" ")
+	if s.Schema != nil {
+		buf.WriteString(s.Schema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Name.String())
 	return buf.String()
 }
 
@@ -2812,6 +2960,8 @@ type CreateTriggerStatement struct {
 	UpdateOf        Pos      // position of OF keyword after UPDATE
 	UpdateOfColumns []*Ident // columns list for UPDATE OF
 	On              Pos      // position of ON keyword
+	TableSchema     *Ident   // schema of the table (optional)
+	TableDot        Pos      // position of DOT after the table schema (optional)
 	Table           *Ident   // table name
 
 	For        Pos // position of FOR keyword
@@ -2835,6 +2985,7 @@ func (s *CreateTriggerStatement) Clone() *CreateTriggerStatement {
 	other.Schema = s.Schema.Clone()
 	other.Name = s.Name.Clone()
 	other.UpdateOfColumns = cloneIdents(s.UpdateOfColumns)
+	other.TableSchema = s.TableSchema.Clone()
 	other.Table = s.Table.Clone()
 	other.WhenExpr = CloneExpr(s.WhenExpr)
 	other.Body = cloneStatements(s.Body)
@@ -2884,7 +3035,12 @@ func (s *CreateTriggerStatement) String() string {
 		}
 	}
 
-	fmt.Fprintf(&buf, " ON %s", s.Table.String())
+	buf.WriteString(" ON ")
+	if s.TableSchema != nil {
+		buf.WriteString(s.TableSchema.String())
+		buf.WriteString(".")
+	}
+	buf.WriteString(s.Table.String())
 
 	if s.ForEachRow.IsValid() {
 		buf.WriteString(" FOR EACH ROW")
@@ -2971,7 +3127,7 @@ type InsertStatement struct {
 	Default       Pos // position of DEFAULT keyword
 	DefaultValues Pos // position of VALUES keyword after DEFAULT
 
-	UpsertClause    *UpsertClause    // optional upsert clause
+	UpsertClauses   []*UpsertClause  // optional upsert clauses; only the last may lack a conflict target
 	ReturningClause *ReturningClause // optional RETURNING clause
 }
 
@@ -2988,7 +3144,7 @@ func (s *InsertStatement) Clone() *InsertStatement {
 	other.Columns = cloneIdents(s.Columns)
 	other.ValueLists = cloneExprLists(s.ValueLists)
 	other.Select = s.Select.Clone()
-	other.UpsertClause = s.UpsertClause.Clone()
+	other.UpsertClauses = cloneUpsertClauses(s.UpsertClauses)
 	other.ReturningClause = s.ReturningClause.Clone()
 	return &other
 }
@@ -3060,8 +3216,8 @@ func (s *InsertStatement) String() string {
 		}
 	}
 
-	if s.UpsertClause != nil {
-		fmt.Fprintf(&buf, " %s", s.UpsertClause.String())
+	for _, clause := range s.UpsertClauses {
+		fmt.Fprintf(&buf, " %s", clause.String())
 	}
 	if s.ReturningClause != nil {
 		fmt.Fprintf(&buf, " %s", s.ReturningClause.String())
@@ -3090,6 +3246,17 @@ type UpsertClause struct {
 }
 
 // Clone returns a deep copy of c.
+func cloneUpsertClauses(a []*UpsertClause) []*UpsertClause {
+	if a == nil {
+		return nil
+	}
+	other := make([]*UpsertClause, len(a))
+	for i := range a {
+		other[i] = a[i].Clone()
+	}
+	return other
+}
+
 func (c *UpsertClause) Clone() *UpsertClause {
 	if c == nil {
 		return nil
@@ -3545,10 +3712,9 @@ func (s *SelectStatement) String() string {
 				}
 				buf.WriteString(expr.String())
 			}
-
-			if s.HavingExpr != nil {
-				fmt.Fprintf(&buf, " HAVING %s", s.HavingExpr.String())
-			}
+		}
+		if s.HavingExpr != nil {
+			fmt.Fprintf(&buf, " HAVING %s", s.HavingExpr.String())
 		}
 
 		if len(s.Windows) != 0 {

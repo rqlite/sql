@@ -86,6 +86,10 @@ func (p *Parser) ParseStatement() (stmt Statement, err error) {
 
 func (p *Parser) ParseStatements() (stmts []Statement, err error) {
 	for {
+		// Skip empty statements.
+		for p.peek() == SEMI {
+			p.scan()
+		}
 		switch tok := p.peek(); tok {
 		case EOF:
 			return stmts, nil
@@ -156,6 +160,12 @@ func (p *Parser) parseNonExplainStatement() (Statement, error) {
 		return p.parseSavepointStatement()
 	case RELEASE:
 		return p.parseReleaseStatement()
+	case DETACH:
+		return p.parseDetachStatement()
+	case ATTACH:
+		return p.parseAttachStatement()
+	case VACUUM:
+		return p.parseVacuumStatement()
 	case CREATE:
 		return p.parseCreateStatement()
 	case DROP:
@@ -392,6 +402,9 @@ func (p *Parser) parseCreateTableStatement(createPos, tempPos Pos) (_ *CreateTab
 
 		if stmt.Columns, err = p.parseColumnDefinitions(); err != nil {
 			return &stmt, err
+		} else if len(stmt.Columns) == 0 {
+			// SQLite requires at least one column definition.
+			return &stmt, p.errorExpected(p.pos, p.tok, "column name")
 		} else if stmt.Constraints, err = p.parseTableConstraints(); err != nil {
 			return &stmt, err
 		}
@@ -470,7 +483,7 @@ func (p *Parser) parseColumnDefinition() (_ *ColumnDefinition, err error) {
 		return &col, err
 	}
 
-	if tok := p.peek(); tok == IDENT || tok == NULL {
+	if isTypeNameToken(p.peek()) {
 		if col.Type, err = p.parseType(); err != nil {
 			return &col, err
 		}
@@ -592,11 +605,19 @@ func (p *Parser) parsePrimaryKeyConstraint(constraintPos Pos, name *Ident, isTab
 		cons.Lparen, _, _ = p.scan()
 
 		for {
-			col, err := p.parseIdent("column name")
+			col, err := p.parseIndexedColumn()
 			if err != nil {
 				return &cons, err
 			}
 			cons.Columns = append(cons.Columns, col)
+
+			// AUTOINCREMENT may follow the last column, inside the parens.
+			if p.peek() == AUTOINCREMENT {
+				cons.Autoincrement, _, _ = p.scan()
+				if p.peek() != RP {
+					return &cons, p.errorExpected(p.pos, p.tok, "right paren")
+				}
+			}
 
 			if p.peek() == RP {
 				break
@@ -766,9 +787,14 @@ func (p *Parser) parseDefaultConstraint(constraintPos Pos, name *Ident) (_ *Defa
 		if cons.Expr, err = p.parseSignedNumber("signed number"); err != nil {
 			return &cons, err
 		}
+	} else if isNameToken(p.peek()) {
+		// A bare identifier, which SQLite treats as a string value.
+		if cons.Expr, err = p.parseIdent("default value"); err != nil {
+			return &cons, err
+		}
 	} else {
 		if p.peek() != LP {
-			return &cons, p.errorExpected(p.pos, p.tok, "literal value or left paren")
+			return &cons, p.errorExpected(p.pos, p.tok, "literal value, identifier or left paren")
 		}
 		cons.Lparen, _, _ = p.scan()
 
@@ -919,9 +945,17 @@ func (p *Parser) parseForeignKeyConstraint(constraintPos Pos, name *Ident, isTab
 		cons.ForeignRparen, _, _ = p.scan()
 	}
 
-	// Parse foreign key args.
-	for p.peek() == ON {
+	// Parse foreign key args: any mix of "MATCH name" and "ON UPDATE|DELETE action".
+	for p.peek() == ON || p.peek() == MATCH {
 		var arg ForeignKeyArg
+		if p.peek() == MATCH {
+			arg.Match, _, _ = p.scan()
+			if arg.MatchName, err = p.parseIdent("match type"); err != nil {
+				return &cons, err
+			}
+			cons.Args = append(cons.Args, &arg)
+			continue
+		}
 		arg.On, _, _ = p.scan()
 
 		// Parse foreign key type.
@@ -1044,10 +1078,6 @@ func (p *Parser) parseCreateVirtualTableStatement(createPos Pos) (_ *CreateVirtu
 		return &stmt, err
 	}
 
-	if len(stmt.Arguments) == 0 {
-		return &stmt, p.errorExpected(p.pos, p.tok, "module arguments")
-	}
-
 	if p.peek() != RP {
 		return &stmt, p.errorExpected(p.pos, p.tok, "right paren")
 	}
@@ -1079,17 +1109,32 @@ func (p *Parser) parseModuleArguments() (_ []*ModuleArgument, err error) {
 func (p *Parser) parseModuleArgument() (_ *ModuleArgument, err error) {
 	var arg ModuleArgument
 
-	if arg.Name, err = p.parseIdent("module argument name"); err != nil {
-		return &arg, err
+	// SQLite passes module arguments to the module as raw text, so the name
+	// may be an identifier, a string literal or any keyword.
+	switch tok := p.peek(); {
+	case tok == STRING:
+		pos, _, lit := p.scan()
+		arg.Name = &Ident{Name: lit, NamePos: pos, Quoted: true}
+	case isNameToken(tok):
+		if arg.Name, err = p.parseIdent("module argument name"); err != nil {
+			return &arg, err
+		}
+	case tok.IsKeyword():
+		pos, _, lit := p.scan()
+		arg.Name = &Ident{Name: lit, NamePos: pos}
+	default:
+		return &arg, p.errorExpected(p.pos, p.tok, "module argument name")
 	}
 
 	if p.peek() == EQ {
-		// Parse literal
+		// Parse the assigned value, which may be a literal, name or call.
 		arg.Assign, _, _ = p.scan()
 		if arg.Literal, err = p.parseOperand(); err != nil {
 			return &arg, err
 		}
-	} else if isTypeName(p.lit) {
+	} else if isTypeNameToken(p.peek()) {
+		// Any following words are treated as the column's type (e.g. FTS5's
+		// UNINDEXED), as in an ordinary column definition.
 		if arg.Type, err = p.parseType(); err != nil {
 			return &arg, err
 		}
@@ -1228,7 +1273,7 @@ func (p *Parser) parseDropViewStatement(dropPos Pos) (_ *DropViewStatement, err 
 		stmt.IfExists, _, _ = p.scan()
 	}
 
-	if stmt.Name, err = p.parseIdent("view name"); err != nil {
+	if stmt.Schema, stmt.Dot, stmt.Name, err = p.parseSchemaQualifiedIdent("view name"); err != nil {
 		return &stmt, err
 	}
 
@@ -1437,7 +1482,7 @@ func (p *Parser) parseCreateTriggerStatement(createPos, tempPos Pos) (_ *CreateT
 		return &stmt, p.errorExpected(p.pos, p.tok, "ON")
 	}
 	stmt.On, _, _ = p.scan()
-	if stmt.Table, err = p.parseIdent("table name"); err != nil {
+	if stmt.TableSchema, stmt.TableDot, stmt.Table, err = p.parseSchemaQualifiedIdent("table name"); err != nil {
 		return &stmt, err
 	}
 
@@ -1535,12 +1580,27 @@ func (p *Parser) parseDropTriggerStatement(dropPos Pos) (_ *DropTriggerStatement
 	return &stmt, nil
 }
 
+// isAliasToken returns true if tok can begin an alias: an identifier or a
+// string literal, which SQLite accepts as an alias too.
+func isAliasToken(tok Token) bool {
+	return isIdentToken(tok) || tok == STRING
+}
+
+// parseAlias parses an alias name, which may be a string literal.
+func (p *Parser) parseAlias(desc string) (*Ident, error) {
+	if p.peek() == STRING {
+		pos, _, lit := p.scan()
+		return &Ident{Name: lit, NamePos: pos, Quoted: true}, nil
+	}
+	return p.parseIdent(desc)
+}
+
 func (p *Parser) parseIdent(desc string) (*Ident, error) {
 	pos, tok, lit := p.scan()
 	switch tok {
 	case IDENT, QIDENT, BIDENT:
 		return &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}, nil
-	case NULL:
+	case NULL, ROWID:
 		return &Ident{Name: lit, NamePos: pos}, nil
 	default:
 		if isBareToken(tok) {
@@ -1553,12 +1613,14 @@ func (p *Parser) parseIdent(desc string) (*Ident, error) {
 func (p *Parser) parseType() (_ *Type, err error) {
 	var typ Type
 	for {
-		tok := p.peek()
-		if tok != IDENT && tok != NULL {
+		if !isTypeNameToken(p.peek()) {
 			break
 		}
-		typeName, err := p.parseIdent("type name")
-		if err != nil {
+		var typeName *Ident
+		if p.peek() == STRING {
+			pos, _, lit := p.scan()
+			typeName = &Ident{Name: lit, NamePos: pos}
+		} else if typeName, err = p.parseIdent("type name"); err != nil {
 			return &typ, err
 		}
 		if typ.Name == nil {
@@ -1702,7 +1764,8 @@ func (p *Parser) parseInsertStatement(inTrigger bool, withClause *WithClause) (_
 			}
 			p.scan()
 		}
-	case SELECT:
+	case SELECT, WITH:
+		// A select-stmt, which may itself begin with a WITH clause.
 		if stmt.Select, err = p.parseSelectStatement(false, nil); err != nil {
 			return &stmt, err
 		}
@@ -1719,10 +1782,16 @@ func (p *Parser) parseInsertStatement(inTrigger bool, withClause *WithClause) (_
 		return &stmt, p.errorExpected(p.pos, p.tok, "VALUES, SELECT, or DEFAULT VALUES")
 	}
 
-	// Parse optional upsert clause.
-	if p.peek() == ON {
-		if stmt.UpsertClause, err = p.parseUpsertClause(); err != nil {
+	// Parse optional upsert clauses. A clause without a conflict target must
+	// be the last one, so stop looking for more after it.
+	for p.peek() == ON {
+		clause, err := p.parseUpsertClause()
+		if err != nil {
 			return &stmt, err
+		}
+		stmt.UpsertClauses = append(stmt.UpsertClauses, clause)
+		if !clause.Lparen.IsValid() {
+			break
 		}
 	}
 
@@ -2026,8 +2095,8 @@ func (p *Parser) parseDeleteStatement(inTrigger bool, withClause *WithClause) (_
 func (p *Parser) parseAssignment() (_ *Assignment, err error) {
 	var assignment Assignment
 
-	// Parse either a single column (IDENT or bare keyword) or a column list (LP IDENT COMMA IDENT RP)
-	if isIdentToken(p.peek()) || isBareToken(p.peek()) {
+	// Parse either a single column name or a column list (LP name COMMA name RP)
+	if isNameToken(p.peek()) {
 		col, _ := p.parseIdent("column name")
 		assignment.Columns = []*Ident{col}
 	} else if p.peek() == LP {
@@ -2174,12 +2243,13 @@ func (p *Parser) parseSelectStatement(compounded bool, withClause *WithClause) (
 				p.scan()
 			}
 
-			// Parse optional HAVING clause.
-			if p.peek() == HAVING {
-				stmt.Having, _, _ = p.scan()
-				if stmt.HavingExpr, err = p.ParseExpr(); err != nil {
-					return &stmt, err
-				}
+		}
+
+		// Parse optional HAVING clause. SQLite allows it without GROUP BY.
+		if p.peek() == HAVING {
+			stmt.Having, _, _ = p.scan()
+			if stmt.HavingExpr, err = p.ParseExpr(); err != nil {
+				return &stmt, err
 			}
 		}
 
@@ -2300,15 +2370,15 @@ func (p *Parser) parseResultColumn() (_ *ResultColumn, err error) {
 	}
 
 	// If "AS" is next, the alias must follow.
-	// Otherwise it can optionally be an IDENT alias.
+	// Otherwise it can optionally be an identifier or string alias.
 	if p.peek() == AS {
 		col.As, _, _ = p.scan()
-		if !isIdentToken(p.peek()) {
+		if !isAliasToken(p.peek()) {
 			return &col, p.errorExpected(p.pos, p.tok, "column alias")
 		}
-		col.Alias, _ = p.parseIdent("column alias")
-	} else if isIdentToken(p.peek()) {
-		col.Alias, _ = p.parseIdent("column alias")
+		col.Alias, _ = p.parseAlias("column alias")
+	} else if isAliasToken(p.peek()) {
+		col.Alias, _ = p.parseAlias("column alias")
 	}
 
 	return &col, nil
@@ -2541,14 +2611,14 @@ func (p *Parser) parseQualifiedTableName(ident *Ident, schemaOK, aliasOK, indexe
 	}
 
 	// Parse optional table alias ("AS alias" or just "alias").
-	if tok := p.peek(); tok == AS || isIdentToken(tok) {
+	if tok := p.peek(); tok == AS || isAliasToken(tok) {
 		if !aliasOK {
 			return &tbl, p.errorExpected(p.pos, p.tok, "unqualified table name")
 		}
 		if p.peek() == AS {
 			tbl.As, _, _ = p.scan()
 		}
-		if tbl.Alias, err = p.parseIdent("table alias"); err != nil {
+		if tbl.Alias, err = p.parseAlias("table alias"); err != nil {
 			return &tbl, err
 		}
 	}
@@ -2605,11 +2675,11 @@ func (p *Parser) parseQualifiedTableFunctionName(schema *Ident, dot Pos, name *I
 	tbl.Rparen, _, _ = p.scan()
 
 	// Parse optional table alias ("AS alias" or just "alias").
-	if tok := p.peek(); tok == AS || isIdentToken(tok) {
+	if tok := p.peek(); tok == AS || isAliasToken(tok) {
 		if p.peek() == AS {
 			tbl.As, _, _ = p.scan()
 		}
-		if tbl.Alias, err = p.parseIdent("table function alias"); err != nil {
+		if tbl.Alias, err = p.parseAlias("table function alias"); err != nil {
 			return &tbl, err
 		}
 	}
@@ -2973,7 +3043,7 @@ func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {
 
 	if p.peek() == STAR {
 		expr.Star, _, _ = p.scan()
-	} else if isIdentToken(p.peek()) {
+	} else if isNameToken(p.peek()) {
 		pos, tok, lit := p.scan()
 		expr.Column = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 
@@ -2990,7 +3060,7 @@ func (p *Parser) parseQualifiedRef(table *Ident) (_ *QualifiedRef, err error) {
 			if p.peek() == STAR {
 				expr.Column = nil
 				expr.Star, _, _ = p.scan()
-			} else if isIdentToken(p.peek()) {
+			} else if isNameToken(p.peek()) {
 				pos, tok, lit := p.scan()
 				expr.Column = &Ident{Name: lit, NamePos: pos, Quoted: tok == QIDENT || tok == BIDENT}
 			} else {
@@ -3015,8 +3085,11 @@ func (p *Parser) parseCall(name *Ident) (_ *Call, err error) {
 	if p.peek() == STAR {
 		expr.Star, _, _ = p.scan()
 	} else {
-		if p.peek() == DISTINCT {
+		switch p.peek() {
+		case DISTINCT:
 			expr.Distinct, _, _ = p.scan()
+		case ALL:
+			expr.All, _, _ = p.scan()
 		}
 		for p.peek() != RP {
 			arg, err := p.ParseExpr()
@@ -3027,10 +3100,13 @@ func (p *Parser) parseCall(name *Ident) (_ *Call, err error) {
 
 			if tok := p.peek(); tok == COMMA {
 				p.scan()
+				// A trailing comma is not allowed; another argument must follow.
+				if p.peek() == RP {
+					return &expr, p.errorExpected(p.pos, p.tok, "expression")
+				}
 			} else if tok != RP {
 				return &expr, p.errorExpected(p.pos, p.tok, "comma or right paren")
 			}
-
 		}
 	}
 
@@ -3556,6 +3632,67 @@ func (p *Parser) parseSignedNumber(desc string) (*NumberLit, error) {
 	}
 }
 
+func (p *Parser) parseVacuumStatement() (_ *VacuumStatement, err error) {
+	assert(p.peek() == VACUUM)
+
+	var stmt VacuumStatement
+	stmt.Vacuum, _, _ = p.scan()
+
+	if isNameToken(p.peek()) {
+		if stmt.Schema, err = p.parseIdent("schema name"); err != nil {
+			return &stmt, err
+		}
+	}
+	if p.peek() == INTO {
+		stmt.Into, _, _ = p.scan()
+		if stmt.Filename, err = p.ParseExpr(); err != nil {
+			return &stmt, err
+		}
+	}
+	return &stmt, nil
+}
+
+func (p *Parser) parseAttachStatement() (_ *AttachStatement, err error) {
+	assert(p.peek() == ATTACH)
+
+	var stmt AttachStatement
+	stmt.Attach, _, _ = p.scan()
+	if p.peek() == DATABASE {
+		stmt.Database, _, _ = p.scan()
+	}
+	if stmt.Expr, err = p.ParseExpr(); err != nil {
+		return &stmt, err
+	}
+	if p.peek() != AS {
+		return &stmt, p.errorExpected(p.pos, p.tok, "AS")
+	}
+	stmt.As, _, _ = p.scan()
+	if stmt.Schema, err = p.parseIdent("schema name"); err != nil {
+		return &stmt, err
+	}
+	if p.peek() == KEY {
+		stmt.Key, _, _ = p.scan()
+		if stmt.KeyExpr, err = p.ParseExpr(); err != nil {
+			return &stmt, err
+		}
+	}
+	return &stmt, nil
+}
+
+func (p *Parser) parseDetachStatement() (_ *DetachStatement, err error) {
+	assert(p.peek() == DETACH)
+
+	var stmt DetachStatement
+	stmt.Detach, _, _ = p.scan()
+	if p.peek() == DATABASE {
+		stmt.Database, _, _ = p.scan()
+	}
+	if stmt.Schema, err = p.parseIdent("schema name"); err != nil {
+		return &stmt, err
+	}
+	return &stmt, nil
+}
+
 func (p *Parser) parseAlterTableStatement() (_ *AlterTableStatement, err error) {
 	assert(p.peek() == ALTER)
 
@@ -3669,15 +3806,8 @@ func (p *Parser) parsePragmaStatement() (_ *PragmaStatement, err error) {
 	case EQ:
 		// Parse as binary expression: pragma-name = value
 		opPos, _, _ := p.scan()
-
-		// Pragma values are frequently keywords (ON, OFF, DELETE, WAL, FULL,
-		// NORMAL ...). Accept any keyword that is not already usable as an
-		// identifier as a plain name.
-		var rhs Expr
-		if tok := p.peek(); tok.IsKeyword() && !isExprIdentToken(tok) {
-			pos, _, lit := p.scan()
-			rhs = &Ident{Name: lit, NamePos: pos}
-		} else if rhs, err = p.ParseExpr(); err != nil {
+		rhs, err := p.parsePragmaValue()
+		if err != nil {
 			return &stmt, err
 		}
 		stmt.Expr = &BinaryExpr{
@@ -3687,17 +3817,43 @@ func (p *Parser) parsePragmaStatement() (_ *PragmaStatement, err error) {
 			Y:     rhs,
 		}
 	case LP:
-		// Parse as function call: pragma-name(args)
-		call, err := p.parseCall(lit)
+		// Parse as function call with exactly one value: pragma-name(value)
+		call := &Call{Name: lit}
+		call.Lparen, _, _ = p.scan()
+		arg, err := p.parsePragmaValue()
 		if err != nil {
 			return &stmt, err
 		}
+		call.Args = []Expr{arg}
+		if p.peek() != RP {
+			return &stmt, p.errorExpected(p.pos, p.tok, "right paren")
+		}
+		call.Rparen, _, _ = p.scan()
 		stmt.Expr = call
 	default:
 		stmt.Expr = lit
 	}
 
 	return &stmt, nil
+}
+
+// parsePragmaValue parses a pragma value: a signed number, a literal, or a
+// name. Names are frequently keywords (ON, OFF, DELETE, WAL, FULL, NORMAL ...)
+// so any keyword is accepted as an identifier here.
+func (p *Parser) parsePragmaValue() (Expr, error) {
+	switch tok := p.peek(); {
+	case tok == PLUS || tok == MINUS:
+		return p.parseSignedNumber("pragma value")
+	case isLiteralToken(tok):
+		return p.mustParseLiteral(), nil
+	case isNameToken(tok):
+		return p.parseIdent("pragma value")
+	case tok.IsKeyword():
+		pos, _, lit := p.scan()
+		return &Ident{Name: lit, NamePos: pos}, nil
+	default:
+		return nil, p.errorExpected(p.pos, p.tok, "pragma value")
+	}
 }
 
 func (p *Parser) parseAnalyzeStatement() (_ *AnalyzeStatement, err error) {

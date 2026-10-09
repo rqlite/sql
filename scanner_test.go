@@ -139,6 +139,10 @@ func TestScanner_Scan(t *testing.T) {
 		AssertScan(t, `:foo_bar123'`, sql.BIND, `:foo_bar123`)
 		AssertScan(t, `@bar'`, sql.BIND, `@bar`)
 		AssertScan(t, `$baz'`, sql.BIND, `$baz`)
+		// A named parameter needs a name; sqlite3 rejects a bare prefix.
+		AssertScan(t, `$`, sql.ILLEGAL, `$`)
+		AssertScan(t, `: `, sql.ILLEGAL, `:`)
+		AssertScan(t, `@)`, sql.ILLEGAL, `@`)
 	})
 
 	t.Run("EOF", func(t *testing.T) {

@@ -72,6 +72,42 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Name = ri
 		}
 
+	case *VacuumStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
+		if expr, err := walkExpr(v, nn.Filename); err != nil {
+			return nil, err
+		} else {
+			nn.Filename = expr
+		}
+
+	case *AttachStatement:
+		if expr, err := walkExpr(v, nn.Expr); err != nil {
+			return nil, err
+		} else {
+			nn.Expr = expr
+		}
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
+		if expr, err := walkExpr(v, nn.KeyExpr); err != nil {
+			return nil, err
+		} else {
+			nn.KeyExpr = expr
+		}
+
+	case *DetachStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
+
 	case *CreateTableStatement:
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
@@ -169,6 +205,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *DropViewStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -231,6 +272,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			return nil, err
 		} else {
 			nn.UpdateOfColumns = columns
+		}
+		if ri, err := walkIdent(v, nn.TableSchema); err != nil {
+			return nil, err
+		} else {
+			nn.TableSchema = ri
 		}
 		if ri, err := walkIdent(v, nn.Table); err != nil {
 			return nil, err
@@ -363,11 +409,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 				nn.Select = rn.(*SelectStatement)
 			}
 		}
-		if nn.UpsertClause != nil {
-			if rn, err := walk(v, nn.UpsertClause); err != nil {
+		for i, x := range nn.UpsertClauses {
+			if rn, err := walk(v, x); err != nil {
 				return nil, err
 			} else {
-				nn.UpsertClause = rn.(*UpsertClause)
+				nn.UpsertClauses[i] = rn.(*UpsertClause)
 			}
 		}
 		if nn.ReturningClause != nil {
@@ -504,7 +550,7 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		} else {
 			nn.Name = ri
 		}
-		if columns, err := walkIdentList(v, nn.Columns); err != nil {
+		if columns, err := walkIndexedColumnList(v, nn.Columns); err != nil {
 			return nil, err
 		} else {
 			nn.Columns = columns

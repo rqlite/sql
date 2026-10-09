@@ -65,11 +65,32 @@ func TestParser_ParseStatement(t *testing.T) {
 				Y: &sql.Ident{Name: "DELETE", NamePos: pos(27)},
 			},
 		})
+		// A pragma value is a signed number, literal or name; the call form
+		// takes exactly one value.
+		AssertParseStatement(t, `PRAGMA foo(ON)`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Expr: &sql.Call{
+				Name:   &sql.Ident{Name: "foo", NamePos: pos(7)},
+				Lparen: pos(10),
+				Args:   []sql.Expr{&sql.Ident{Name: "ON", NamePos: pos(11)}},
+				Rparen: pos(13),
+			},
+		})
+		AssertParseStatement(t, `PRAGMA foo = -1`, &sql.PragmaStatement{
+			Pragma: pos(0),
+			Expr: &sql.BinaryExpr{
+				X:     &sql.Ident{Name: "foo", NamePos: pos(7)},
+				OpPos: pos(11), Op: sql.EQ,
+				Y: &sql.NumberLit{Value: "-1", ValuePos: pos(13)},
+			},
+		})
+		AssertParseStatementError(t, `PRAGMA foo = 1 + 1`, "1:16: expected semicolon or EOF, found '+'")
+		AssertParseStatementError(t, `PRAGMA foo(1, 2)`, "1:13: expected right paren, found ','")
 		AssertParseStatementError(t, `PRAGMA schema.`, "1:14: expected pragma name, found 'EOF'")
 		AssertParseStatementError(t, `PRAGMA .name`, "1:8: expected schema name, found '.'")
-		AssertParseStatementError(t, `PRAGMA schema.name=`, "1:19: expected expression, found 'EOF'")
-		AssertParseStatementError(t, `PRAGMA schema.name(`, "1:19: expected expression, found 'EOF'")
-		AssertParseStatementError(t, `PRAGMA schema.name(arg`, "1:22: expected comma or right paren, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA schema.name=`, "1:19: expected pragma value, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA schema.name(`, "1:19: expected pragma value, found 'EOF'")
+		AssertParseStatementError(t, `PRAGMA schema.name(arg`, "1:22: expected right paren, found 'EOF'")
 	})
 
 	t.Run("Explain", func(t *testing.T) {
@@ -480,6 +501,9 @@ func TestParser_ParseStatement(t *testing.T) {
 		// the type is part of a multi-word type name, so a constraint is used
 		// here to end the first definition.)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT NOT NULL col2 INTEGER)`, `1:38: expected right paren, found col2`)
+		// At least one column definition is required.
+		AssertParseStatementError(t, `CREATE TABLE tbl ()`, `1:19: expected column name, found ')'`)
+		AssertParseStatementError(t, `CREATE TABLE tbl (PRIMARY KEY (x))`, `1:19: expected column name, found 'PRIMARY'`)
 		// A trailing comma is not valid; something must follow it.
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT,)`, `1:29: expected column name or CONSTRAINT, found ')'`)
 		AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, col2 INTEGER PRIMARY KEY col3)`, `1:55: expected right paren, found col3`)
@@ -1048,7 +1072,7 @@ func TestParser_ParseStatement(t *testing.T) {
 
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT +`, `1:37: expected signed number, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT -`, `1:37: expected signed number, found 'EOF'`)
-				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT `, `1:36: expected literal value or left paren, found 'EOF'`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT `, `1:36: expected literal value, identifier or left paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT (TABLE`, `1:38: expected expression, found 'TABLE'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT (true`, `1:41: expected right paren, found 'EOF'`)
 			})
@@ -1191,6 +1215,28 @@ func TestParser_ParseStatement(t *testing.T) {
 						},
 						Rparen: pos(49),
 					})
+				})
+				// MATCH clauses may appear among the ON clauses in any order.
+				t.Run("Match", func(t *testing.T) {
+					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other (y) MATCH SIMPLE ON DELETE CASCADE MATCH FULL)`).(*sql.CreateTableStatement)
+					if diff := deepEqual(stmt.Columns[0].Constraints[0], &sql.ForeignKeyConstraint{
+						References:     pos(31),
+						ForeignTable:   &sql.Ident{Name: "other", NamePos: pos(42)},
+						ForeignLparen:  pos(48),
+						ForeignColumns: []*sql.Ident{{Name: "y", NamePos: pos(49)}},
+						ForeignRparen:  pos(50),
+						Args: []*sql.ForeignKeyArg{
+							{Match: pos(52), MatchName: &sql.Ident{Name: "SIMPLE", NamePos: pos(58)}},
+							{On: pos(65), OnDelete: pos(68), Cascade: pos(75)},
+							{Match: pos(83), MatchName: &sql.Ident{Name: "FULL", NamePos: pos(89)}},
+						},
+					}); diff != "" {
+						t.Fatal(diff)
+					}
+					if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1" INTEGER REFERENCES "other" ("y") MATCH SIMPLE ON DELETE CASCADE MATCH FULL)`; got != want {
+						t.Fatalf("String()=%s, want %s", got, want)
+					}
+					AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other MATCH)`, `1:54: expected match type, found ')'`)
 				})
 				// The foreign column list is optional; the parent table's primary
 				// key is used when it is omitted.
@@ -1411,6 +1457,44 @@ func TestParser_ParseStatement(t *testing.T) {
 		})
 
 		t.Run("TableConstraint", func(t *testing.T) {
+			// Table PRIMARY KEY columns are indexed columns and may be followed
+			// by AUTOINCREMENT inside the parentheses.
+			t.Run("PrimaryKeyIndexedColumns", func(t *testing.T) {
+				stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1, col2, PRIMARY KEY (col1 COLLATE NOCASE DESC, col2 ASC))`).(*sql.CreateTableStatement)
+				if diff := deepEqual(stmt.Constraints[0], &sql.PrimaryKeyConstraint{
+					Primary: pos(30),
+					Key:     pos(38),
+					Lparen:  pos(42),
+					Columns: []*sql.IndexedColumn{
+						{X: &sql.CollateExpr{X: &sql.Ident{Name: "col1", NamePos: pos(43)}, Collation: &sql.CollationClause{Collate: pos(48), Name: &sql.Ident{Name: "NOCASE", NamePos: pos(56)}}}, Desc: pos(63)},
+						{X: &sql.Ident{Name: "col2", NamePos: pos(69)}, Asc: pos(74)},
+					},
+					Rparen: pos(77),
+				}); diff != "" {
+					t.Fatal(diff)
+				}
+				if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1", "col2", PRIMARY KEY ("col1" COLLATE "NOCASE" DESC, "col2" ASC))`; got != want {
+					t.Fatalf("String()=%s, want %s", got, want)
+				}
+
+				// AUTOINCREMENT goes inside the parens and, as SQLite requires,
+				// on a single INTEGER column.
+				stmt = ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER, PRIMARY KEY (col1 AUTOINCREMENT))`).(*sql.CreateTableStatement)
+				if diff := deepEqual(stmt.Constraints[0], &sql.PrimaryKeyConstraint{
+					Primary:       pos(32),
+					Key:           pos(40),
+					Lparen:        pos(44),
+					Columns:       []*sql.IndexedColumn{{X: &sql.Ident{Name: "col1", NamePos: pos(45)}}},
+					Autoincrement: pos(50),
+					Rparen:        pos(63),
+				}); diff != "" {
+					t.Fatal(diff)
+				}
+				if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1" INTEGER, PRIMARY KEY ("col1" AUTOINCREMENT))`; got != want {
+					t.Fatalf("String()=%s, want %s", got, want)
+				}
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1, PRIMARY KEY (col1 AUTOINCREMENT, col2))`, `1:56: expected right paren, found ','`)
+			})
 			t.Run("PrimaryKey", func(t *testing.T) {
 				AssertParseStatement(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (col1, col2))`, &sql.CreateTableStatement{
 					Create: pos(0),
@@ -1430,9 +1514,9 @@ func TestParser_ParseStatement(t *testing.T) {
 							Primary: pos(29),
 							Key:     pos(37),
 							Lparen:  pos(41),
-							Columns: []*sql.Ident{
-								{Name: "col1", NamePos: pos(42)},
-								{Name: "col2", NamePos: pos(48)},
+							Columns: []*sql.IndexedColumn{
+								{X: &sql.Ident{Name: "col1", NamePos: pos(42)}},
+								{X: &sql.Ident{Name: "col2", NamePos: pos(48)}},
 							},
 							Rparen: pos(52),
 						},
@@ -1443,7 +1527,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY`, `1:36: expected KEY, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY`, `1:40: expected left paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (col1)`, `1:47: expected right paren, found 'EOF'`)
-				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (1`, `1:43: expected column name, found 1`)
+				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (1`, `1:43: expected comma or right paren, found 'EOF'`)
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT, PRIMARY KEY (foo x`, `1:47: expected comma or right paren, found x`)
 			})
 			t.Run("Unique", func(t *testing.T) {
@@ -1681,9 +1765,11 @@ func TestParser_ParseStatement(t *testing.T) {
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1`, "1:40: expected comma or right paren, found 'EOF'")
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1=3`, "1:42: expected comma or right paren, found 'EOF'")
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1=3,`, "1:43: expected module argument name, found 'EOF'")
-			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl()`, "1:37: expected module arguments, found ')'")
+			// An empty argument list and free-form argument words are accepted,
+			// as sqlite3 passes module arguments through as text.
+			AssertParseStatements(t, `CREATE VIRTUAL TABLE vtbl USING mdl()`, 1)
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 BLOB`, "1:45: expected comma or right paren, found 'EOF'")
-			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 arg2)`, "1:42: expected comma or right paren, found arg2")
+			AssertParseStatements(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 arg2)`, 1)
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(arg1 TEXT=value)`, "1:46: expected comma or right paren, found '='")
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(=)`, "1:37: expected module argument name, found '='")
 			AssertParseStatementError(t, `CREATE VIRTUAL TABLE vtbl USING mdl(key=)`, "1:41: expected expression, found ')'")
@@ -3984,7 +4070,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 				Rparen: pos(29),
 			}},
-			UpsertClause: &sql.UpsertClause{
+			UpsertClauses: []*sql.UpsertClause{{
 				On:         pos(31),
 				OnConflict: pos(34),
 				Lparen:     pos(43),
@@ -3995,7 +4081,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				Rparen:    pos(57),
 				Do:        pos(59),
 				DoNothing: pos(62),
-			},
+			}},
 		})
 		AssertParseStatement(t, `INSERT INTO tbl (x) VALUES (1) RETURNING *`, &sql.InsertStatement{
 			Insert:        pos(0),
@@ -4140,7 +4226,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 				Rparen: pos(29),
 			}},
-			UpsertClause: &sql.UpsertClause{
+			UpsertClauses: []*sql.UpsertClause{{
 				On:         pos(31),
 				OnConflict: pos(34),
 				Lparen:     pos(43),
@@ -4174,7 +4260,7 @@ func TestParser_ParseStatement(t *testing.T) {
 				},
 				UpdateWhere:     pos(96),
 				UpdateWhereExpr: &sql.BoolLit{ValuePos: pos(102), Value: false},
-			},
+			}},
 		})
 
 		// Test schema-qualified table name
@@ -5203,10 +5289,8 @@ func TestParser_ParseStatements(t *testing.T) {
 	})
 
 	t.Run("EmptySemicolons", func(t *testing.T) {
-		_, err := sql.NewParser(strings.NewReader(`;;`)).ParseStatements()
-		if err == nil {
-			t.Fatal("ParseStatements() expected error, got nil")
-		}
+		// Empty statements are skipped, as sqlite3 does.
+		AssertParseStatements(t, `;;`, 0)
 	})
 
 	t.Run("CreateIndexStatements", func(t *testing.T) {
@@ -5744,6 +5828,15 @@ func TestParser_ParseExpr(t *testing.T) {
 		AssertParseExprError(t, `1 + `, `1:4: expected expression, found 'EOF'`)
 	})
 	t.Run("Call", func(t *testing.T) {
+		// ALL is accepted before the arguments like DISTINCT.
+		AssertParseExpr(t, `count(ALL x)`, &sql.Call{
+			Name:   &sql.Ident{NamePos: pos(0), Name: "count"},
+			Lparen: pos(5),
+			All:    pos(6),
+			Args:   []sql.Expr{&sql.Ident{NamePos: pos(10), Name: "x"}},
+			Rparen: pos(11),
+		})
+		AssertParseExprError(t, `f(1,)`, `1:5: expected expression, found ')'`)
 		AssertParseExpr(t, `sum()`, &sql.Call{
 			Name:   &sql.Ident{NamePos: pos(0), Name: "sum"},
 			Lparen: pos(3),
@@ -6336,6 +6429,14 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 			v := st.(*sql.AnalyzeStatement)
 			return v.Schema, v.Name
 		}},
+		{`DROP VIEW IF EXISTS main.v`, func(st sql.Statement) (*sql.Ident, *sql.Ident) {
+			v := st.(*sql.DropViewStatement)
+			return v.Schema, v.Name
+		}},
+		{`CREATE TRIGGER trg AFTER INSERT ON main.t BEGIN SELECT 1; END`, func(st sql.Statement) (*sql.Ident, *sql.Ident) {
+			v := st.(*sql.CreateTriggerStatement)
+			return v.TableSchema, v.Table
+		}},
 	} {
 		stmt, err := sql.NewParser(strings.NewReader(tt.s)).ParseStatement()
 		if err != nil {
@@ -6353,6 +6454,236 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 			t.Errorf("%s: cannot re-parse %q: %v", tt.s, stmt.String(), err)
 		} else if stmt2.String() != stmt.String() {
 			t.Errorf("%s: unstable: %q != %q", tt.s, stmt.String(), stmt2.String())
+		}
+	}
+}
+
+// Ensure virtual table module arguments accept the forms FTS5 and other
+// modules use: a column with a type-like word (UNINDEXED), a quoted or string
+// name, an option assigned a function-call value, and no arguments at all.
+func TestParser_ModuleArguments(t *testing.T) {
+	// A real FTS5 declaration that sqlite3 executes, as does its String().
+	stmt := ParseStatementOrFail(t, `CREATE VIRTUAL TABLE ft USING fts5(a UNINDEXED, 'b c', tokenize=porter, prefix='2 3')`).(*sql.CreateVirtualTableStatement)
+	if len(stmt.Arguments) != 4 {
+		t.Fatalf("expected 4 arguments, got %d", len(stmt.Arguments))
+	}
+	if got := stmt.Arguments[0].Type.Name.Name; got != "UNINDEXED" {
+		t.Errorf("arg 0 type=%q, want UNINDEXED", got)
+	}
+	if got := stmt.Arguments[1].Name.Name; got != "b c" {
+		t.Errorf("arg 1 name=%q, want %q", got, "b c")
+	}
+	if _, ok := stmt.Arguments[2].Literal.(*sql.Ident); !ok {
+		t.Errorf("arg 2 value=%T, want *sql.Ident", stmt.Arguments[2].Literal)
+	}
+	if got, want := stmt.String(), `CREATE VIRTUAL TABLE "ft" USING "fts5" (a UNINDEXED,"b c",tokenize="porter",prefix='2 3')`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	if _, err := sql.NewParser(strings.NewReader(stmt.String())).ParseStatement(); err != nil {
+		t.Fatalf("cannot re-parse %q: %v", stmt.String(), err)
+	}
+	// An empty argument list (dbstat takes none).
+	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE s USING dbstat()`).(*sql.CreateVirtualTableStatement)
+	if len(stmt.Arguments) != 0 || stmt.String() != `CREATE VIRTUAL TABLE "s" USING "dbstat" ()` {
+		t.Fatalf("unexpected: %s", stmt.String())
+	}
+	// An option whose value is a call parses as a Call.
+	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE vtbl USING mdl(c=d(e))`).(*sql.CreateVirtualTableStatement)
+	if _, ok := stmt.Arguments[0].Literal.(*sql.Call); !ok {
+		t.Errorf("value=%T, want *sql.Call", stmt.Arguments[0].Literal)
+	}
+}
+
+// Ensure a string literal is accepted as a column or table alias, as sqlite3
+// allows (as ::= AS nm | ids, where ids includes STRING).
+func TestParser_StringAlias(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `SELECT x 'lbl', y AS 'lbl2' FROM t 'a' JOIN json_each('[1]') 'j'`).(*sql.SelectStatement)
+	if diff := deepEqual(stmt.Columns[0].Alias, &sql.Ident{Name: "lbl", NamePos: pos(9), Quoted: true}); diff != "" {
+		t.Fatal(diff)
+	}
+	if diff := deepEqual(stmt.Columns[1].Alias, &sql.Ident{Name: "lbl2", NamePos: pos(21), Quoted: true}); diff != "" {
+		t.Fatal(diff)
+	}
+	join := stmt.Source.(*sql.JoinClause)
+	if alias := join.X.(*sql.QualifiedTableName).Alias; alias == nil || alias.Name != "a" {
+		t.Fatalf("table alias=%v, want a", alias)
+	}
+	if alias := join.Y.(*sql.QualifiedTableFunctionName).Alias; alias == nil || alias.Name != "j" {
+		t.Fatalf("table function alias=%v, want j", alias)
+	}
+	if got, want := stmt.String(), `SELECT "x" AS "lbl", "y" AS "lbl2" FROM "t" AS "a" JOIN "json_each"('[1]') AS "j"`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
+// Ensure a bind parameter prefix without a name is rejected.
+func TestParser_EmptyBindName(t *testing.T) {
+	AssertParseStatementError(t, `SELECT $`, `1:8: expected expression, found 'ILLEGAL'`)
+	AssertParseStatementError(t, `SELECT * FROM t WHERE x = :`, `1:27: expected expression, found 'ILLEGAL'`)
+}
+
+// Ensure HAVING is accepted without GROUP BY, as SQLite 3.39+ allows.
+func TestParser_HavingWithoutGroupBy(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `SELECT count(*) FROM t HAVING count(*) > 1`).(*sql.SelectStatement)
+	if stmt.HavingExpr == nil || stmt.GroupByExprs != nil {
+		t.Fatalf("expected HAVING without GROUP BY, got %s", stmt.String())
+	}
+	if got, want := stmt.String(), `SELECT count(*) FROM "t" HAVING count(*) > 1`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
+// Ensure empty statements (stray semicolons) are skipped, as sqlite3 does.
+func TestParser_EmptyStatements(t *testing.T) {
+	AssertParseStatements(t, `;`, 0)
+	AssertParseStatements(t, `;;`, 0)
+	AssertParseStatements(t, `SELECT 1;; SELECT 2`, 2)
+	AssertParseStatements(t, `; SELECT 1;`, 1)
+}
+
+func TestParser_Vacuum(t *testing.T) {
+	AssertParseStatement(t, `VACUUM`, &sql.VacuumStatement{Vacuum: pos(0)})
+	AssertParseStatement(t, `VACUUM main`, &sql.VacuumStatement{Vacuum: pos(0), Schema: &sql.Ident{Name: "main", NamePos: pos(7)}})
+	AssertParseStatement(t, `VACUUM INTO 'f'`, &sql.VacuumStatement{Vacuum: pos(0), Into: pos(7), Filename: &sql.StringLit{Value: "f", ValuePos: pos(12)}})
+	AssertParseStatement(t, `VACUUM main INTO 'f'`, &sql.VacuumStatement{
+		Vacuum:   pos(0),
+		Schema:   &sql.Ident{Name: "main", NamePos: pos(7)},
+		Into:     pos(12),
+		Filename: &sql.StringLit{Value: "f", ValuePos: pos(17)},
+	})
+	AssertParseStatementError(t, `VACUUM INTO`, "1:11: expected expression, found 'EOF'")
+}
+
+func TestParser_Attach(t *testing.T) {
+	AssertParseStatement(t, `ATTACH 'f' AS d`, &sql.AttachStatement{
+		Attach: pos(0),
+		Expr:   &sql.StringLit{Value: "f", ValuePos: pos(7)},
+		As:     pos(11),
+		Schema: &sql.Ident{Name: "d", NamePos: pos(14)},
+	})
+	AssertParseStatement(t, `ATTACH DATABASE 'f' AS d KEY 'k'`, &sql.AttachStatement{
+		Attach:   pos(0),
+		Database: pos(7),
+		Expr:     &sql.StringLit{Value: "f", ValuePos: pos(16)},
+		As:       pos(20),
+		Schema:   &sql.Ident{Name: "d", NamePos: pos(23)},
+		Key:      pos(25),
+		KeyExpr:  &sql.StringLit{Value: "k", ValuePos: pos(29)},
+	})
+	AssertParseStatementError(t, `ATTACH 'f'`, "1:10: expected AS, found 'EOF'")
+	AssertParseStatementError(t, `ATTACH 'f' AS`, "1:13: expected schema name, found 'EOF'")
+}
+
+func TestParser_Detach(t *testing.T) {
+	AssertParseStatement(t, `DETACH d`, &sql.DetachStatement{Detach: pos(0), Schema: &sql.Ident{Name: "d", NamePos: pos(7)}})
+	AssertParseStatement(t, `DETACH DATABASE d`, &sql.DetachStatement{Detach: pos(0), Database: pos(7), Schema: &sql.Ident{Name: "d", NamePos: pos(16)}})
+	AssertParseStatementError(t, `DETACH`, "1:6: expected schema name, found 'EOF'")
+}
+
+// Ensure the SELECT of an INSERT may itself begin with a WITH clause.
+func TestParser_InsertWithSelect(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `INSERT INTO t (x) WITH c AS (SELECT 1) SELECT * FROM c`).(*sql.InsertStatement)
+	if stmt.Select == nil || stmt.Select.WithClause == nil || len(stmt.Select.WithClause.CTEs) != 1 {
+		t.Fatalf("expected select with one CTE, got %s", stmt.String())
+	}
+	if got, want := stmt.String(), `INSERT INTO "t" ("x") WITH "c" AS (SELECT 1) SELECT * FROM "c"`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
+// Ensure an INSERT may carry several ON CONFLICT clauses. Only the last may
+// omit the conflict target, as in sqlite3.
+func TestParser_MultipleUpsertClauses(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `INSERT INTO t VALUES (1, 2) ON CONFLICT (x) DO NOTHING ON CONFLICT (y) DO UPDATE SET x = 1 ON CONFLICT DO NOTHING`).(*sql.InsertStatement)
+	if len(stmt.UpsertClauses) != 3 {
+		t.Fatalf("expected 3 upsert clauses, got %d", len(stmt.UpsertClauses))
+	}
+	if got, want := stmt.String(), `INSERT INTO "t" VALUES (1, 2) ON CONFLICT ("x") DO NOTHING ON CONFLICT ("y") DO UPDATE SET "x" = 1 ON CONFLICT DO NOTHING`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	if c := stmt.Clone(); len(c.UpsertClauses) != 3 || c.UpsertClauses[0] == stmt.UpsertClauses[0] {
+		t.Fatal("Clone() did not deep copy upsert clauses")
+	}
+	AssertParseStatementError(t, `INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING ON CONFLICT (x) DO NOTHING`, `1:49: expected semicolon or EOF, found 'ON'`)
+}
+
+// Ensure a DEFAULT value may be a bare identifier, which SQLite stores as a
+// string: `DEFAULT abc` is the same as `DEFAULT 'abc'`.
+func TestParser_DefaultIdent(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 TEXT DEFAULT abc, col2 TEXT DEFAULT key)`).(*sql.CreateTableStatement)
+	if diff := deepEqual(stmt.Columns[0].Constraints[0], &sql.DefaultConstraint{
+		Default: pos(28),
+		Expr:    &sql.Ident{NamePos: pos(36), Name: "abc"},
+	}); diff != "" {
+		t.Fatal(diff)
+	}
+	if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1" TEXT DEFAULT abc, "col2" TEXT DEFAULT key)`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	AssertParseStatementError(t, `CREATE TABLE tbl (col1 TEXT DEFAULT)`, `1:36: expected literal value, identifier or left paren, found ')'`)
+}
+
+// Ensure type names may be quoted identifiers, string literals or fallback
+// keywords, as sqlite3 allows (typename ::= ids | typename ids).
+func TestParser_TypeNames(t *testing.T) {
+	for _, tt := range []struct{ s, typ string }{
+		{`CREATE TABLE tbl (col1 "my type")`, "my type"},
+		{`CREATE TABLE tbl (col1 'my type')`, "my type"},
+		{"CREATE TABLE tbl (col1 `bt type`(10))", "bt type"},
+		{`CREATE TABLE tbl (col1 key)`, "key"},
+		{`CREATE TABLE tbl (col1 INTEGER key)`, "INTEGER key"},
+		{`CREATE TABLE tbl (col1 UNSIGNED BIG INT NOT NULL)`, "UNSIGNED BIG INT"},
+	} {
+		stmt := ParseStatementOrFail(t, tt.s).(*sql.CreateTableStatement)
+		if len(stmt.Columns) != 1 {
+			t.Errorf("%s: expected 1 column, got %d", tt.s, len(stmt.Columns))
+		} else if got := stmt.Columns[0].Type.Name.Name; got != tt.typ {
+			t.Errorf("%s: type=%q, want %q", tt.s, got, tt.typ)
+		}
+		if _, err := sql.NewParser(strings.NewReader(stmt.String())).ParseStatement(); err != nil {
+			t.Errorf("%s: cannot re-parse %q: %v", tt.s, stmt.String(), err)
+		}
+	}
+	// GENERATED starts a constraint and is never part of a type name.
+	stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER GENERATED ALWAYS AS (1), col2)`).(*sql.CreateTableStatement)
+	if got := stmt.Columns[0].Type.Name.Name; got != "INTEGER" {
+		t.Errorf("type=%q, want INTEGER", got)
+	} else if len(stmt.Columns[0].Constraints) != 1 {
+		t.Errorf("expected generated constraint, got %v", stmt.Columns[0].Constraints)
+	}
+	AssertParseExprError(t, `CAST(1 AS)`, `1:10: expected type name, found ')'`)
+	if e, err := sql.NewParser(strings.NewReader(`CAST(1 AS "weird type")`)).ParseExpr(); err != nil {
+		t.Fatal(err)
+	} else if got := e.(*sql.CastExpr).Type.Name.Name; got != "weird type" {
+		t.Errorf("CAST type=%q, want %q", got, "weird type")
+	}
+}
+
+// Ensure rowid and fallback keywords are accepted as column names after a dot
+// and in INSERT column lists, as sqlite3 does.
+func TestParser_RowidAndKeywordColumns(t *testing.T) {
+	AssertParseExpr(t, `t.rowid`, &sql.QualifiedRef{
+		Table:  &sql.Ident{Name: "t", NamePos: pos(0)},
+		Dot:    pos(1),
+		Column: &sql.Ident{Name: "rowid", NamePos: pos(2)},
+	})
+	AssertParseExpr(t, `main.t.key`, &sql.QualifiedRef{
+		Schema:    &sql.Ident{Name: "main", NamePos: pos(0)},
+		SchemaPos: pos(4),
+		Table:     &sql.Ident{Name: "t", NamePos: pos(5)},
+		Dot:       pos(6),
+		Column:    &sql.Ident{Name: "key", NamePos: pos(7)},
+	})
+	for _, s := range []string{
+		`INSERT INTO t (rowid, x) VALUES (1, 2)`,
+		`UPDATE t SET rowid = 1`,
+		`SELECT t.rowid, t.key FROM t`,
+	} {
+		stmt, err := sql.NewParser(strings.NewReader(s)).ParseStatement()
+		if err != nil {
+			t.Errorf("%s: %v", s, err)
+		} else if _, err := sql.NewParser(strings.NewReader(stmt.String())).ParseStatement(); err != nil {
+			t.Errorf("%s: cannot re-parse %q: %v", s, stmt.String(), err)
 		}
 	}
 }
