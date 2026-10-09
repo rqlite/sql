@@ -108,7 +108,74 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Schema = ri
 		}
 
+	case *PragmaStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
+		if expr, err := walkExpr(v, nn.Expr); err != nil {
+			return nil, err
+		} else {
+			nn.Expr = expr
+		}
+
+	case *ReindexStatement:
+		if expr, err := walkExpr(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = expr
+		}
+
+	case *CreateVirtualTableStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
+		if ri, err := walkIdent(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = ri
+		}
+		if ri, err := walkIdent(v, nn.ModuleName); err != nil {
+			return nil, err
+		} else {
+			nn.ModuleName = ri
+		}
+		for i, x := range nn.Arguments {
+			if rn, err := walk(v, x); err != nil {
+				return nil, err
+			} else {
+				nn.Arguments[i] = rn.(*ModuleArgument)
+			}
+		}
+
+	case *ModuleArgument:
+		if ri, err := walkIdent(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = ri
+		}
+		if expr, err := walkExpr(v, nn.Literal); err != nil {
+			return nil, err
+		} else {
+			nn.Literal = expr
+		}
+		if nn.Type != nil {
+			if rn, err := walk(v, nn.Type); err != nil {
+				return nil, err
+			} else {
+				nn.Type = rn.(*Type)
+			}
+		}
+
 	case *CreateTableStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -133,6 +200,16 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *AlterTableStatement:
+		if ri, err := walkIdent(v, nn.DropColumnName); err != nil {
+			return nil, err
+		} else {
+			nn.DropColumnName = ri
+		}
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -198,6 +275,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *DropTableStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -217,6 +299,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *DropIndexStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -236,6 +323,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *CreateIndexStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -373,6 +465,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *InsertStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if nn.WithClause != nil {
 			if rn, err := walk(v, nn.WithClause); err != nil {
 				return nil, err
@@ -582,6 +679,18 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Name = ri
 		}
 
+	case *CollateConstraint:
+		if ri, err := walkIdent(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = ri
+		}
+		if ri, err := walkIdent(v, nn.Collation); err != nil {
+			return nil, err
+		} else {
+			nn.Collation = ri
+		}
+
 	case *CheckConstraint:
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
@@ -645,6 +754,13 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			} else {
 				nn.Args[i] = rn.(*ForeignKeyArg)
 			}
+		}
+
+	case *ForeignKeyArg:
+		if ri, err := walkIdent(v, nn.MatchName); err != nil {
+			return nil, err
+		} else {
+			nn.MatchName = ri
 		}
 
 	case *ParenExpr:
@@ -877,6 +993,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *QualifiedTableName:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {

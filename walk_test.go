@@ -63,3 +63,52 @@ func TestWalk_Null(t *testing.T) {
 	assertWalkVisits(t, `SELECT * FROM t1 WHERE a IS NULL`, "a", "t1")
 	assertWalkVisits(t, `SELECT * FROM t1 WHERE b NOT NULL AND c ISNULL`, "b", "c", "t1")
 }
+
+// Ensure Walk visits a COLLATE column constraint's name and collation.
+func TestWalk_CollateConstraint(t *testing.T) {
+	assertWalkVisits(t, `CREATE TABLE t1 (a TEXT CONSTRAINT c1 COLLATE NOCASE)`, "t1", "a", "c1", "NOCASE")
+}
+
+// Ensure Walk visits the schema and value of a PRAGMA.
+func TestWalk_Pragma(t *testing.T) {
+	assertWalkVisits(t, `PRAGMA main.foo = bar`, "main", "foo", "bar")
+	assertWalkVisits(t, `PRAGMA foo(bar)`, "foo", "bar")
+}
+
+// Ensure Walk visits the target of REINDEX.
+func TestWalk_Reindex(t *testing.T) {
+	assertWalkVisits(t, `REINDEX main.idx`, "main", "idx")
+	assertWalkVisits(t, `REINDEX idx`, "idx")
+}
+
+// Ensure Walk descends into CREATE VIRTUAL TABLE and its module arguments.
+func TestWalk_CreateVirtualTable(t *testing.T) {
+	assertWalkVisits(t, `CREATE VIRTUAL TABLE main.ft USING fts5(a, tokenize=porter, b UNINDEXED)`, "main", "ft", "fts5", "a", "tokenize", "porter", "b", "UNINDEXED")
+}
+
+// Ensure Walk visits the MATCH name of a foreign key clause.
+func TestWalk_ForeignKeyMatch(t *testing.T) {
+	assertWalkVisits(t, `CREATE TABLE t1 (a REFERENCES t2 (b) MATCH SIMPLE ON DELETE CASCADE)`, "t1", "a", "t2", "b", "SIMPLE")
+}
+
+// Ensure Walk visits schema identifiers wherever an object name may carry one.
+func TestWalk_SchemaIdents(t *testing.T) {
+	for _, s := range []string{
+		`CREATE TABLE main.t1 (a)`,
+		`ALTER TABLE main.t1 RENAME TO t2`,
+		`DROP TABLE main.t1`,
+		`CREATE INDEX main.i1 ON t1 (a)`,
+		`DROP INDEX main.i1`,
+		`INSERT INTO main.t1 VALUES (1)`,
+		`SELECT * FROM main.t1`,
+		`UPDATE main.t1 SET a = 1`,
+		`DELETE FROM main.t1`,
+	} {
+		assertWalkVisits(t, s, "main")
+	}
+}
+
+// Ensure Walk visits the column named by ALTER TABLE ... DROP COLUMN.
+func TestWalk_AlterTableDropColumn(t *testing.T) {
+	assertWalkVisits(t, `ALTER TABLE t1 DROP COLUMN a`, "t1", "a")
+}
