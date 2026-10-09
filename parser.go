@@ -1021,6 +1021,8 @@ func (p *Parser) parseForeignKeyConstraint(constraintPos Pos, name *Ident, isTab
 				cons.InitiallyDeferred, _, _ = p.scan()
 			} else if p.peek() == IMMEDIATE {
 				cons.InitiallyImmediate, _, _ = p.scan()
+			} else {
+				return &cons, p.errorExpected(p.pos, p.tok, "DEFERRED or IMMEDIATE")
 			}
 		}
 	}

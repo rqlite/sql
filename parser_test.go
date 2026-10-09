@@ -1216,6 +1216,11 @@ func TestParser_ParseStatement(t *testing.T) {
 						Rparen: pos(49),
 					})
 				})
+				// INITIALLY must be followed by DEFERRED or IMMEDIATE.
+				t.Run("ErrInitially", func(t *testing.T) {
+					AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other DEFERRABLE INITIALLY)`, `1:69: expected DEFERRED or IMMEDIATE, found ')'`)
+					AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other NOT DEFERRABLE INITIALLY)`, `1:73: expected DEFERRED or IMMEDIATE, found ')'`)
+				})
 				// MATCH clauses may appear among the ON clauses in any order.
 				t.Run("Match", func(t *testing.T) {
 					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other (y) MATCH SIMPLE ON DELETE CASCADE MATCH FULL)`).(*sql.CreateTableStatement)
