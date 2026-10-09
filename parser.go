@@ -1119,6 +1119,11 @@ func (p *Parser) parseModuleArguments() (_ []*ModuleArgument, err error) {
 func (p *Parser) parseModuleArgument() (_ *ModuleArgument, err error) {
 	var arg ModuleArgument
 
+	// R*Tree introduces auxiliary columns with a leading "+".
+	if p.peek() == PLUS {
+		arg.Plus, _, _ = p.scan()
+	}
+
 	// SQLite passes module arguments to the module as raw text, so the name
 	// may be an identifier, a string literal or any keyword.
 	switch tok := p.peek(); {

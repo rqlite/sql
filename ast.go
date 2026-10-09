@@ -1557,6 +1557,7 @@ func (s *CreateVirtualTableStatement) String() string {
 }
 
 type ModuleArgument struct {
+	Plus    Pos    // position of leading "+" (R*Tree auxiliary column, optional)
 	Name    *Ident // argument name
 	Assign  Pos    // position of ASSIGN token (optional)
 	Literal Expr   // literal that is assigned to name (optional)
@@ -1577,6 +1578,9 @@ func (a *ModuleArgument) Clone() *ModuleArgument {
 func (a *ModuleArgument) String() string {
 	var buf bytes.Buffer
 
+	if a.Plus.IsValid() {
+		buf.WriteString("+")
+	}
 	// Modules receive arguments as raw text and, unlike SQLite itself, do not
 	// necessarily strip quotes (FTS5 rejects "tokenize"=...), so write a plain
 	// name unquoted.

@@ -6492,6 +6492,14 @@ func TestParser_ModuleArguments(t *testing.T) {
 	if len(stmt.Arguments) != 0 || stmt.String() != `CREATE VIRTUAL TABLE "s" USING "dbstat" ()` {
 		t.Fatalf("unexpected: %s", stmt.String())
 	}
+	// R*Tree auxiliary columns are introduced by a "+" prefix.
+	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE r USING rtree(id, minX, maxX, +label TEXT, +other)`).(*sql.CreateVirtualTableStatement)
+	if len(stmt.Arguments) != 5 || !stmt.Arguments[3].Plus.IsValid() || stmt.Arguments[3].Name.Name != "label" || stmt.Arguments[3].Type.Name.Name != "TEXT" || !stmt.Arguments[4].Plus.IsValid() {
+		t.Fatalf("unexpected rtree arguments: %s", stmt.String())
+	}
+	if got, want := stmt.String(), `CREATE VIRTUAL TABLE "r" USING "rtree" (id,minX,maxX,+label TEXT,+other)`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
 	// An option whose value is a call parses as a Call.
 	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE vtbl USING mdl(c=d(e))`).(*sql.CreateVirtualTableStatement)
 	if _, ok := stmt.Arguments[0].Literal.(*sql.Call); !ok {
