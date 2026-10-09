@@ -2318,8 +2318,17 @@ func (p *Parser) parseSelectStatement(compounded bool, withClause *WithClause) (
 		}
 	}
 
+	// ORDER BY and LIMIT belong to the outermost select and, as in SQLite,
+	// may not directly follow a VALUES clause, including a VALUES that ends a
+	// compound select.
+	last := &stmt
+	for last.Compound != nil {
+		last = last.Compound
+	}
+	tailOK := !compounded && !last.Values.IsValid()
+
 	// Parse ORDER BY clause.
-	if !compounded && p.peek() == ORDER {
+	if tailOK && p.peek() == ORDER {
 		stmt.Order, _, _ = p.scan()
 		if p.peek() != BY {
 			return &stmt, p.errorExpected(p.pos, p.tok, "BY")
@@ -2343,7 +2352,7 @@ func (p *Parser) parseSelectStatement(compounded bool, withClause *WithClause) (
 	// Parse LIMIT/OFFSET clause.
 	// The offset is optional. Can be specified with COMMA or OFFSET.
 	// e.g. "LIMIT 1 OFFSET 2" or "LIMIT 1, 2"
-	if !compounded && p.peek() == LIMIT {
+	if tailOK && p.peek() == LIMIT {
 		stmt.Limit, _, _ = p.scan()
 		if stmt.LimitExpr, err = p.ParseExpr(); err != nil {
 			return &stmt, err

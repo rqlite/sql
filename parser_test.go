@@ -6620,6 +6620,18 @@ func TestParser_MultipleUpsertClauses(t *testing.T) {
 	AssertParseStatementError(t, `INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING ON CONFLICT (x) DO NOTHING`, `1:49: expected semicolon or EOF, found 'ON'`)
 }
 
+// Ensure ORDER BY and LIMIT are rejected directly after a VALUES clause, as
+// sqlite3 does, while still being accepted after a compound ending in SELECT.
+func TestParser_ValuesOrderByLimit(t *testing.T) {
+	AssertParseStatementError(t, `VALUES (1) ORDER BY 1`, `1:12: expected semicolon or EOF, found 'ORDER'`)
+	AssertParseStatementError(t, `VALUES (1) LIMIT 1`, `1:12: expected semicolon or EOF, found 'LIMIT'`)
+	AssertParseStatementError(t, `SELECT 1 UNION VALUES (2) LIMIT 1`, `1:27: expected semicolon or EOF, found 'LIMIT'`)
+	stmt := ParseStatementOrFail(t, `VALUES (1), (2) UNION ALL SELECT 3 ORDER BY 1 LIMIT 2`)
+	if got, want := stmt.String(), `VALUES (1), (2) UNION ALL SELECT 3 ORDER BY 1 LIMIT 2`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
 // Ensure TCL-style bind parameters with "::" and "(...)" suffixes parse.
 func TestParser_TclBindParameters(t *testing.T) {
 	AssertParseExpr(t, `$v::int`, &sql.BindExpr{Name: "$v::int", NamePos: pos(0)})
