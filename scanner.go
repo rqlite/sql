@@ -422,16 +422,21 @@ func isDigit(ch rune) bool {
 	return ch >= '0' && ch <= '9'
 }
 
+// isAlpha returns true if ch can begin an unquoted identifier. As in SQLite,
+// every non-ASCII character counts as a letter.
 func isAlpha(ch rune) bool {
-	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch >= 0x80
 }
 
 func isHex(ch rune) bool {
 	return isDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
 }
 
+// isUnquotedIdent returns true if ch can continue an unquoted identifier. As
+// in SQLite this includes '$', although '$' cannot begin one (it starts a
+// bind parameter).
 func isUnquotedIdent(ch rune) bool {
-	return isAlpha(ch) || isDigit(ch) || ch == '_'
+	return isAlpha(ch) || isDigit(ch) || ch == '_' || ch == '$'
 }
 
 // IsInteger returns true if s only contains digits.

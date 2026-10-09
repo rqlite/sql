@@ -6607,6 +6607,15 @@ func TestParser_MultipleUpsertClauses(t *testing.T) {
 	AssertParseStatementError(t, `INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING ON CONFLICT (x) DO NOTHING`, `1:49: expected semicolon or EOF, found 'ON'`)
 }
 
+// Ensure identifiers may contain non-ASCII characters and '$', as in SQLite.
+func TestParser_NonASCIIIdents(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `SELECT 日本語, café, a$b FROM (SELECT 1 AS 日本語, 2 AS café, 3 AS a$b)`).(*sql.SelectStatement)
+	if got, want := stmt.String(), `SELECT "日本語", "café", "a$b" FROM (SELECT 1 AS "日本語", 2 AS "café", 3 AS "a$b")`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	AssertParseExpr(t, `ü`, &sql.Ident{Name: "ü", NamePos: pos(0)})
+}
+
 // Ensure a CONSTRAINT name with no constraint after it is accepted (SQLite
 // ignores it) rather than crashing the parser, and that a name followed by
 // something that is not a constraint is a parse error.

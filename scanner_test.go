@@ -12,6 +12,12 @@ func TestScanner_Scan(t *testing.T) {
 		t.Run("Unquoted", func(t *testing.T) {
 			AssertScan(t, `foo_BAR123`, sql.IDENT, `foo_BAR123`)
 		})
+		// SQLite treats every non-ASCII byte and '$' as an identifier character.
+		t.Run("NonASCII", func(t *testing.T) {
+			AssertScan(t, `日本語 `, sql.IDENT, `日本語`)
+			AssertScan(t, `café,`, sql.IDENT, `café`)
+			AssertScan(t, `a$b)`, sql.IDENT, `a$b`)
+		})
 		t.Run("Quoted", func(t *testing.T) {
 			AssertScan(t, `"crazy ~!#*&# column name"" foo"`, sql.QIDENT, `crazy ~!#*&# column name" foo`)
 		})
