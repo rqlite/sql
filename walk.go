@@ -127,6 +127,49 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Name = expr
 		}
 
+	case *CreateVirtualTableStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
+		if ri, err := walkIdent(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = ri
+		}
+		if ri, err := walkIdent(v, nn.ModuleName); err != nil {
+			return nil, err
+		} else {
+			nn.ModuleName = ri
+		}
+		for i, x := range nn.Arguments {
+			if rn, err := walk(v, x); err != nil {
+				return nil, err
+			} else {
+				nn.Arguments[i] = rn.(*ModuleArgument)
+			}
+		}
+
+	case *ModuleArgument:
+		if ri, err := walkIdent(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = ri
+		}
+		if expr, err := walkExpr(v, nn.Literal); err != nil {
+			return nil, err
+		} else {
+			nn.Literal = expr
+		}
+		if nn.Type != nil {
+			if rn, err := walk(v, nn.Type); err != nil {
+				return nil, err
+			} else {
+				nn.Type = rn.(*Type)
+			}
+		}
+
 	case *CreateTableStatement:
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err

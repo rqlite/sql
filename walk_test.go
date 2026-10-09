@@ -80,3 +80,8 @@ func TestWalk_Reindex(t *testing.T) {
 	assertWalkVisits(t, `REINDEX main.idx`, "main", "idx")
 	assertWalkVisits(t, `REINDEX idx`, "idx")
 }
+
+// Ensure Walk descends into CREATE VIRTUAL TABLE and its module arguments.
+func TestWalk_CreateVirtualTable(t *testing.T) {
+	assertWalkVisits(t, `CREATE VIRTUAL TABLE main.ft USING fts5(a, tokenize=porter, b UNINDEXED)`, "main", "ft", "fts5", "a", "tokenize", "porter", "b", "UNINDEXED")
+}
