@@ -171,6 +171,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *CreateTableStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -195,6 +200,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *AlterTableStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -260,6 +270,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *DropTableStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -279,6 +294,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *DropIndexStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -298,6 +318,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *CreateIndexStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {
@@ -435,6 +460,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *InsertStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if nn.WithClause != nil {
 			if rn, err := walk(v, nn.WithClause); err != nil {
 				return nil, err
@@ -958,6 +988,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *QualifiedTableName:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
 		} else {

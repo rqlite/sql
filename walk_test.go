@@ -90,3 +90,20 @@ func TestWalk_CreateVirtualTable(t *testing.T) {
 func TestWalk_ForeignKeyMatch(t *testing.T) {
 	assertWalkVisits(t, `CREATE TABLE t1 (a REFERENCES t2 (b) MATCH SIMPLE ON DELETE CASCADE)`, "t1", "a", "t2", "b", "SIMPLE")
 }
+
+// Ensure Walk visits schema identifiers wherever an object name may carry one.
+func TestWalk_SchemaIdents(t *testing.T) {
+	for _, s := range []string{
+		`CREATE TABLE main.t1 (a)`,
+		`ALTER TABLE main.t1 RENAME TO t2`,
+		`DROP TABLE main.t1`,
+		`CREATE INDEX main.i1 ON t1 (a)`,
+		`DROP INDEX main.i1`,
+		`INSERT INTO main.t1 VALUES (1)`,
+		`SELECT * FROM main.t1`,
+		`UPDATE main.t1 SET a = 1`,
+		`DELETE FROM main.t1`,
+	} {
+		assertWalkVisits(t, s, "main")
+	}
+}
