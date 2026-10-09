@@ -582,6 +582,18 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Name = ri
 		}
 
+	case *CollateConstraint:
+		if ri, err := walkIdent(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = ri
+		}
+		if ri, err := walkIdent(v, nn.Collation); err != nil {
+			return nil, err
+		} else {
+			nn.Collation = ri
+		}
+
 	case *CheckConstraint:
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err

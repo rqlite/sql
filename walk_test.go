@@ -63,3 +63,8 @@ func TestWalk_Null(t *testing.T) {
 	assertWalkVisits(t, `SELECT * FROM t1 WHERE a IS NULL`, "a", "t1")
 	assertWalkVisits(t, `SELECT * FROM t1 WHERE b NOT NULL AND c ISNULL`, "b", "c", "t1")
 }
+
+// Ensure Walk visits a COLLATE column constraint's name and collation.
+func TestWalk_CollateConstraint(t *testing.T) {
+	assertWalkVisits(t, `CREATE TABLE t1 (a TEXT CONSTRAINT c1 COLLATE NOCASE)`, "t1", "a", "c1", "NOCASE")
+}
