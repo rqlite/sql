@@ -6446,7 +6446,8 @@ func TestParser_SchemaQualifiedNames(t *testing.T) {
 // modules use: a column with a type-like word (UNINDEXED), a quoted or string
 // name, an option assigned a function-call value, and no arguments at all.
 func TestParser_ModuleArguments(t *testing.T) {
-	stmt := ParseStatementOrFail(t, `CREATE VIRTUAL TABLE t USING fts5(a UNINDEXED, 'b c', c=d(e), content=t2)`).(*sql.CreateVirtualTableStatement)
+	// A real FTS5 declaration that sqlite3 executes, as does its String().
+	stmt := ParseStatementOrFail(t, `CREATE VIRTUAL TABLE ft USING fts5(a UNINDEXED, 'b c', tokenize=porter, prefix='2 3')`).(*sql.CreateVirtualTableStatement)
 	if len(stmt.Arguments) != 4 {
 		t.Fatalf("expected 4 arguments, got %d", len(stmt.Arguments))
 	}
@@ -6456,18 +6457,24 @@ func TestParser_ModuleArguments(t *testing.T) {
 	if got := stmt.Arguments[1].Name.Name; got != "b c" {
 		t.Errorf("arg 1 name=%q, want %q", got, "b c")
 	}
-	if _, ok := stmt.Arguments[2].Literal.(*sql.Call); !ok {
-		t.Errorf("arg 2 value=%T, want *sql.Call", stmt.Arguments[2].Literal)
+	if _, ok := stmt.Arguments[2].Literal.(*sql.Ident); !ok {
+		t.Errorf("arg 2 value=%T, want *sql.Ident", stmt.Arguments[2].Literal)
 	}
-	if got, want := stmt.String(), `CREATE VIRTUAL TABLE "t" USING "fts5" ("a" UNINDEXED,"b c","c"=d("e"),"content"="t2")`; got != want {
+	if got, want := stmt.String(), `CREATE VIRTUAL TABLE "ft" USING "fts5" (a UNINDEXED,"b c",tokenize="porter",prefix='2 3')`; got != want {
 		t.Fatalf("String()=%s, want %s", got, want)
 	}
 	if _, err := sql.NewParser(strings.NewReader(stmt.String())).ParseStatement(); err != nil {
 		t.Fatalf("cannot re-parse %q: %v", stmt.String(), err)
 	}
-	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE t USING fts5()`).(*sql.CreateVirtualTableStatement)
-	if len(stmt.Arguments) != 0 || stmt.String() != `CREATE VIRTUAL TABLE "t" USING "fts5" ()` {
+	// An empty argument list (dbstat takes none).
+	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE s USING dbstat()`).(*sql.CreateVirtualTableStatement)
+	if len(stmt.Arguments) != 0 || stmt.String() != `CREATE VIRTUAL TABLE "s" USING "dbstat" ()` {
 		t.Fatalf("unexpected: %s", stmt.String())
+	}
+	// An option whose value is a call parses as a Call.
+	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE vtbl USING mdl(c=d(e))`).(*sql.CreateVirtualTableStatement)
+	if _, ok := stmt.Arguments[0].Literal.(*sql.Call); !ok {
+		t.Errorf("value=%T, want *sql.Call", stmt.Arguments[0].Literal)
 	}
 }
 

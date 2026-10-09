@@ -1551,7 +1551,14 @@ func (a *ModuleArgument) Clone() *ModuleArgument {
 func (a *ModuleArgument) String() string {
 	var buf bytes.Buffer
 
-	buf.WriteString(a.Name.String())
+	// Modules receive arguments as raw text and, unlike SQLite itself, do not
+	// necessarily strip quotes (FTS5 rejects "tokenize"=...), so write a plain
+	// name unquoted.
+	if isBareIdentName(a.Name.Name) {
+		buf.WriteString(a.Name.Name)
+	} else {
+		buf.WriteString(a.Name.String())
+	}
 	if a.Assign.IsValid() {
 		buf.WriteString("=")
 		buf.WriteString(a.Literal.String())
