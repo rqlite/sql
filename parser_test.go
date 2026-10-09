@@ -6612,6 +6612,21 @@ func TestParser_MultipleUpsertClauses(t *testing.T) {
 	AssertParseStatementError(t, `INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING ON CONFLICT (x) DO NOTHING`, `1:49: expected semicolon or EOF, found 'ON'`)
 }
 
+// Ensure COLLATE clauses may be chained, as sqlite3 allows.
+func TestParser_ChainedCollate(t *testing.T) {
+	AssertParseExpr(t, `x COLLATE NOCASE COLLATE BINARY`, &sql.CollateExpr{
+		X: &sql.CollateExpr{
+			X:         &sql.Ident{Name: "x", NamePos: pos(0)},
+			Collation: &sql.CollationClause{Collate: pos(2), Name: &sql.Ident{Name: "NOCASE", NamePos: pos(10)}},
+		},
+		Collation: &sql.CollationClause{Collate: pos(17), Name: &sql.Ident{Name: "BINARY", NamePos: pos(25)}},
+	})
+	stmt := ParseStatementOrFail(t, `SELECT x COLLATE NOCASE COLLATE BINARY FROM t`)
+	if got, want := stmt.String(), `SELECT "x" COLLATE "NOCASE" COLLATE "BINARY" FROM "t"`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
 // Ensure identifiers may contain non-ASCII characters and '$', as in SQLite.
 func TestParser_NonASCIIIdents(t *testing.T) {
 	stmt := ParseStatementOrFail(t, `SELECT 日本語, café, a$b FROM (SELECT 1 AS 日本語, 2 AS café, 3 AS a$b)`).(*sql.SelectStatement)

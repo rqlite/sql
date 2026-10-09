@@ -2883,7 +2883,8 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.peek() == COLLATE {
+	// COLLATE is a postfix operator and may be repeated.
+	for p.peek() == COLLATE {
 		collation, err := p.parseCollationClause()
 		if err != nil {
 			return nil, err
