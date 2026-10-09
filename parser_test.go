@@ -6612,6 +6612,15 @@ func TestParser_MultipleUpsertClauses(t *testing.T) {
 	AssertParseStatementError(t, `INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING ON CONFLICT (x) DO NOTHING`, `1:49: expected semicolon or EOF, found 'ON'`)
 }
 
+// Ensure TCL-style bind parameters with "::" and "(...)" suffixes parse.
+func TestParser_TclBindParameters(t *testing.T) {
+	AssertParseExpr(t, `$v::int`, &sql.BindExpr{Name: "$v::int", NamePos: pos(0)})
+	stmt := ParseStatementOrFail(t, `SELECT $v::int, $v(1) FROM t`)
+	if got, want := stmt.String(), `SELECT $v::int, $v(1) FROM "t"`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
 // Ensure COLLATE clauses may be chained, as sqlite3 allows.
 func TestParser_ChainedCollate(t *testing.T) {
 	AssertParseExpr(t, `x COLLATE NOCASE COLLATE BINARY`, &sql.CollateExpr{

@@ -266,6 +266,39 @@ func (s *Scanner) scanBind() (Pos, Token, string) {
 	if s.buf.Len() == 1 {
 		return pos, ILLEGAL, s.buf.String()
 	}
+
+	// A "$" parameter follows TCL variable syntax: the name may contain "::"
+	// separators and may end with a parenthesised suffix that contains no
+	// whitespace.
+	if start == '$' {
+		for s.peek() == ':' {
+			s.read()
+			s.buf.WriteRune(':')
+			if s.peek() != ':' {
+				// A single ':' cannot belong to this token; sqlite3 rejects
+				// the statement too ("$v:x" is two adjacent parameters).
+				return pos, ILLEGAL, s.buf.String()
+			}
+			s.read()
+			s.buf.WriteRune(':')
+			for isUnquotedIdent(s.peek()) {
+				ch, _ := s.read()
+				s.buf.WriteRune(ch)
+			}
+		}
+		if s.peek() == '(' {
+			for {
+				ch, _ := s.read()
+				if ch == -1 || unicode.IsSpace(ch) {
+					return pos, ILLEGAL, s.buf.String()
+				}
+				s.buf.WriteRune(ch)
+				if ch == ')' {
+					break
+				}
+			}
+		}
+	}
 	return pos, BIND, s.buf.String()
 }
 
