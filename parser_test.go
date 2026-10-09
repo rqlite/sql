@@ -1460,7 +1460,7 @@ func TestParser_ParseStatement(t *testing.T) {
 			// Table PRIMARY KEY columns are indexed columns and may be followed
 			// by AUTOINCREMENT inside the parentheses.
 			t.Run("PrimaryKeyIndexedColumns", func(t *testing.T) {
-				stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1, col2, PRIMARY KEY (col1 COLLATE NOCASE DESC, col2 ASC AUTOINCREMENT))`).(*sql.CreateTableStatement)
+				stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1, col2, PRIMARY KEY (col1 COLLATE NOCASE DESC, col2 ASC))`).(*sql.CreateTableStatement)
 				if diff := deepEqual(stmt.Constraints[0], &sql.PrimaryKeyConstraint{
 					Primary: pos(30),
 					Key:     pos(38),
@@ -1469,12 +1469,28 @@ func TestParser_ParseStatement(t *testing.T) {
 						{X: &sql.CollateExpr{X: &sql.Ident{Name: "col1", NamePos: pos(43)}, Collation: &sql.CollationClause{Collate: pos(48), Name: &sql.Ident{Name: "NOCASE", NamePos: pos(56)}}}, Desc: pos(63)},
 						{X: &sql.Ident{Name: "col2", NamePos: pos(69)}, Asc: pos(74)},
 					},
-					Autoincrement: pos(78),
-					Rparen:        pos(91),
+					Rparen: pos(77),
 				}); diff != "" {
 					t.Fatal(diff)
 				}
-				if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1", "col2", PRIMARY KEY ("col1" COLLATE "NOCASE" DESC, "col2" ASC AUTOINCREMENT))`; got != want {
+				if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1", "col2", PRIMARY KEY ("col1" COLLATE "NOCASE" DESC, "col2" ASC))`; got != want {
+					t.Fatalf("String()=%s, want %s", got, want)
+				}
+
+				// AUTOINCREMENT goes inside the parens and, as SQLite requires,
+				// on a single INTEGER column.
+				stmt = ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER, PRIMARY KEY (col1 AUTOINCREMENT))`).(*sql.CreateTableStatement)
+				if diff := deepEqual(stmt.Constraints[0], &sql.PrimaryKeyConstraint{
+					Primary:       pos(32),
+					Key:           pos(40),
+					Lparen:        pos(44),
+					Columns:       []*sql.IndexedColumn{{X: &sql.Ident{Name: "col1", NamePos: pos(45)}}},
+					Autoincrement: pos(50),
+					Rparen:        pos(63),
+				}); diff != "" {
+					t.Fatal(diff)
+				}
+				if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1" INTEGER, PRIMARY KEY ("col1" AUTOINCREMENT))`; got != want {
 					t.Fatalf("String()=%s, want %s", got, want)
 				}
 				AssertParseStatementError(t, `CREATE TABLE tbl (col1, PRIMARY KEY (col1 AUTOINCREMENT, col2))`, `1:56: expected right paren, found ','`)
@@ -6508,11 +6524,11 @@ func TestParser_EmptyBindName(t *testing.T) {
 
 // Ensure HAVING is accepted without GROUP BY, as SQLite 3.39+ allows.
 func TestParser_HavingWithoutGroupBy(t *testing.T) {
-	stmt := ParseStatementOrFail(t, `SELECT x FROM t HAVING count(*) > 1`).(*sql.SelectStatement)
+	stmt := ParseStatementOrFail(t, `SELECT count(*) FROM t HAVING count(*) > 1`).(*sql.SelectStatement)
 	if stmt.HavingExpr == nil || stmt.GroupByExprs != nil {
 		t.Fatalf("expected HAVING without GROUP BY, got %s", stmt.String())
 	}
-	if got, want := stmt.String(), `SELECT "x" FROM "t" HAVING count(*) > 1`; got != want {
+	if got, want := stmt.String(), `SELECT count(*) FROM "t" HAVING count(*) > 1`; got != want {
 		t.Fatalf("String()=%s, want %s", got, want)
 	}
 }

@@ -28,7 +28,11 @@ valid and the parser should accept it.
 ## Test SQL must be real SQL
 
 When a test treats a complete statement as valid, that statement must actually
-be accepted by sqlite3, not merely by this parser. Run it before committing.
+be accepted by sqlite3, not merely by this parser. Run it before committing,
+and require that it *executes* without error (create any tables it needs
+first). Checking only that sqlite3 reports no *syntax* error is not enough:
+`PRIMARY KEY (a, b AUTOINCREMENT)` and `SELECT x FROM t HAVING count(*) > 1`
+parse but fail, and have slipped through that weaker check.
 Serialized output asserted in `AssertStatementStringer` / `AssertExprStringer`
 tests must also run in sqlite3. Tests that assert a rejection should reject
 something sqlite3 also rejects.

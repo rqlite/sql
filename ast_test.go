@@ -295,10 +295,14 @@ func TestCreateTableStatement_String(t *testing.T) {
 
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name: &sql.Ident{Name: "foo"},
-		Columns: []*sql.ColumnDefinition{{
-			Name: &sql.Ident{Name: "bar"},
-			Type: &sql.Type{Name: &sql.Ident{Name: "DECIMAL"}, Precision: &sql.NumberLit{Value: "100"}},
-		}},
+		Columns: []*sql.ColumnDefinition{
+			{
+				Name: &sql.Ident{Name: "bar"},
+				Type: &sql.Type{Name: &sql.Ident{Name: "DECIMAL"}, Precision: &sql.NumberLit{Value: "100"}},
+			},
+			{Name: &sql.Ident{Name: "x"}},
+			{Name: &sql.Ident{Name: "y"}},
+		},
 		Constraints: []sql.Constraint{
 			&sql.PrimaryKeyConstraint{
 				Name: &sql.Ident{Name: "pk"},
@@ -306,7 +310,6 @@ func TestCreateTableStatement_String(t *testing.T) {
 					{X: &sql.Ident{Name: "x"}},
 					{X: &sql.Ident{Name: "y"}, Desc: pos(0)},
 				},
-				Autoincrement: pos(0),
 			},
 			&sql.UniqueConstraint{
 				Name: &sql.Ident{Name: "uniq"},
@@ -320,7 +323,7 @@ func TestCreateTableStatement_String(t *testing.T) {
 				Expr: &sql.BoolLit{Value: true},
 			},
 		},
-	}, `CREATE TABLE "foo" ("bar" DECIMAL(100), CONSTRAINT "pk" PRIMARY KEY ("x", "y" DESC AUTOINCREMENT), CONSTRAINT "uniq" UNIQUE ("x", "y"), CONSTRAINT "chk" CHECK (TRUE))`)
+	}, `CREATE TABLE "foo" ("bar" DECIMAL(100), "x", "y", CONSTRAINT "pk" PRIMARY KEY ("x", "y" DESC), CONSTRAINT "uniq" UNIQUE ("x", "y"), CONSTRAINT "chk" CHECK (TRUE))`)
 
 	AssertStatementStringer(t, &sql.CreateTableStatement{
 		Name: &sql.Ident{Name: "foo"},
