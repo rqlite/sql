@@ -6724,7 +6724,14 @@ func TestParser_TypeNames(t *testing.T) {
 	} else if len(stmt.Columns[0].Constraints) != 1 {
 		t.Errorf("expected generated constraint, got %v", stmt.Columns[0].Constraints)
 	}
-	AssertParseExprError(t, `CAST(1 AS)`, `1:10: expected type name, found ')'`)
+	// The type of a CAST may be empty, as sqlite3 allows.
+	AssertParseExpr(t, `CAST(1 AS)`, &sql.CastExpr{
+		Cast:   pos(0),
+		Lparen: pos(4),
+		X:      &sql.NumberLit{Value: "1", ValuePos: pos(5)},
+		As:     pos(7),
+		Rparen: pos(9),
+	})
 	if e, err := sql.NewParser(strings.NewReader(`CAST(1 AS "weird type")`)).ParseExpr(); err != nil {
 		t.Fatal(err)
 	} else if got := e.(*sql.CastExpr).Type.Name.Name; got != "weird type" {

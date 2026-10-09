@@ -2125,6 +2125,9 @@ func (expr *CastExpr) Clone() *CastExpr {
 
 // String returns the string representation of the expression.
 func (expr *CastExpr) String() string {
+	if expr.Type == nil {
+		return fmt.Sprintf("CAST(%s AS)", expr.X.String())
+	}
 	return fmt.Sprintf("CAST(%s AS %s)", expr.X.String(), expr.Type.String())
 }
 

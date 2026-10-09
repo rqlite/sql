@@ -1203,6 +1203,7 @@ func TestBinaryExpr_String(t *testing.T) {
 
 func TestCastExpr_String(t *testing.T) {
 	AssertExprStringer(t, &sql.CastExpr{X: &sql.NumberLit{Value: "1"}, Type: &sql.Type{Name: &sql.Ident{Name: "INTEGER"}}}, `CAST(1 AS INTEGER)`)
+	AssertExprStringer(t, &sql.CastExpr{X: &sql.NumberLit{Value: "1"}}, `CAST(1 AS)`)
 }
 
 func TestCaseExpr_String(t *testing.T) {

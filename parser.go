@@ -3485,8 +3485,11 @@ func (p *Parser) parseCastExpr() (_ *CastExpr, err error) {
 	}
 	expr.As, _, _ = p.scan()
 
-	if expr.Type, err = p.parseType(); err != nil {
-		return &expr, err
+	// SQLite allows the type to be omitted entirely: CAST(x AS).
+	if p.peek() != RP {
+		if expr.Type, err = p.parseType(); err != nil {
+			return &expr, err
+		}
 	}
 
 	if p.peek() != RP {
