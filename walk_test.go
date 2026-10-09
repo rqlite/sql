@@ -74,3 +74,9 @@ func TestWalk_Pragma(t *testing.T) {
 	assertWalkVisits(t, `PRAGMA main.foo = bar`, "main", "foo", "bar")
 	assertWalkVisits(t, `PRAGMA foo(bar)`, "foo", "bar")
 }
+
+// Ensure Walk visits the target of REINDEX.
+func TestWalk_Reindex(t *testing.T) {
+	assertWalkVisits(t, `REINDEX main.idx`, "main", "idx")
+	assertWalkVisits(t, `REINDEX idx`, "idx")
+}

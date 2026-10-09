@@ -120,6 +120,13 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Expr = expr
 		}
 
+	case *ReindexStatement:
+		if expr, err := walkExpr(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = expr
+		}
+
 	case *CreateTableStatement:
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
