@@ -107,3 +107,8 @@ func TestWalk_SchemaIdents(t *testing.T) {
 		assertWalkVisits(t, s, "main")
 	}
 }
+
+// Ensure Walk visits the column named by ALTER TABLE ... DROP COLUMN.
+func TestWalk_AlterTableDropColumn(t *testing.T) {
+	assertWalkVisits(t, `ALTER TABLE t1 DROP COLUMN a`, "t1", "a")
+}

@@ -200,6 +200,11 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 		}
 
 	case *AlterTableStatement:
+		if ri, err := walkIdent(v, nn.DropColumnName); err != nil {
+			return nil, err
+		} else {
+			nn.DropColumnName = ri
+		}
 		if ri, err := walkIdent(v, nn.Schema); err != nil {
 			return nil, err
 		} else {
