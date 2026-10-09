@@ -85,3 +85,8 @@ func TestWalk_Reindex(t *testing.T) {
 func TestWalk_CreateVirtualTable(t *testing.T) {
 	assertWalkVisits(t, `CREATE VIRTUAL TABLE main.ft USING fts5(a, tokenize=porter, b UNINDEXED)`, "main", "ft", "fts5", "a", "tokenize", "porter", "b", "UNINDEXED")
 }
+
+// Ensure Walk visits the MATCH name of a foreign key clause.
+func TestWalk_ForeignKeyMatch(t *testing.T) {
+	assertWalkVisits(t, `CREATE TABLE t1 (a REFERENCES t2 (b) MATCH SIMPLE ON DELETE CASCADE)`, "t1", "a", "t2", "b", "SIMPLE")
+}

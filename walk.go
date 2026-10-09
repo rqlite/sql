@@ -721,6 +721,13 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			}
 		}
 
+	case *ForeignKeyArg:
+		if ri, err := walkIdent(v, nn.MatchName); err != nil {
+			return nil, err
+		} else {
+			nn.MatchName = ri
+		}
+
 	case *ParenExpr:
 		if expr, err := walkExpr(v, nn.X); err != nil {
 			return nil, err
