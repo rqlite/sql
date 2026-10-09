@@ -12,6 +12,12 @@ func TestScanner_Scan(t *testing.T) {
 		t.Run("Unquoted", func(t *testing.T) {
 			AssertScan(t, `foo_BAR123`, sql.IDENT, `foo_BAR123`)
 		})
+		// SQLite treats every non-ASCII byte and '$' as an identifier character.
+		t.Run("NonASCII", func(t *testing.T) {
+			AssertScan(t, `日本語 `, sql.IDENT, `日本語`)
+			AssertScan(t, `café,`, sql.IDENT, `café`)
+			AssertScan(t, `a$b)`, sql.IDENT, `a$b`)
+		})
 		t.Run("Quoted", func(t *testing.T) {
 			AssertScan(t, `"crazy ~!#*&# column name"" foo"`, sql.QIDENT, `crazy ~!#*&# column name" foo`)
 		})
@@ -139,6 +145,14 @@ func TestScanner_Scan(t *testing.T) {
 		AssertScan(t, `:foo_bar123'`, sql.BIND, `:foo_bar123`)
 		AssertScan(t, `@bar'`, sql.BIND, `@bar`)
 		AssertScan(t, `$baz'`, sql.BIND, `$baz`)
+		// TCL-style "$" parameters may carry "::" segments and a "(...)" suffix.
+		AssertScan(t, `$v::int`, sql.BIND, `$v::int`)
+		AssertScan(t, `$v(1)`, sql.BIND, `$v(1)`)
+		AssertScan(t, `$a::b::c(xy)`, sql.BIND, `$a::b::c(xy)`)
+		AssertScan(t, `$v()`, sql.BIND, `$v()`)
+		AssertScan(t, `$v:x`, sql.ILLEGAL, `$v:`)
+		AssertScan(t, `$v(x y)`, sql.ILLEGAL, `$v(x`)
+		AssertScan(t, `$v(1`, sql.ILLEGAL, `$v(1`)
 		// A named parameter needs a name; sqlite3 rejects a bare prefix.
 		AssertScan(t, `$`, sql.ILLEGAL, `$`)
 		AssertScan(t, `: `, sql.ILLEGAL, `:`)

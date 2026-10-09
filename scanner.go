@@ -266,6 +266,39 @@ func (s *Scanner) scanBind() (Pos, Token, string) {
 	if s.buf.Len() == 1 {
 		return pos, ILLEGAL, s.buf.String()
 	}
+
+	// A "$" parameter follows TCL variable syntax: the name may contain "::"
+	// separators and may end with a parenthesised suffix that contains no
+	// whitespace.
+	if start == '$' {
+		for s.peek() == ':' {
+			s.read()
+			s.buf.WriteRune(':')
+			if s.peek() != ':' {
+				// A single ':' cannot belong to this token; sqlite3 rejects
+				// the statement too ("$v:x" is two adjacent parameters).
+				return pos, ILLEGAL, s.buf.String()
+			}
+			s.read()
+			s.buf.WriteRune(':')
+			for isUnquotedIdent(s.peek()) {
+				ch, _ := s.read()
+				s.buf.WriteRune(ch)
+			}
+		}
+		if s.peek() == '(' {
+			for {
+				ch, _ := s.read()
+				if ch == -1 || unicode.IsSpace(ch) {
+					return pos, ILLEGAL, s.buf.String()
+				}
+				s.buf.WriteRune(ch)
+				if ch == ')' {
+					break
+				}
+			}
+		}
+	}
 	return pos, BIND, s.buf.String()
 }
 
@@ -422,16 +455,21 @@ func isDigit(ch rune) bool {
 	return ch >= '0' && ch <= '9'
 }
 
+// isAlpha returns true if ch can begin an unquoted identifier. As in SQLite,
+// every non-ASCII character counts as a letter.
 func isAlpha(ch rune) bool {
-	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch >= 0x80
 }
 
 func isHex(ch rune) bool {
 	return isDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
 }
 
+// isUnquotedIdent returns true if ch can continue an unquoted identifier. As
+// in SQLite this includes '$', although '$' cannot begin one (it starts a
+// bind parameter).
 func isUnquotedIdent(ch rune) bool {
-	return isAlpha(ch) || isDigit(ch) || ch == '_'
+	return isAlpha(ch) || isDigit(ch) || ch == '_' || ch == '$'
 }
 
 // IsInteger returns true if s only contains digits.

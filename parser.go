@@ -547,6 +547,12 @@ func (p *Parser) parseConstraint(isTable bool) (_ Constraint, err error) {
 		}
 	}
 
+	// A constraint name may stand alone at the end of a column or table
+	// definition; SQLite accepts and ignores it.
+	if name != nil && (p.peek() == COMMA || p.peek() == RP) {
+		return &EmptyConstraint{Constraint: constraintPos, Name: name}, nil
+	}
+
 	// Table constraints only use a subset of column constraints.
 	if isTable {
 		switch p.peek() {
@@ -556,9 +562,10 @@ func (p *Parser) parseConstraint(isTable bool) (_ Constraint, err error) {
 			return p.parseUniqueConstraint(constraintPos, name, isTable)
 		case CHECK:
 			return p.parseCheckConstraint(constraintPos, name)
-		default:
-			assert(p.peek() == FOREIGN)
+		case FOREIGN:
 			return p.parseForeignKeyConstraint(constraintPos, name, isTable)
+		default:
+			return nil, p.errorExpected(p.pos, p.tok, "PRIMARY KEY, UNIQUE, CHECK, or FOREIGN KEY")
 		}
 	}
 
@@ -578,9 +585,10 @@ func (p *Parser) parseConstraint(isTable bool) (_ Constraint, err error) {
 		return p.parseGeneratedConstraint(constraintPos, name)
 	case COLLATE:
 		return p.parseCollateConstraint(constraintPos, name)
-	default:
-		assert(p.peek() == REFERENCES)
+	case REFERENCES:
 		return p.parseForeignKeyConstraint(constraintPos, name, isTable)
+	default:
+		return nil, p.errorExpected(p.pos, p.tok, "PRIMARY KEY, NOT NULL, UNIQUE, CHECK, DEFAULT, COLLATE, REFERENCES, or GENERATED")
 	}
 }
 
@@ -1013,6 +1021,8 @@ func (p *Parser) parseForeignKeyConstraint(constraintPos Pos, name *Ident, isTab
 				cons.InitiallyDeferred, _, _ = p.scan()
 			} else if p.peek() == IMMEDIATE {
 				cons.InitiallyImmediate, _, _ = p.scan()
+			} else {
+				return &cons, p.errorExpected(p.pos, p.tok, "DEFERRED or IMMEDIATE")
 			}
 		}
 	}
@@ -1108,6 +1118,11 @@ func (p *Parser) parseModuleArguments() (_ []*ModuleArgument, err error) {
 
 func (p *Parser) parseModuleArgument() (_ *ModuleArgument, err error) {
 	var arg ModuleArgument
+
+	// R*Tree introduces auxiliary columns with a leading "+".
+	if p.peek() == PLUS {
+		arg.Plus, _, _ = p.scan()
+	}
 
 	// SQLite passes module arguments to the module as raw text, so the name
 	// may be an identifier, a string literal or any keyword.
@@ -2303,8 +2318,17 @@ func (p *Parser) parseSelectStatement(compounded bool, withClause *WithClause) (
 		}
 	}
 
+	// ORDER BY and LIMIT belong to the outermost select and, as in SQLite,
+	// may not directly follow a VALUES clause, including a VALUES that ends a
+	// compound select.
+	last := &stmt
+	for last.Compound != nil {
+		last = last.Compound
+	}
+	tailOK := !compounded && !last.Values.IsValid()
+
 	// Parse ORDER BY clause.
-	if !compounded && p.peek() == ORDER {
+	if tailOK && p.peek() == ORDER {
 		stmt.Order, _, _ = p.scan()
 		if p.peek() != BY {
 			return &stmt, p.errorExpected(p.pos, p.tok, "BY")
@@ -2328,7 +2352,7 @@ func (p *Parser) parseSelectStatement(compounded bool, withClause *WithClause) (
 	// Parse LIMIT/OFFSET clause.
 	// The offset is optional. Can be specified with COMMA or OFFSET.
 	// e.g. "LIMIT 1 OFFSET 2" or "LIMIT 1, 2"
-	if !compounded && p.peek() == LIMIT {
+	if tailOK && p.peek() == LIMIT {
 		stmt.Limit, _, _ = p.scan()
 		if stmt.LimitExpr, err = p.ParseExpr(); err != nil {
 			return &stmt, err
@@ -2873,7 +2897,8 @@ func (p *Parser) parseBinaryExpr(prec1 int) (expr Expr, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.peek() == COLLATE {
+	// COLLATE is a postfix operator and may be repeated.
+	for p.peek() == COLLATE {
 		collation, err := p.parseCollationClause()
 		if err != nil {
 			return nil, err
@@ -3469,8 +3494,11 @@ func (p *Parser) parseCastExpr() (_ *CastExpr, err error) {
 	}
 	expr.As, _, _ = p.scan()
 
-	if expr.Type, err = p.parseType(); err != nil {
-		return &expr, err
+	// SQLite allows the type to be omitted entirely: CAST(x AS).
+	if p.peek() != RP {
+		if expr.Type, err = p.parseType(); err != nil {
+			return &expr, err
+		}
 	}
 
 	if p.peek() != RP {

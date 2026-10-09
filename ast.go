@@ -25,6 +25,7 @@ func (*CaseExpr) node()                    {}
 func (*CastExpr) node()                    {}
 func (*CheckConstraint) node()             {}
 func (*CollateConstraint) node()           {}
+func (*EmptyConstraint) node()             {}
 func (*CollateExpr) node()                 {}
 func (*ColumnDefinition) node()            {}
 func (*CommitStatement) node()             {}
@@ -895,6 +896,7 @@ func (*DefaultConstraint) constraint()    {}
 func (*GeneratedConstraint) constraint()  {}
 func (*CollateConstraint) constraint()    {}
 func (*ForeignKeyConstraint) constraint() {}
+func (*EmptyConstraint) constraint()      {}
 
 // CloneConstraint returns a deep copy cons.
 func CloneConstraint(cons Constraint) Constraint {
@@ -918,6 +920,8 @@ func CloneConstraint(cons Constraint) Constraint {
 	case *CollateConstraint:
 		return cons.Clone()
 	case *ForeignKeyConstraint:
+		return cons.Clone()
+	case *EmptyConstraint:
 		return cons.Clone()
 	default:
 		panic(fmt.Sprintf("invalid constraint type: %T", cons))
@@ -1272,6 +1276,28 @@ func (c *GeneratedConstraint) String() string {
 	return buf.String()
 }
 
+// EmptyConstraint is a CONSTRAINT name that is not followed by a constraint.
+// SQLite accepts the form and ignores the name.
+type EmptyConstraint struct {
+	Constraint Pos    // position of CONSTRAINT keyword
+	Name       *Ident // constraint name
+}
+
+// Clone returns a deep copy of c.
+func (c *EmptyConstraint) Clone() *EmptyConstraint {
+	if c == nil {
+		return c
+	}
+	other := *c
+	other.Name = c.Name.Clone()
+	return &other
+}
+
+// String returns the string representation of the constraint.
+func (c *EmptyConstraint) String() string {
+	return "CONSTRAINT " + c.Name.String()
+}
+
 type CollateConstraint struct {
 	Constraint Pos    // position of CONSTRAINT keyword
 	Name       *Ident // constraint name
@@ -1531,6 +1557,7 @@ func (s *CreateVirtualTableStatement) String() string {
 }
 
 type ModuleArgument struct {
+	Plus    Pos    // position of leading "+" (R*Tree auxiliary column, optional)
 	Name    *Ident // argument name
 	Assign  Pos    // position of ASSIGN token (optional)
 	Literal Expr   // literal that is assigned to name (optional)
@@ -1551,6 +1578,9 @@ func (a *ModuleArgument) Clone() *ModuleArgument {
 func (a *ModuleArgument) String() string {
 	var buf bytes.Buffer
 
+	if a.Plus.IsValid() {
+		buf.WriteString("+")
+	}
 	// Modules receive arguments as raw text and, unlike SQLite itself, do not
 	// necessarily strip quotes (FTS5 rejects "tokenize"=...), so write a plain
 	// name unquoted.
@@ -2095,6 +2125,9 @@ func (expr *CastExpr) Clone() *CastExpr {
 
 // String returns the string representation of the expression.
 func (expr *CastExpr) String() string {
+	if expr.Type == nil {
+		return fmt.Sprintf("CAST(%s AS)", expr.X.String())
+	}
 	return fmt.Sprintf("CAST(%s AS %s)", expr.X.String(), expr.Type.String())
 }
 

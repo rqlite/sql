@@ -1216,6 +1216,11 @@ func TestParser_ParseStatement(t *testing.T) {
 						Rparen: pos(49),
 					})
 				})
+				// INITIALLY must be followed by DEFERRED or IMMEDIATE.
+				t.Run("ErrInitially", func(t *testing.T) {
+					AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other DEFERRABLE INITIALLY)`, `1:69: expected DEFERRED or IMMEDIATE, found ')'`)
+					AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other NOT DEFERRABLE INITIALLY)`, `1:73: expected DEFERRED or IMMEDIATE, found ')'`)
+				})
 				// MATCH clauses may appear among the ON clauses in any order.
 				t.Run("Match", func(t *testing.T) {
 					stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER REFERENCES other (y) MATCH SIMPLE ON DELETE CASCADE MATCH FULL)`).(*sql.CreateTableStatement)
@@ -6487,6 +6492,14 @@ func TestParser_ModuleArguments(t *testing.T) {
 	if len(stmt.Arguments) != 0 || stmt.String() != `CREATE VIRTUAL TABLE "s" USING "dbstat" ()` {
 		t.Fatalf("unexpected: %s", stmt.String())
 	}
+	// R*Tree auxiliary columns are introduced by a "+" prefix.
+	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE r USING rtree(id, minX, maxX, +label TEXT, +other)`).(*sql.CreateVirtualTableStatement)
+	if len(stmt.Arguments) != 5 || !stmt.Arguments[3].Plus.IsValid() || stmt.Arguments[3].Name.Name != "label" || stmt.Arguments[3].Type.Name.Name != "TEXT" || !stmt.Arguments[4].Plus.IsValid() {
+		t.Fatalf("unexpected rtree arguments: %s", stmt.String())
+	}
+	if got, want := stmt.String(), `CREATE VIRTUAL TABLE "r" USING "rtree" (id,minX,maxX,+label TEXT,+other)`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
 	// An option whose value is a call parses as a Call.
 	stmt = ParseStatementOrFail(t, `CREATE VIRTUAL TABLE vtbl USING mdl(c=d(e))`).(*sql.CreateVirtualTableStatement)
 	if _, ok := stmt.Arguments[0].Literal.(*sql.Call); !ok {
@@ -6607,6 +6620,78 @@ func TestParser_MultipleUpsertClauses(t *testing.T) {
 	AssertParseStatementError(t, `INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING ON CONFLICT (x) DO NOTHING`, `1:49: expected semicolon or EOF, found 'ON'`)
 }
 
+// Ensure ORDER BY and LIMIT are rejected directly after a VALUES clause, as
+// sqlite3 does, while still being accepted after a compound ending in SELECT.
+func TestParser_ValuesOrderByLimit(t *testing.T) {
+	AssertParseStatementError(t, `VALUES (1) ORDER BY 1`, `1:12: expected semicolon or EOF, found 'ORDER'`)
+	AssertParseStatementError(t, `VALUES (1) LIMIT 1`, `1:12: expected semicolon or EOF, found 'LIMIT'`)
+	AssertParseStatementError(t, `SELECT 1 UNION VALUES (2) LIMIT 1`, `1:27: expected semicolon or EOF, found 'LIMIT'`)
+	stmt := ParseStatementOrFail(t, `VALUES (1), (2) UNION ALL SELECT 3 ORDER BY 1 LIMIT 2`)
+	if got, want := stmt.String(), `VALUES (1), (2) UNION ALL SELECT 3 ORDER BY 1 LIMIT 2`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
+// Ensure TCL-style bind parameters with "::" and "(...)" suffixes parse.
+func TestParser_TclBindParameters(t *testing.T) {
+	AssertParseExpr(t, `$v::int`, &sql.BindExpr{Name: "$v::int", NamePos: pos(0)})
+	stmt := ParseStatementOrFail(t, `SELECT $v::int, $v(1) FROM t`)
+	if got, want := stmt.String(), `SELECT $v::int, $v(1) FROM "t"`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
+// Ensure COLLATE clauses may be chained, as sqlite3 allows.
+func TestParser_ChainedCollate(t *testing.T) {
+	AssertParseExpr(t, `x COLLATE NOCASE COLLATE BINARY`, &sql.CollateExpr{
+		X: &sql.CollateExpr{
+			X:         &sql.Ident{Name: "x", NamePos: pos(0)},
+			Collation: &sql.CollationClause{Collate: pos(2), Name: &sql.Ident{Name: "NOCASE", NamePos: pos(10)}},
+		},
+		Collation: &sql.CollationClause{Collate: pos(17), Name: &sql.Ident{Name: "BINARY", NamePos: pos(25)}},
+	})
+	stmt := ParseStatementOrFail(t, `SELECT x COLLATE NOCASE COLLATE BINARY FROM t`)
+	if got, want := stmt.String(), `SELECT "x" COLLATE "NOCASE" COLLATE "BINARY" FROM "t"`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+}
+
+// Ensure identifiers may contain non-ASCII characters and '$', as in SQLite.
+func TestParser_NonASCIIIdents(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `SELECT 日本語, café, a$b FROM (SELECT 1 AS 日本語, 2 AS café, 3 AS a$b)`).(*sql.SelectStatement)
+	if got, want := stmt.String(), `SELECT "日本語", "café", "a$b" FROM (SELECT 1 AS "日本語", 2 AS "café", 3 AS "a$b")`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	AssertParseExpr(t, `ü`, &sql.Ident{Name: "ü", NamePos: pos(0)})
+}
+
+// Ensure a CONSTRAINT name with no constraint after it is accepted (SQLite
+// ignores it) rather than crashing the parser, and that a name followed by
+// something that is not a constraint is a parse error.
+func TestParser_EmptyConstraint(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER CONSTRAINT c, col2 CONSTRAINT d NOT NULL, CONSTRAINT e)`).(*sql.CreateTableStatement)
+	if diff := deepEqual(stmt.Columns[0].Constraints, []sql.Constraint{
+		&sql.EmptyConstraint{Constraint: pos(31), Name: &sql.Ident{Name: "c", NamePos: pos(42)}},
+	}); diff != "" {
+		t.Fatal(diff)
+	}
+	if diff := deepEqual(stmt.Columns[1].Constraints, []sql.Constraint{
+		&sql.NotNullConstraint{Constraint: pos(50), Name: &sql.Ident{Name: "d", NamePos: pos(61)}, Not: pos(63), Null: pos(67)},
+	}); diff != "" {
+		t.Fatal(diff)
+	}
+	if diff := deepEqual(stmt.Constraints, []sql.Constraint{
+		&sql.EmptyConstraint{Constraint: pos(73), Name: &sql.Ident{Name: "e", NamePos: pos(84)}},
+	}); diff != "" {
+		t.Fatal(diff)
+	}
+	if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1" INTEGER CONSTRAINT "c", "col2" CONSTRAINT "d" NOT NULL, CONSTRAINT "e")`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER CONSTRAINT c FOO)`, `1:45: expected PRIMARY KEY, NOT NULL, UNIQUE, CHECK, DEFAULT, COLLATE, REFERENCES, or GENERATED, found FOO`)
+	AssertParseStatementError(t, `CREATE TABLE tbl (col1, CONSTRAINT c FOO)`, `1:38: expected PRIMARY KEY, UNIQUE, CHECK, or FOREIGN KEY, found FOO`)
+}
+
 // Ensure a DEFAULT value may be a bare identifier, which SQLite stores as a
 // string: `DEFAULT abc` is the same as `DEFAULT 'abc'`.
 func TestParser_DefaultIdent(t *testing.T) {
@@ -6651,7 +6736,14 @@ func TestParser_TypeNames(t *testing.T) {
 	} else if len(stmt.Columns[0].Constraints) != 1 {
 		t.Errorf("expected generated constraint, got %v", stmt.Columns[0].Constraints)
 	}
-	AssertParseExprError(t, `CAST(1 AS)`, `1:10: expected type name, found ')'`)
+	// The type of a CAST may be empty, as sqlite3 allows.
+	AssertParseExpr(t, `CAST(1 AS)`, &sql.CastExpr{
+		Cast:   pos(0),
+		Lparen: pos(4),
+		X:      &sql.NumberLit{Value: "1", ValuePos: pos(5)},
+		As:     pos(7),
+		Rparen: pos(9),
+	})
 	if e, err := sql.NewParser(strings.NewReader(`CAST(1 AS "weird type")`)).ParseExpr(); err != nil {
 		t.Fatal(err)
 	} else if got := e.(*sql.CastExpr).Type.Name.Name; got != "weird type" {
