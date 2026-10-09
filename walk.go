@@ -108,6 +108,18 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Schema = ri
 		}
 
+	case *PragmaStatement:
+		if ri, err := walkIdent(v, nn.Schema); err != nil {
+			return nil, err
+		} else {
+			nn.Schema = ri
+		}
+		if expr, err := walkExpr(v, nn.Expr); err != nil {
+			return nil, err
+		} else {
+			nn.Expr = expr
+		}
+
 	case *CreateTableStatement:
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err

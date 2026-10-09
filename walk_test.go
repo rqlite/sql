@@ -68,3 +68,9 @@ func TestWalk_Null(t *testing.T) {
 func TestWalk_CollateConstraint(t *testing.T) {
 	assertWalkVisits(t, `CREATE TABLE t1 (a TEXT CONSTRAINT c1 COLLATE NOCASE)`, "t1", "a", "c1", "NOCASE")
 }
+
+// Ensure Walk visits the schema and value of a PRAGMA.
+func TestWalk_Pragma(t *testing.T) {
+	assertWalkVisits(t, `PRAGMA main.foo = bar`, "main", "foo", "bar")
+	assertWalkVisits(t, `PRAGMA foo(bar)`, "foo", "bar")
+}
