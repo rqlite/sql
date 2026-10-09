@@ -6607,6 +6607,33 @@ func TestParser_MultipleUpsertClauses(t *testing.T) {
 	AssertParseStatementError(t, `INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING ON CONFLICT (x) DO NOTHING`, `1:49: expected semicolon or EOF, found 'ON'`)
 }
 
+// Ensure a CONSTRAINT name with no constraint after it is accepted (SQLite
+// ignores it) rather than crashing the parser, and that a name followed by
+// something that is not a constraint is a parse error.
+func TestParser_EmptyConstraint(t *testing.T) {
+	stmt := ParseStatementOrFail(t, `CREATE TABLE tbl (col1 INTEGER CONSTRAINT c, col2 CONSTRAINT d NOT NULL, CONSTRAINT e)`).(*sql.CreateTableStatement)
+	if diff := deepEqual(stmt.Columns[0].Constraints, []sql.Constraint{
+		&sql.EmptyConstraint{Constraint: pos(31), Name: &sql.Ident{Name: "c", NamePos: pos(42)}},
+	}); diff != "" {
+		t.Fatal(diff)
+	}
+	if diff := deepEqual(stmt.Columns[1].Constraints, []sql.Constraint{
+		&sql.NotNullConstraint{Constraint: pos(50), Name: &sql.Ident{Name: "d", NamePos: pos(61)}, Not: pos(63), Null: pos(67)},
+	}); diff != "" {
+		t.Fatal(diff)
+	}
+	if diff := deepEqual(stmt.Constraints, []sql.Constraint{
+		&sql.EmptyConstraint{Constraint: pos(73), Name: &sql.Ident{Name: "e", NamePos: pos(84)}},
+	}); diff != "" {
+		t.Fatal(diff)
+	}
+	if got, want := stmt.String(), `CREATE TABLE "tbl" ("col1" INTEGER CONSTRAINT "c", "col2" CONSTRAINT "d" NOT NULL, CONSTRAINT "e")`; got != want {
+		t.Fatalf("String()=%s, want %s", got, want)
+	}
+	AssertParseStatementError(t, `CREATE TABLE tbl (col1 INTEGER CONSTRAINT c FOO)`, `1:45: expected PRIMARY KEY, NOT NULL, UNIQUE, CHECK, DEFAULT, COLLATE, REFERENCES, or GENERATED, found FOO`)
+	AssertParseStatementError(t, `CREATE TABLE tbl (col1, CONSTRAINT c FOO)`, `1:38: expected PRIMARY KEY, UNIQUE, CHECK, or FOREIGN KEY, found FOO`)
+}
+
 // Ensure a DEFAULT value may be a bare identifier, which SQLite stores as a
 // string: `DEFAULT abc` is the same as `DEFAULT 'abc'`.
 func TestParser_DefaultIdent(t *testing.T) {

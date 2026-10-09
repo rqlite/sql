@@ -547,6 +547,12 @@ func (p *Parser) parseConstraint(isTable bool) (_ Constraint, err error) {
 		}
 	}
 
+	// A constraint name may stand alone at the end of a column or table
+	// definition; SQLite accepts and ignores it.
+	if name != nil && (p.peek() == COMMA || p.peek() == RP) {
+		return &EmptyConstraint{Constraint: constraintPos, Name: name}, nil
+	}
+
 	// Table constraints only use a subset of column constraints.
 	if isTable {
 		switch p.peek() {
@@ -556,9 +562,10 @@ func (p *Parser) parseConstraint(isTable bool) (_ Constraint, err error) {
 			return p.parseUniqueConstraint(constraintPos, name, isTable)
 		case CHECK:
 			return p.parseCheckConstraint(constraintPos, name)
-		default:
-			assert(p.peek() == FOREIGN)
+		case FOREIGN:
 			return p.parseForeignKeyConstraint(constraintPos, name, isTable)
+		default:
+			return nil, p.errorExpected(p.pos, p.tok, "PRIMARY KEY, UNIQUE, CHECK, or FOREIGN KEY")
 		}
 	}
 
@@ -578,9 +585,10 @@ func (p *Parser) parseConstraint(isTable bool) (_ Constraint, err error) {
 		return p.parseGeneratedConstraint(constraintPos, name)
 	case COLLATE:
 		return p.parseCollateConstraint(constraintPos, name)
-	default:
-		assert(p.peek() == REFERENCES)
+	case REFERENCES:
 		return p.parseForeignKeyConstraint(constraintPos, name, isTable)
+	default:
+		return nil, p.errorExpected(p.pos, p.tok, "PRIMARY KEY, NOT NULL, UNIQUE, CHECK, DEFAULT, COLLATE, REFERENCES, or GENERATED")
 	}
 }
 

@@ -575,6 +575,13 @@ func walk(v Visitor, n Node) (retNode Node, err error) {
 			nn.Columns = columns
 		}
 
+	case *EmptyConstraint:
+		if ri, err := walkIdent(v, nn.Name); err != nil {
+			return nil, err
+		} else {
+			nn.Name = ri
+		}
+
 	case *CheckConstraint:
 		if ri, err := walkIdent(v, nn.Name); err != nil {
 			return nil, err
