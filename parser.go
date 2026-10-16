@@ -2839,6 +2839,8 @@ func (p *Parser) parseOperand() (expr Expr, err error) {
 		return ident, nil
 	case tok == STRING:
 		return &StringLit{ValuePos: pos, Value: lit}, nil
+	case tok == CURRENT_TIME, tok == CURRENT_DATE, tok == CURRENT_TIMESTAMP:
+		return &TimestampLit{ValuePos: pos, Value: lit}, nil
 	case tok == BLOB:
 		return &BlobLit{ValuePos: pos, Value: lit}, nil
 	case tok == FLOAT, tok == INTEGER:
