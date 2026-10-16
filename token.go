@@ -578,6 +578,11 @@ func isExprIdentToken(tok Token) bool {
 	// These are in bareTokens but have precedence as expression keywords.
 	case CAST, CASE, RAISE, EXISTS, SELECT, NOT:
 		return false
+	// In an expression these are always the time literals, never a column
+	// reference, even if a column of the same name exists. They remain usable
+	// as identifiers outside expressions (column names, SET targets, etc.).
+	case CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP:
+		return false
 	default:
 		// Bare tokens are keywords that can be used as unquoted identifiers
 		// (e.g., DESC, ASC, KEY, ACTION, REPLACE, LIKE, GLOB, IF, etc.)

@@ -3531,9 +3531,9 @@ func TestParser_ParseStatement(t *testing.T) {
 			Select: pos(0),
 			Columns: []*sql.ResultColumn{
 				{
-					Expr: &sql.Ident{
-						NamePos: pos(7),
-						Name:    "CURRENT_TIMESTAMP",
+					Expr: &sql.TimestampLit{
+						ValuePos: pos(7),
+						Value:    "CURRENT_TIMESTAMP",
 					},
 				},
 			},
@@ -3613,6 +3613,10 @@ func TestParser_ParseStatement(t *testing.T) {
 		AssertParseStatementError(t, `WITH cte AS (SELECT foo`, `1:23: expected right paren, found 'EOF'`)
 		AssertParseStatementError(t, `WITH cte AS (SELECT foo)`, `1:24: expected SELECT, VALUES, INSERT, REPLACE, UPDATE, or DELETE, found 'EOF'`)
 		AssertParseStatementError(t, `SELECT `, `1:7: expected expression, found 'EOF'`)
+		// Time literals are not functions or table names.
+		AssertParseStatementError(t, `SELECT CURRENT_TIMESTAMP(1)`, `1:25: expected semicolon or EOF, found '('`)
+		AssertParseStatementError(t, `SELECT current_time()`, `1:20: expected semicolon or EOF, found '('`)
+		AssertParseStatementError(t, `SELECT CURRENT_DATE.x FROM foo`, `1:20: expected semicolon or EOF, found '.'`)
 		AssertParseStatementError(t, `SELECT 1+`, `1:9: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `SELECT foo,`, `1:11: expected expression, found 'EOF'`)
 		AssertParseStatementError(t, `SELECT foo AS`, `1:13: expected column alias, found 'EOF'`)
@@ -3662,6 +3666,26 @@ func TestParser_ParseStatement(t *testing.T) {
 	})
 
 	t.Run("Insert", func(t *testing.T) {
+		// CURRENT_TIME, CURRENT_DATE and CURRENT_TIMESTAMP are literals in an
+		// expression, never identifiers: sqlite3 returns the time even when a
+		// column of that name exists. Serializing them quoted would turn them
+		// into (nonexistent) column references that SQLite then treats as
+		// string literals.
+		AssertParseStatement(t, `INSERT INTO tbl VALUES (CURRENT_TIME, current_date, CURRENT_TIMESTAMP)`, &sql.InsertStatement{
+			Insert: pos(0),
+			Into:   pos(7),
+			Table:  &sql.Ident{NamePos: pos(12), Name: "tbl"},
+			Values: pos(16),
+			ValueLists: []*sql.ExprList{{
+				Lparen: pos(23),
+				Exprs: []sql.Expr{
+					&sql.TimestampLit{ValuePos: pos(24), Value: "CURRENT_TIME"},
+					&sql.TimestampLit{ValuePos: pos(38), Value: "current_date"},
+					&sql.TimestampLit{ValuePos: pos(52), Value: "CURRENT_TIMESTAMP"},
+				},
+				Rparen: pos(69),
+			}},
+		})
 		AssertParseStatement(t, `INSERT INTO tbl (x, y) VALUES (1, 2)`, &sql.InsertStatement{
 			Insert:        pos(0),
 			Into:          pos(7),
